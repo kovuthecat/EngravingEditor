@@ -5,7 +5,19 @@ body { display: flex; flex-direction: column; height: 100vh; }
 header { display: flex; align-items: baseline; gap: 16px; padding: 8px 16px; background: #161922; border-bottom: 1px solid #262b36; }
 header h1 { font-size: 16px; margin: 0; color: #fff; }
 #btn-sidebar-toggle { width: auto; min-width: 40px; flex: none; }
+.project-history { display: flex; align-items: center; gap: 8px; flex: none; }
+#btn-undo { width: auto; min-width: 88px; margin: 0; min-height: 34px; }
+#btn-undo:disabled { opacity: .45; cursor: default; }
+.save-status { min-width: 112px; font-size: 11px; color: #8b93a1; }
+.save-status.error { color: #fca5a5; }
 .hint { font-size: 12px; color: #8b93a1; }
+
+@media (max-width: 700px) {
+  header { align-items: center; gap: 8px; }
+  header h1, .hint { display: none; }
+  .project-history { margin-left: auto; }
+  .save-status { min-width: 0; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 
 #app { flex: 1; display: flex; min-height: 0; }
 

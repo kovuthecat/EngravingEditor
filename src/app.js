@@ -85,6 +85,8 @@
   stage.on("dragend", positionMoveHandle);
   stage.on("click tap", (e) => { if (edit.active) return; if (e.target === stage && !panMoved) select(null); });
   tr.on("transform", positionMoveHandle); // suit échelle/rotation via les poignées
+  tr.on("transformstart", recordHistory);
+  tr.on("transformend", markProjectChanged);
 
   // zoom molette centré sur le curseur
   stage.on("wheel", (e) => {
@@ -289,7 +291,8 @@
     g.setAttr("motifId", motif.id);
     fillGroupContent(g, motif);
     g.on("click tap", (e) => { e.cancelBubble = true; if (edit.active) return; select(g); });
-    g.on("dragstart", () => select(g));
+    g.on("dragstart", () => { recordHistory(); select(g); });
+    g.on("dragend", markProjectChanged);
     mainLayer.add(g);
     return g;
   }
@@ -317,6 +320,7 @@
 
   function addInstance(motif, opts) {
     opts = opts || {};
+    if (opts.history !== false) recordHistory();
     const c = viewCenterDesign();
     const manual = opts.x == null && opts.scale == null;
     const fit = (motif.role === "DECOR" && manual) ? fitScale(motif, 0.92) : null;
@@ -331,6 +335,7 @@
     );
     mainLayer.batchDraw();
     if (!opts.silent) select(g);
+    if (opts.history !== false) markProjectChanged();
     return g;
   }
 
@@ -348,15 +353,18 @@
     });
     z.setAttr("isZone", true);
     z.on("click tap", (e) => { e.cancelBubble = true; if (edit.active) return; select(z); });
-    z.on("dragstart", () => select(z));
+    z.on("dragstart", () => { recordHistory(); select(z); });
+    z.on("dragend", markProjectChanged);
     zonesLayer.add(z);
     return z;
   }
   function addZone() {
+    recordHistory();
     const c = viewCenterDesign();
     const z = makeZone({ x: c.x - 70, y: c.y - 35, width: 140, height: 70 });
     zonesLayer.batchDraw();
     select(z);
+    markProjectChanged();
   }
   // polygones (design px) des zones, pour soustraction export + évitement packing
   function getZonePolys() {
@@ -383,7 +391,8 @@
     });
     f.setAttr("isFrame", true);
     f.on("click tap", (e) => { e.cancelBubble = true; if (edit.active) return; select(f); });
-    f.on("dragstart", () => select(f));
+    f.on("dragstart", () => { recordHistory(); select(f); });
+    f.on("dragend", markProjectChanged);
     guideLayer.add(f);
     return f;
   }
@@ -396,18 +405,21 @@
       frameNode.visible(false);
     }
     guideLayer.batchDraw();
+    markProjectChanged();
   }
   function resizeFrame() {
     if (!frameNode) return;
     const { w, h } = frameDimsPx();
     frameNode.width(w); frameNode.height(h); frameNode.offsetX(w / 2); frameNode.offsetY(h / 2);
     guideLayer.batchDraw();
+    markProjectChanged();
   }
 
   // ─── contour ─────────────────────────────────────────────────────────────
   // contour depuis SVG (sous-chemins fermés) : corps + cavités auto, échelle mm réelle
   // dimLong/dimShort en mm ; mappés sur le grand/petit axe du bbox.
   function setBoundaryFromSVG(subpaths, dimLong, dimShort) {
+    recordHistory();
     const withA = subpaths.map((s) => ({ pts: s.pts, area: ML.absArea(s.pts) })).sort((a, b) => b.area - a.area);
     const body = withA[0]; if (!body) return;
     const xs = body.pts.map((p) => p[0]), ys = body.pts.map((p) => p[1]);
@@ -421,6 +433,7 @@
     state.holes = withA.slice(1).filter((s) => s.area > thr).map((s) => ML.simplify(place(s.pts), 0.8));
     state.contourRef = null;
     drawBoundary();
+    markProjectChanged();
   }
 
   function tracePoly(c, pts) {
@@ -502,15 +515,18 @@
     motif.color = d.color; motif.margin = d.margin;
     rerenderMotif(motif);
     populateMotifEditor(motif);
+    markProjectChanged();
   };
   document.getElementById("insp-color").oninput = (e) => {
     const motif = selectedMotif(); if (!motif) return;
     motif.color = e.target.value;
     rerenderMotif(motif);
+    scheduleLocalSave();
   };
   document.getElementById("insp-margin").oninput = (e) => {
     const motif = selectedMotif(); if (!motif) return;
     motif.margin = parseFloat(e.target.value) || 0;
+    scheduleLocalSave();
   };
 
   // ─── éditeur de rôles de zones (REMPLI/VIDE) du motif sélectionné ───────────
@@ -544,17 +560,19 @@
       toggle.className = "zone-toggle" + (z.role === "REMPLI" ? " on" : "");
       toggle.textContent = z.role;
       toggle.onclick = () => {
+        recordHistory();
         z.role = z.role === "REMPLI" ? "VIDE" : "REMPLI";
         rerenderMotif(motif);
         populateZoneEditor(motif);
+        markProjectChanged();
       };
       row.append(sw, label, toggle);
       list.appendChild(row);
     }
     document.getElementById("zone-editor").style.display = "block";
   }
-  document.getElementById("insp-rot").oninput = (e) => { const g = selected(); if (g) { g.rotation(parseFloat(e.target.value) || 0); mainLayer.batchDraw(); } };
-  document.getElementById("insp-scale").oninput = (e) => { const g = selected(); if (g) { const s = parseFloat(e.target.value) || 1; g.scale({ x: s, y: s }); mainLayer.batchDraw(); } };
+  document.getElementById("insp-rot").oninput = (e) => { const g = selected(); if (g) { g.rotation(parseFloat(e.target.value) || 0); mainLayer.batchDraw(); scheduleLocalSave(); } };
+  document.getElementById("insp-scale").oninput = (e) => { const g = selected(); if (g) { const s = parseFloat(e.target.value) || 1; g.scale({ x: s, y: s }); mainLayer.batchDraw(); scheduleLocalSave(); } };
 
   // ─── édition au stylet (D-006 chantier 3) : pinceau/gomme verrouillés sur le motif ──────────
   // edit.node = instance Konva sur laquelle le tracé est capté (mappage écran->local) ; la
@@ -607,6 +625,7 @@
   // applique un trait terminé (déjà en coords locales du motif) : union (pinceau) ou
   // différence (gomme) sous la couleur focale, puis recalcule la silhouette et re-rend.
   function applyStroke(motif, localPts) {
+    recordHistory();
     if (!motif.surface) motif.surface = exportFill(motif); // init paresseuse (D-006)
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
     const poly = ML.strokeToPolygon(localPts, radiusPx);
@@ -615,6 +634,7 @@
     motif.surface[key] = edit.tool === "brush" ? ML.surfaceUnion(current, poly) : ML.surfaceDifference(current, poly);
     motif.silhouette = ML.silhouetteFromSurface(Object.values(motif.surface).flat());
     rerenderMotif(motif);
+    markProjectChanged();
   }
 
   function localPoint() {
@@ -674,8 +694,9 @@
     if (edit.active) return;
     const g = selected(); if (!g || g.getAttr("isFrame")) return;
     if (g.getAttr("isZone")) {
+      recordHistory();
       const z = makeZone({ x: g.x() + 20, y: g.y() + 20, width: g.width(), height: g.height(), rotation: g.rotation(), scaleX: g.scaleX(), scaleY: g.scaleY() });
-      zonesLayer.batchDraw(); select(z); return;
+      zonesLayer.batchDraw(); select(z); markProjectChanged(); return;
     }
     const m = state.motifs.find((x) => x.id === g.getAttr("motifId"));
     addInstance(m, { x: g.x() + 20, y: g.y() + 20, rotation: g.rotation(), scale: g.scaleX() });
@@ -683,19 +704,24 @@
   function deleteSel() {
     if (edit.active) return;
     const g = selected(); if (!g) return;
+    recordHistory();
     if (g.getAttr("isFrame")) { document.getElementById("chk-frame").checked = false; frameNode = null; }
     const l = g.getLayer(); select(null); g.destroy(); l && l.batchDraw();
+    markProjectChanged();
   }
   function zorder(d) {
     const g = selected(); if (!g || g.getAttr("isZone") || g.getAttr("isFrame")) return;
+    recordHistory();
     if (d === "front") g.moveToTop(); else if (d === "back") g.moveToBottom();
     else if (d === "up") g.moveUp(); else g.moveDown();
     uiLayer.getChildren().forEach((n) => n.moveToTop()); // garde le transformer au-dessus
     mainLayer.batchDraw();
+    markProjectChanged();
   }
   window.addEventListener("keydown", (e) => {
     if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
-    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSel(); }
+    if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSel(); }
     else if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); duplicateSel(); }
     else if (e.key === "]") zorder("up"); else if (e.key === "[") zorder("down");
   });
@@ -712,6 +738,7 @@
   function packing(count, sMin, sMax) {
     if (!state.boundary) { alert("Charge d'abord un contour."); return; }
     if (!state.motifs.length) { alert("Importe d'abord des motifs."); return; }
+    recordHistory();
     const xs = state.boundary.map((p) => p[0]), ys = state.boundary.map((p) => p[1]);
     const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
     const zones = reservedPolys();
@@ -724,10 +751,11 @@
       const m = state.motifs[Math.floor(Math.random() * state.motifs.length)];
       const scale = sMin + Math.random() * (sMax - sMin);
       const rot = (Math.random() - 0.5) * 50;
-      addInstance(m, { x, y, rotation: rot, scale, silent: true });
+      addInstance(m, { x, y, rotation: rot, scale, silent: true, history: false });
       placed++;
     }
     mainLayer.batchDraw();
+    if (placed) markProjectChanged();
   }
 
   // ─── export SVG (occlusion par surfaces, règle décor D-005) ─────────────────
@@ -772,8 +800,8 @@
   }
 
   // ─── projet (save/load JSON) ────────────────────────────────────────────────
-  function saveProject() {
-    const data = {
+  function projectData() {
+    return {
       version: 1, pxPerMm: PX_PER_MM,
       motifs: state.motifs,
       boundary: state.boundary,
@@ -791,7 +819,9 @@
         motifId: g.getAttr("motifId"), x: g.x(), y: g.y(), rotation: g.rotation(), scale: g.scaleX(),
       })),
     };
-    download("projet.mlayout.json", JSON.stringify(data), "application/json");
+  }
+  function saveProject() {
+    download("projet.mlayout.json", JSON.stringify(projectData()), "application/json");
   }
   function loadProject(data) {
     exitEdit();
@@ -809,7 +839,7 @@
       if (!m.silhouette || !m.silhouette.length) {
         m.silhouette = m.surface ? ML.silhouetteFromSurface(Object.values(m.surface).flat()) : ML.motifSilhouette(m.zones);
       }
-      state.motifs.push(m); addMotifToLibrary(m); state.seq = Math.max(state.seq, parseInt(m.id.slice(1)) || 0);
+      addMotifToLibrary(m); state.seq = Math.max(state.seq, parseInt(m.id.slice(1)) || 0);
     }
     drawBoundary();
     for (const z of (data.zones || [])) makeZone(z);
@@ -824,10 +854,121 @@
     guideLayer.batchDraw();
     for (const it of (data.instances || [])) {
       const m = state.motifs.find((x) => x.id === it.motifId);
-      if (m) addInstance(m, { x: it.x, y: it.y, rotation: it.rotation, scale: it.scale, silent: true });
+      if (m) addInstance(m, { x: it.x, y: it.y, rotation: it.rotation, scale: it.scale, silent: true, history: false });
     }
     mainLayer.batchDraw();
   }
+
+  // Historique par instantanés : robuste pour les mutations Konva et les géométries imbriquées.
+  const undoStack = [];
+  const HISTORY_LIMIT = 20;
+  function projectSnapshot() { return JSON.stringify(projectData()); }
+  function pushHistorySnapshot(snapshot) {
+    if (undoStack[undoStack.length - 1] === snapshot) return;
+    undoStack.push(snapshot);
+    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+    document.getElementById("btn-undo").disabled = false;
+  }
+  function recordHistory() { pushHistorySnapshot(projectSnapshot()); }
+  function undo() {
+    if (!undoStack.length) return;
+    const snapshot = undoStack.pop();
+    loadProject(JSON.parse(snapshot));
+    document.getElementById("btn-undo").disabled = undoStack.length === 0;
+    markProjectChanged();
+  }
+
+  // IndexedDB évite la limite étroite de localStorage pour les gros contours et motifs.
+  const LOCAL_DB = "motif-layout";
+  const LOCAL_STORE = "projects";
+  const LOCAL_KEY = "current";
+  let localSaveTimer = null;
+  function setLocalStatus(text, error) {
+    const el = document.getElementById("local-save-status");
+    el.textContent = text;
+    el.classList.toggle("error", !!error);
+  }
+  function openLocalDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(LOCAL_DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(LOCAL_STORE, { keyPath: "id" });
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function saveLocalProject() {
+    try {
+      setLocalStatus("Sauvegarde...");
+      const db = await openLocalDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_STORE, "readwrite");
+        tx.objectStore(LOCAL_STORE).put({ id: LOCAL_KEY, data: projectData(), savedAt: Date.now() });
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+      db.close();
+      setLocalStatus("Sauvegardé localement");
+    } catch (err) {
+      console.error("Sauvegarde locale impossible", err);
+      setLocalStatus("Sauvegarde locale impossible", true);
+    }
+  }
+  function scheduleLocalSave() {
+    clearTimeout(localSaveTimer);
+    localSaveTimer = setTimeout(() => {
+      localSaveTimer = null;
+      saveLocalProject();
+    }, 300);
+  }
+  function markProjectChanged() { scheduleLocalSave(); }
+  function flushLocalSave() {
+    if (!localSaveTimer) return;
+    clearTimeout(localSaveTimer);
+    localSaveTimer = null;
+    saveLocalProject();
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushLocalSave();
+  });
+  window.addEventListener("pagehide", flushLocalSave);
+  async function restoreLocalProject() {
+    try {
+      const db = await openLocalDb();
+      const saved = await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_STORE, "readonly");
+        const req = tx.objectStore(LOCAL_STORE).get(LOCAL_KEY);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      db.close();
+      if (saved && saved.data) {
+        loadProject(saved.data);
+        setLocalStatus("Projet local restauré");
+      } else {
+        setLocalStatus("Nouveau projet local");
+      }
+    } catch (err) {
+      console.error("Restauration locale impossible", err);
+      setLocalStatus("Stockage local indisponible", true);
+    }
+  }
+
+  // Pour les champs continus, mémorise l'état avant focus puis crée une seule étape à la validation.
+  const inputSnapshots = new WeakMap();
+  [
+    "chk-margin", "margin-mm", "chk-frame", "frame-w", "frame-h",
+    "insp-rot", "insp-scale", "insp-role", "insp-color", "insp-margin",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    el.addEventListener("focus", () => inputSnapshots.set(el, projectSnapshot()));
+    el.addEventListener("change", () => {
+      const before = inputSnapshots.get(el);
+      if (before && before !== projectSnapshot()) pushHistorySnapshot(before);
+      inputSnapshots.delete(el);
+      markProjectChanged();
+    });
+  });
 
   // ─── util fichiers ──────────────────────────────────────────────────────────
   function download(name, text, mime) {
@@ -842,20 +983,26 @@
   // ─── câblage UI ──────────────────────────────────────────────────────────────
   document.getElementById("import-perso").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
+      recordHistory();
       const base = name.replace(/\.[^.]+$/, "");
       addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "PERSONNAGE"));
+      markProjectChanged();
       e.target.value = "";
     });
   document.getElementById("import-symbole").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
+      recordHistory();
       const base = name.replace(/\.[^.]+$/, "");
       addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "SYMBOLE"));
+      markProjectChanged();
       e.target.value = "";
     });
   document.getElementById("import-decor").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
+      recordHistory();
       const base = name.replace(/\.[^.]+$/, "");
       addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "DECOR"));
+      markProjectChanged();
       e.target.value = "";
     });
   document.getElementById("import-svg").onchange = (e) =>
@@ -882,15 +1029,23 @@
   document.getElementById("btn-down").onclick = () => zorder("down");
   document.getElementById("btn-front").onclick = () => zorder("front");
   document.getElementById("btn-back").onclick = () => zorder("back");
-  document.getElementById("btn-clear").onclick = () => { if (confirm("Tout effacer le plan ?")) { exitEdit(); select(null); mainLayer.destroyChildren(); mainLayer.batchDraw(); } };
+  document.getElementById("btn-clear").onclick = () => {
+    if (confirm("Tout effacer le plan ?")) {
+      recordHistory(); exitEdit(); select(null); mainLayer.destroyChildren(); mainLayer.batchDraw(); markProjectChanged();
+    }
+  };
   document.getElementById("btn-save").onclick = saveProject;
+  document.getElementById("btn-undo").onclick = undo;
   document.getElementById("btn-sidebar-toggle").onclick = () => {
     document.getElementById("app").classList.toggle("collapsed");
     syncStageSize();
   };
   document.getElementById("sidebar").addEventListener("transitionend", syncStageSize);
   document.getElementById("load-project").onchange = (e) =>
-    readFiles(e.target.files, (_n, text) => { loadProject(JSON.parse(text)); e.target.value = ""; });
+    readFiles(e.target.files, (_n, text) => {
+      recordHistory(); loadProject(JSON.parse(text)); markProjectChanged(); e.target.value = "";
+    });
 
   updateInspector();
+  restoreLocalProject();
 })();
