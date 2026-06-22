@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Aperçu tests Falcon — noiraude</title>
+<style>
+  body { font: 14px system-ui, sans-serif; background: #f4f4f6; margin: 24px; color: #222; }
+  h1 { font-size: 18px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+  figure { margin: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; width: 260px; }
+  figure img, figure object { width: 236px; height: 236px; display: block; background:
+    repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 16px 16px; border: 1px solid #eee; }
+  figcaption { margin-top: 8px; font-size: 13px; }
+  code { background: #eef; padding: 0 3px; border-radius: 3px; }
+  .q { color: #b00; font-weight: 600; }
+</style>
+<h1>Tests Falcon — variantes de « noiraude »</h1>
+<p>Fond damier = transparence (zone non gravée / bois). Vérifie d'abord que le rendu te paraît correct, puis importe chaque <code>.svg</code> dans Falcon Design Space.</p>
+<div class="grid">
+  <figure>
+    <object data="../noiraude test svg.svg" type="image/svg+xml"></object>
+    <figcaption><b>Original</b><br>1 path noir, yeux = trous (fill-rule natif Inkscape).</figcaption>
+  </figure>
+  <figure>
+    <object data="noiraude_A_couleurs.svg" type="image/svg+xml"></object>
+    <figcaption><b>A — couleurs</b><br>Corps noir (yeux évidés) + pupilles rouges.<br><span class="q">Falcon → 2 calques (noir / rouge) ?</span></figcaption>
+  </figure>
+  <figure>
+    <object data="noiraude_B_fill-vs-stroke.svg" type="image/svg+xml"></object>
+    <figcaption><b>B — fill vs stroke</b><br>Corps = surface noire ; yeux+pupilles = trait bleu seul.<br><span class="q">Falcon → 1 calque surface + 1 calque trait ?</span></figcaption>
+  </figure>
+  <figure>
+    <object data="noiraude_C_fidele-evenodd.svg" type="image/svg+xml"></object>
+    <figcaption><b>C — fidèle (evenodd)</b><br>1 seul path noir, trous via fill-rule.<br><span class="q">Falcon respecte-t-il les trous (yeux = bois) ?</span></figcaption>
+  </figure>
+  <figure>
+    <object data="noiraude_D_separes-pleins.svg" type="image/svg+xml"></object>
+    <figcaption><b>D — séparés pleins</b><br>Chaque forme = path noir plein, sans trou.<br><span class="q">Contrôle : doit donner un « blob » (yeux noirs).</span></figcaption>
+  </figure>
+</div>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motif Layout — pattern gravure laser</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <header>
+    <button id="btn-sidebar-toggle" class="btn sm" aria-label="Afficher/masquer le panneau">☰</button>
+    <h1>Motif Layout</h1>
+    <span class="hint">molette = zoom · glisser le fond = déplacer la vue · pincer = zoom · deux doigts = déplacer la vue · pastille bleue = déplacer la sélection · Suppr = supprimer · Ctrl+D = dupliquer · [ ] = ordre</span>
+  </header>
+
+  <div id="app">
+    <aside id="sidebar">
+      <section>
+        <h2>Motifs</h2>
+        <label class="btn">Importer personnages (SVG)…
+          <input id="import-perso" type="file" accept=".svg" multiple hidden />
+        </label>
+        <label class="btn">Importer symboles (SVG)…
+          <input id="import-symbole" type="file" accept=".svg" multiple hidden />
+        </label>
+        <div id="library"></div>
+      </section>
+
+      <section>
+        <h2>Décor</h2>
+        <label class="btn">Importer décor (SVG)…
+          <input id="import-decor" type="file" accept=".svg" hidden />
+        </label>
+      </section>
+
+      <section>
+        <h2>Contour</h2>
+        <div class="row"><label>Dim. longue (mm)</label><input id="dim-long" type="number" value="440" /></div>
+        <div class="row"><label>Dim. courte (mm)</label><input id="dim-short" type="number" value="325" /></div>
+        <label class="btn">Charger contour SVG… <span class="tag">recommandé</span>
+          <input id="import-svg" type="file" accept=".svg" hidden />
+        </label>
+        <p class="note">SVG « creusé » : corps en blanc + cavités auto-réservées, à l'échelle réelle.</p>
+        <button id="btn-zone" class="btn sm">+ Zone interdite (cavité)</button>
+        <p class="note">Zone manuelle : rien n'y sera gravé et le packing l'évite.</p>
+      </section>
+
+      <section>
+        <h2>Guides de gravure</h2>
+        <div class="row-check"><label><input id="chk-margin" type="checkbox" checked /> Marge de sécurité</label></div>
+        <div class="row"><label>Marge (mm)</label><input id="margin-mm" type="number" value="5" min="0" step="0.5" /></div>
+        <p class="note">Offset intérieur du contour : zone à éviter près du bord en cas de calage imprécis de la guitare sous le laser.</p>
+        <div class="row-check"><label><input id="chk-frame" type="checkbox" /> Cadre laser (Falcon 2)</label></div>
+        <div class="row"><label>Largeur (mm)</label><input id="frame-w" type="number" value="400" min="1" /></div>
+        <div class="row"><label>Hauteur (mm)</label><input id="frame-h" type="number" value="415" min="1" /></div>
+        <p class="note">Cadre déplaçable (glisser) et orientable (poignée de rotation) : vérifie ce qui rentre dans la zone de gravure de la machine.</p>
+      </section>
+
+      <section>
+        <h2>Packing assisté</h2>
+        <div class="row"><label>Nombre</label><input id="pack-count" type="number" value="30" min="1" /></div>
+        <div class="row"><label>Échelle min</label><input id="pack-smin" type="number" value="0.6" step="0.1" /></div>
+        <div class="row"><label>Échelle max</label><input id="pack-smax" type="number" value="1.2" step="0.1" /></div>
+        <button id="btn-pack" class="btn">Disperser dans le contour</button>
+      </section>
+
+      <section id="inspector" style="display:none">
+        <h2>Sélection</h2>
+        <div class="row"><label>Rotation°</label><input id="insp-rot" type="number" /></div>
+        <div class="row"><label>Échelle</label><input id="insp-scale" type="number" step="0.05" /></div>
+        <div class="grid2">
+          <button id="btn-dup" class="btn sm">Dupliquer</button>
+          <button id="btn-del" class="btn sm danger">Supprimer</button>
+        </div>
+        <div id="motif-editor" style="display:none">
+          <p class="note">Motif (rôle / couleur / marge) :</p>
+          <div class="row"><label>Rôle</label>
+            <select id="insp-role">
+              <option value="PERSONNAGE">Personnage</option>
+              <option value="SYMBOLE">Symbole</option>
+              <option value="DECOR">Décor</option>
+            </select>
+          </div>
+          <div class="row"><label>Couleur</label><input id="insp-color" type="color" /></div>
+          <div class="row"><label>Marge (mm)</label><input id="insp-margin" type="number" step="0.5" min="0" /></div>
+        </div>
+        <div id="stylet-editor" style="display:none">
+          <p class="note">Édition (stylet) :</p>
+          <button id="btn-edit" class="btn sm">Entrer en édition</button>
+          <div id="stylet-tools" style="display:none">
+            <div class="grid2">
+              <button id="tool-brush" class="btn sm tool-btn on">Pinceau</button>
+              <button id="tool-eraser" class="btn sm tool-btn">Gomme</button>
+            </div>
+            <div class="row"><label>Taille (mm)</label><input id="brush-size" type="number" value="3" min="0.5" step="0.5" /></div>
+            <p class="note">Un doigt/stylet = trait · deux doigts = déplacer la vue. La sélection reste verrouillée sur ce motif tant que l'édition est active.</p>
+          </div>
+        </div>
+        <p class="note">Ordre (z) :</p>
+        <div class="grid2">
+          <button id="btn-up" class="btn sm">▲ Monter d'un cran</button>
+          <button id="btn-down" class="btn sm">▼ Descendre d'un cran</button>
+          <button id="btn-front" class="btn sm">⏫ Tout devant</button>
+          <button id="btn-back" class="btn sm">⏬ Tout derrière</button>
+        </div>
+        <div id="zone-editor" style="display:none">
+          <p class="note">Zones du motif (REMPLI / VIDE) :</p>
+          <div id="zone-list"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Projet</h2>
+        <div class="grid2">
+          <button id="btn-export" class="btn primary">Exporter SVG</button>
+          <button id="btn-save" class="btn sm">Enregistrer</button>
+          <label class="btn sm">Charger
+            <input id="load-project" type="file" accept=".json" hidden />
+          </label>
+          <button id="btn-clear" class="btn sm danger">Tout effacer</button>
+        </div>
+      </section>
+    </aside>
+
+    <main id="stage"></main>
+  </div>
+
+  <script src="vendor/konva.min.js"></script>
+  <script src="vendor/clipper.js"></script>
+  <script src="src/svg.js"></script>
+  <script src="src/geometry.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

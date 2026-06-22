@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Tests Falcon — modèles complexes (Link, Majora)</title>
+<style>
+  body { font: 14px system-ui, sans-serif; background: #f4f4f6; margin: 24px; color: #222; }
+  h1 { font-size: 18px; } h2 { font-size: 15px; margin-top: 28px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+  figure { margin: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; width: 260px; }
+  figure object { width: 236px; height: 236px; display: block; background:
+    repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 16px 16px; border: 1px solid #eee; }
+  figcaption { margin-top: 8px; font-size: 13px; }
+  .leg { color: #555; }
+  b.r{color:#e00000} b.b{color:#0050ff} b.g{color:#00a000} b.o{color:#e0a000} b.p{color:#a000e0}
+</style>
+<h1>Modèles complexes — fidélité de la reproduction evenodd</h1>
+<p>Pour chaque modèle : <b>Original</b> (ton SVG) · <b>C (evenodd)</b> = reproduction par notre pipeline (parse → tous sous-chemins → 1 path evenodd) · <b>Profondeur</b> = diagnostic de la détection trou/plein.</p>
+<p class="leg">Légende profondeur — <b>noir</b>=plein niv.0 · <b class="r">rouge</b>=trou niv.1 · <b class="b">bleu</b>=îlot niv.2 · <b class="g">vert</b>=niv.3 · <b class="o">orange</b>=niv.4 · <b class="p">violet</b>=niv.5. Un trou (rouge) doit correspondre à une zone évidée de l'original.</p>
+
+<h2>Link — 23 sous-chemins, profondeur 2</h2>
+<div class="grid">
+  <figure><object data="../link.svg" type="image/svg+xml"></object><figcaption><b>Original</b></figcaption></figure>
+  <figure><object data="link_C_evenodd.svg" type="image/svg+xml"></object><figcaption><b>C — evenodd</b><br>Doit être identique à l'original.</figcaption></figure>
+  <figure><object data="link_profondeur.svg" type="image/svg+xml"></object><figcaption><b>Profondeur</b><br>Trous en rouge, îlots en bleu.</figcaption></figure>
+</div>
+
+<h2>Majora — 64 sous-chemins, profondeur 6 (cas de stress)</h2>
+<div class="grid">
+  <figure><object data="../majora mask.svg" type="image/svg+xml"></object><figcaption><b>Original</b></figcaption></figure>
+  <figure><object data="majora_mask_C_evenodd.svg" type="image/svg+xml"></object><figcaption><b>C — evenodd</b><br>Doit être identique à l'original.</figcaption></figure>
+  <figure><object data="majora_mask_profondeur.svg" type="image/svg+xml"></object><figcaption><b>Profondeur</b><br>6 niveaux d'imbrication colorés.</figcaption></figure>
+</div>
+
+<p style="margin-top:28px">Si <b>C</b> = original sur les deux → la reproduction evenodd est fiable quelle que soit la complexité. Importe alors <code>link_C_evenodd.svg</code> et <code>majora_mask_C_evenodd.svg</code> dans Falcon pour confirmer qu'il respecte l'evenodd même à 64 sous-chemins / profondeur 6.</p>
