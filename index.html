@@ -98,6 +98,15 @@
               <button id="tool-eraser" class="btn sm tool-btn">Gomme</button>
             </div>
             <div class="row"><label>Taille (mm)</label><input id="brush-size" type="number" value="3" min="0.5" step="0.5" /></div>
+            <div style="display:flex;gap:6px;margin:6px 0">
+              <button class="btn sm tool-btn size-btn" data-size-mm="1">1 mm</button>
+              <button class="btn sm tool-btn size-btn on" data-size-mm="3">3 mm</button>
+              <button class="btn sm tool-btn size-btn" data-size-mm="8">8 mm</button>
+            </div>
+            <div class="grid2">
+              <button id="profile-round" class="btn sm tool-btn on">Bout rond</button>
+              <button id="profile-flat" class="btn sm tool-btn">Bout plat</button>
+            </div>
             <p class="note">Un doigt/stylet = trait · deux doigts = déplacer la vue. La sélection reste verrouillée sur ce motif tant que l'édition est active.</p>
           </div>
           <div id="stylet-draft-actions" class="grid2" style="display:none">

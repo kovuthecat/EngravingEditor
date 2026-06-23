@@ -647,7 +647,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", sizeMm: 3, drawing: false, pts: [], draft: [], dirty: false };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false };
   let editPreview = null;
   // brouillons en attente (D-007) : motifId -> { surfaceByColor }. Session uniquement, jamais
   // sérialisé dans le projet (cf. projectData) ; purgé par loadProject (nouveau projet = nouveaux ids).
@@ -854,7 +854,7 @@
   // perf D-007) : seul editLayer est redessiné, instantanément, quelle que soit la taille du décor.
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-    const poly = ML.strokeToPolygon(localPts, radiusPx);
+    const poly = ML.strokeToPolygon(localPts, radiusPx, edit.profile);
     edit.draft = edit.tool === "brush" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
     edit.dirty = true;
     redrawEditLayer(motif);
@@ -907,10 +907,27 @@
     document.getElementById("tool-brush").classList.toggle("on", tool === "brush");
     document.getElementById("tool-eraser").classList.toggle("on", tool === "eraser");
   }
+  function setEditProfile(profile) {
+    edit.profile = profile;
+    document.getElementById("profile-round").classList.toggle("on", profile === "round");
+    document.getElementById("profile-flat").classList.toggle("on", profile === "flat");
+  }
   document.getElementById("btn-edit").onclick = () => { if (edit.active) exitEdit(); else enterEdit(); };
   document.getElementById("tool-brush").onclick = () => setEditTool("brush");
   document.getElementById("tool-eraser").onclick = () => setEditTool("eraser");
-  document.getElementById("brush-size").oninput = (e) => { edit.sizeMm = parseFloat(e.target.value) || 3; };
+  document.getElementById("brush-size").oninput = (e) => {
+    edit.sizeMm = parseFloat(e.target.value) || 3;
+    document.querySelectorAll(".size-btn").forEach((b) => b.classList.toggle("on", parseFloat(b.dataset.sizeMm) === edit.sizeMm));
+  };
+  document.querySelectorAll(".size-btn").forEach((b) => {
+    b.onclick = () => {
+      edit.sizeMm = parseFloat(b.dataset.sizeMm);
+      document.getElementById("brush-size").value = edit.sizeMm;
+      document.querySelectorAll(".size-btn").forEach((s) => s.classList.toggle("on", s === b));
+    };
+  });
+  document.getElementById("profile-round").onclick = () => setEditProfile("round");
+  document.getElementById("profile-flat").onclick = () => setEditProfile("flat");
   document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
   document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
   document.getElementById("btn-draft-apply-all").onclick = applyAllDrafts;

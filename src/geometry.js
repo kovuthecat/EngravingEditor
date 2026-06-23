@@ -198,14 +198,16 @@
   // édition au stylet (D-006 chantier 3) : tracé -> polygone épais, union/différence de surface,
   // silhouette depuis une surface (plutôt que des zones SVG).
 
-  // offset open-round (bouts/joints arrondis) d'une polyligne `pts` par `radiusPx` -> polygone(s)
-  // fermé(s) représentant l'épaisseur du trait. Même mécanique entière que `offsetPolygonInt`.
+  // offset d'une polyligne `pts` par `radiusPx` -> polygone(s) fermé(s) représentant l'épaisseur
+  // du trait. Joints toujours arrondis (jtRound) ; bouts selon `endType` ("round" par défaut =
+  // etOpenRound, "flat" = etOpenButt). Même mécanique entière que `offsetPolygonInt`.
   // Un seul point (clic sans déplacement) -> micro-segment pour obtenir un cercle (bouts ronds).
-  ML.strokeToPolygon = function (pts, radiusPx) {
+  ML.strokeToPolygon = function (pts, radiusPx, endType) {
     if (!pts || !pts.length || radiusPx <= 0) return [];
     const line = pts.length === 1 ? [pts[0], [pts[0][0] + 1e-3, pts[0][1]]] : pts;
+    const et = endType === "flat" ? ClipperLib.EndType.etOpenButt : ClipperLib.EndType.etOpenRound;
     const co = new ClipperLib.ClipperOffset();
-    co.AddPath(toInt(line), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenRound);
+    co.AddPath(toInt(line), ClipperLib.JoinType.jtRound, et);
     const sol = new ClipperLib.Paths();
     co.Execute(sol, radiusPx * S);
     return sol.map((path) => ({ pts: fromInt(path), closed: true }));
