@@ -704,7 +704,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
   let editPreview = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
@@ -872,7 +872,7 @@
     // D-007 : plus de confirm bloquant -- un brouillon modifié est simplement rangé (en attente),
     // restauré si on revient sur ce motif (enterEdit), visible en vert sur ses instances (T5 §5).
     if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
-    edit.active = false; edit.drawing = false; edit.pts = []; edit.draft = []; edit.dirty = false;
+    edit.active = false; edit.drawing = false; edit.pts = []; edit.pressures = []; edit.draft = []; edit.dirty = false;
     edit.history = [];
     clearLassoSelection();
     if (editPreview) { editPreview.destroy(); editPreview = null; }
@@ -985,7 +985,10 @@
   // perf D-007) : seul editLayer est redessiné, instantanément, quelle que soit la taille du décor.
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-    const poly = ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
+    // pression (T11) : largeur variable, slider = largeur max ; la gomme reste uniforme.
+    const poly = edit.strokeMode === "pressure" && edit.tool === "brush"
+      ? ML.variableStroke(localPts, edit.pressures.map((p) => radiusPx * (0.25 + 0.75 * p)))
+      : ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
     pushStrokeSnapshot();
     edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
     edit.dirty = true;
@@ -1087,17 +1090,24 @@
     const p = edit.node.getRelativePointerPosition();
     return [p.x, p.y];
   }
-  function startStroke(motif) {
+  // pression du stylet (T11) ; 0 (souris/tactile sans capteur) -> 0.5 (largeur "moyenne" par défaut).
+  function pointerPressure(e) {
+    const ev = e.evt;
+    return (ev.pressure ?? ev.touches?.[0]?.force ?? 0.5) || 0.5;
+  }
+  function startStroke(motif, e) {
     edit.drawing = true;
     edit.pts = [localPoint()];
+    edit.pressures = [pointerPressure(e)];
     editPreview = new Konva.Line({
       points: edit.pts.flat(), stroke: edit.op === "add" ? motif.color : "#ff0000",
       strokeWidth: edit.sizeMm * PX_PER_MM, lineCap: "round", lineJoin: "round", opacity: 0.55, listening: false,
     });
     editLayer.add(editPreview);
   }
-  function moveStroke() {
+  function moveStroke(e) {
     edit.pts.push(localPoint());
+    edit.pressures.push(pointerPressure(e));
     editPreview.points(edit.pts.flat());
     uiLayer.batchDraw();
   }
@@ -1107,6 +1117,7 @@
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (motif && edit.pts.length) applyStroke(motif, edit.pts);
     edit.pts = [];
+    edit.pressures = [];
   }
 
   // outil lasso (T8) : entoure une portion existante du brouillon (polyligne fermée au up) pour
@@ -1242,7 +1253,7 @@
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
     if (edit.tool === "lasso") { startLassoPointer(); return; }
-    if (isFreehandTool(edit.tool)) startStroke(motif); else startShape(motif, e);
+    if (isFreehandTool(edit.tool)) startStroke(motif, e); else startShape(motif, e);
   });
   stage.on("mousemove touchmove", (e) => {
     if (!edit.active) return;
@@ -1250,7 +1261,7 @@
     if (edit.lassoDragAnchor) { e.evt.preventDefault(); moveLassoDrag(); return; }
     if (!edit.drawing) return;
     e.evt.preventDefault();
-    if (isFreehandTool(edit.tool)) moveStroke(); else if (edit.tool === "lasso") moveLassoTrace(); else moveShape(e);
+    if (isFreehandTool(edit.tool)) moveStroke(e); else if (edit.tool === "lasso") moveLassoTrace(); else moveShape(e);
   });
   stage.on("mouseup touchend touchcancel", () => {
     if (!edit.active) return;

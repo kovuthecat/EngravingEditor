@@ -227,6 +227,41 @@
     return sol.map((path) => ({ pts: fromInt(path), closed: true }));
   };
 
+  // trait à largeur variable (T11, pression stylet) : union de disques (rayon `radii[i]` à chaque
+  // point `pts[i]`) + quadrilatères reliant les disques consécutifs (offset perpendiculaire au
+  // segment, par le rayon de chaque extrémité — les disques couvrent les coins/joints arrondis).
+  // Un seul point -> un disque.
+  ML.variableStroke = function (pts, radii) {
+    if (!pts || !pts.length) return [];
+    const SIDES = 16;
+    const disc = (c, r) => {
+      const out = [];
+      for (let k = 0; k < SIDES; k++) {
+        const a = (k / SIDES) * Math.PI * 2;
+        out.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]);
+      }
+      return out;
+    };
+    const polys = pts.map((p, i) => disc(p, Math.max(radii[i] || 0, 1e-3)));
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      const dx = x1 - x0, dy = y1 - y0;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-6) continue;
+      const nx = -dy / len, ny = dx / len;
+      const r0 = Math.max(radii[i] || 0, 1e-3), r1 = Math.max(radii[i + 1] || 0, 1e-3);
+      // même sens de parcours que `disc` (angle croissant) : top0 -> bottom0 -> bottom1 -> top1 —
+      // sinon le winding opposé annule l'aire en chevauchement sous le fillType nonZero de Clipper.
+      polys.push([
+        [x0 + nx * r0, y0 + ny * r0],
+        [x0 - nx * r0, y0 - ny * r0],
+        [x1 - nx * r1, y1 - ny * r1],
+        [x1 + nx * r1, y1 + ny * r1],
+      ]);
+    }
+    return unionInt(new ClipperLib.Paths(), polys).map((path) => ({ pts: fromInt(path), closed: true }));
+  };
+
   // union (pinceau) de deux jeux de contours fermés {pts,closed} -> [{pts,closed:true}].
   // Conserve les trous (orientation) comme `motifFill`.
   ML.surfaceUnion = function (contours, addContours) {
