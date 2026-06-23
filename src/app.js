@@ -1547,26 +1547,32 @@
   // ─── câblage UI ──────────────────────────────────────────────────────────────
   document.getElementById("import-perso").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
-      recordHistory();
-      const base = name.replace(/\.[^.]+$/, "");
-      addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "PERSONNAGE"));
-      markProjectChanged();
+      runWithBusy(() => {
+        recordHistory();
+        const base = name.replace(/\.[^.]+$/, "");
+        addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "PERSONNAGE"));
+        markProjectChanged();
+      });
       e.target.value = "";
     });
   document.getElementById("import-symbole").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
-      recordHistory();
-      const base = name.replace(/\.[^.]+$/, "");
-      addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "SYMBOLE"));
-      markProjectChanged();
+      runWithBusy(() => {
+        recordHistory();
+        const base = name.replace(/\.[^.]+$/, "");
+        addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "SYMBOLE"));
+        markProjectChanged();
+      });
       e.target.value = "";
     });
   document.getElementById("import-decor").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
-      recordHistory();
-      const base = name.replace(/\.[^.]+$/, "");
-      addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "DECOR"));
-      markProjectChanged();
+      runWithBusy(() => {
+        recordHistory();
+        const base = name.replace(/\.[^.]+$/, "");
+        addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "DECOR"));
+        markProjectChanged();
+      });
       e.target.value = "";
     });
   document.getElementById("import-svg").onchange = (e) =>

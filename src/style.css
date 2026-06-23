@@ -81,3 +81,6 @@ header h1 { font-size: 16px; margin: 0; color: #fff; }
 .lib-item:hover { border-color: #3b82f6; }
 .lib-item canvas { background: #fff; border-radius: 4px; }
 .lib-item span { font-size: 10px; color: #b6bdca; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#busy-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15,17,21,.7); color: #e5e7eb; font-size: 14px; z-index: 50; }
+#busy-overlay[hidden] { display: none; }
