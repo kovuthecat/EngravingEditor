@@ -1470,6 +1470,9 @@
     const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
     const colors = Object.keys(visible);
     const allPts = colors.flatMap((color) => visible[color].flatMap((p) => p.pts));
+    // le corps blanc (dessiné ci-dessous) peut déborder de l'union des motifs -> la zone d'export
+    // englobe aussi le contour pour ne pas le rogner (à l'écran, c'est drawBoundary qui le dessine).
+    if (state.boundary) allPts.push(...state.boundary);
     if (!allPts.length) { alert("Rien de visible à exporter."); return; }
     const [minx, maxx] = minMax(allPts.map((p) => p[0]));
     const [miny, maxy] = minMax(allPts.map((p) => p[1]));
@@ -1486,10 +1489,23 @@
     canvas.width = Math.max(1, Math.round(outW));
     canvas.height = Math.max(1, Math.round(outH));
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // JPEG n'a pas de canal alpha -> fond blanc plein (les trous sortiraient noirs sinon).
+    // PNG : on laisse le canvas transparent et on peint le corps blanc ci-dessous.
+    if (format === "jpeg") {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     ctx.translate(-minx * pxToOut, -miny * pxToOut);
     ctx.scale(pxToOut, pxToOut);
+    // PNG : corps de la guitare en blanc, trous réservés (boutons, cordes…) creusés via evenodd ->
+    // ils restent transparents. Même rendu que drawBoundary à l'écran. (JPEG : déjà tout blanc.)
+    if (format !== "jpeg" && state.boundary) {
+      ctx.beginPath();
+      tracePoly(ctx, state.boundary);
+      for (const h of (state.holes || [])) tracePoly(ctx, h);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill("evenodd");
+    }
     for (const color of colors) {
       ctx.beginPath();
       for (const p of visible[color]) tracePoly(ctx, p.pts);
