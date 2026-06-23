@@ -127,7 +127,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
 - **Si bloqué :** si l'API `fillStrokeShape`/`hitFunc` ne se comporte pas comme prévu (rien de cliquable),
   STOP et signaler — ne pas réintroduire de fond opaque qui casserait l'occlusion.
 - **Commit :** `fix(select): hitFunc sur les surfaces (cliquer toute partie visible)`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Validation visuelle laissée à Thibault (non faite par l'exécutant).
 
 ### T3 — Réactivité : cache Konva des groupes d'instances · Modèle : Sonnet
 - **Pourquoi ce modèle :** jugement Konva (cache/invalidation), mesure FPS en navigateur obligatoire.

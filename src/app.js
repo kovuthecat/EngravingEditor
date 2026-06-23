@@ -281,6 +281,7 @@
       const contours = fillGroups[color];
       const shape = new Konva.Shape({
         fill: color,
+        fillRule: "evenodd", // trous VIDE laissent passer le clic (hitFunc ci-dessous)
         sceneFunc: (ctx, shape) => {
           const c = ctx._context;
           c.beginPath();
@@ -297,6 +298,16 @@
           const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
           const [minx, maxx] = minMax(xs), [miny, maxy] = minMax(ys);
           return { x: minx, y: miny, width: maxx - minx, height: maxy - miny };
+        },
+        // sceneFunc peint sur ctx._context (canvas brut) -> rien n'est inscrit sur le canvas de
+        // hit Konva (T2) : sans ça, seul le fond blanc/transparent (Line) est cliquable, pas la
+        // surface peinte elle-même. On retrace les mêmes contours via l'API Konva (ctx ici est le
+        // Context Konva, pas le canvas brut) pour peindre la colorKey sur le hit ; fillRule
+        // evenodd (ci-dessus) laisse passer le clic dans un trou VIDE (on attrape ce qui est dessous).
+        hitFunc: (ctx, shape) => {
+          ctx.beginPath();
+          for (const region of contours) tracePoly(ctx, region.pts);
+          ctx.fillStrokeShape(shape);
         },
       });
       g.add(shape);
