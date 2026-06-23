@@ -302,31 +302,87 @@ Dual-orientation export reflète deux usages distincts : laser (miroir) vs aper�
 Plan `PLAN_edition_reactivite.md` (Lot 4). Toute modif géométrique (silhouette multi-contours, occlusion,
 export) validée via `node test/run.js`. Édition au stylet et PNG validés manuellement en navigateur réel
 ou tablette (validation visuelle explicitement sautée dans les tâches, report à Thibault).
-Introduire **édition non destructive au stylet** et **dual-orientation export** : (1) **calque d'essai
-(brouillon)** : chaque trait/forme pinceau/gomme mute un **brouillon temporaire**, rendu en **vert** sur
-les instances du motif édité, sans modifier `motif.surface` (la surface réelle). Boutons **Appliquer**
-(valide le brouillon = `motif.surface`) / **Jeter** (abandonne) / **Tout appliquer** (un coup). Un
-brouillon peut rester **en attente** (session uniquement, non sérialisé) et être **restauré** au retour sur
-ce motif. (2) **Divergence orientation export** : le **SVG garde son miroir vertical** (`pxPathsToMm`
-inchangé, output pour laser), le **PNG sort en sens écran** (repère px direct, sans `-y`, pour aperçu/partage).
+
+## 2026-06-23 — D-008 : UX tablette édition (palette flottante, vert=delta, pression+plume)
+
+### Décision
+
+Quatre améliorations en une pour la **tablette + stylet** (Lot 1-4, `PLAN_ux_perf_edition.md`, 2026-06-23) :
+
+1. **Perf décor** (`simplifySubpaths` : CleanPolygon 0,1mm), **import non bloquant** (overlay), 
+   **fond silhouette en cache** (1 tracé/session), **debounce recache** (~150ms).
+
+2. **Vert uniquement sur matière ajoutée** — au lieu d'afficher tout en vert, base = couleur réelle 
+   + overlay vert = `draft − real` (matière ajoutée). Gomme = vrai trou (pas de vert ni de surlignage).
+
+3. **Palette d'édition flottante** : déplacée du sidebar sur le canvas, visible seulement en édition. 
+   **Sidebar se replie** automatiquement lors de l'entrée en édition, se ré-affiche à la sortie 
+   (mémorisation de son état ouvert/fermé). **Sections `<details>` auto-repliées** en édition, 
+   restaurées à la sortie. **Undo par trait** (pile ~30 snapshots) : `Ctrl+Z` contextuel en édition 
+   → undo trait au lieu de undo global.
+
+4. **Mode trait** : 3 boutons (Rond / Pression / Plume) + slider angle calligraphie (visible en Plume). 
+   **Pression stylet** : largeur = slider × (0.25 + 0.75×pression). **Plume calligraphique** : 
+   nib plat orienté balayé via Minkowski → épais perpendiculaire au nib, fin parallèle.
 
 ### Contexte
-Thibault souhaitait tracer/retoucher librement sans peur de "casser" le motif au premier mauvais coup.
-Lot 4 (`PLAN_edition_reactivite.md`, 2026-06-22) réorganise la pipeline édition autour de ce modèle
-(T1 silhouette multi-contours, T2-T3 perf, T5 brouillons, T6-T8 outils, T9 PNG sens écran).
+
+Lot 3 (`PLAN_tablette_edition.md`, D-006) introduisait l'édition au stylet (base). Retours de validation
+par Thibault : (1) lenteur à l'import du gros décor (~14-16s) ; (2) tout le brouillon en vert vert
+non discriminant (difficile de voir ce qui a été ajouté) ; (3) palette d'édition dans la sidebar peu
+ergonomique sur petits écrans (collisions tactiles, sidebaw trop large) ; (4) manque de sensibilité
+stylet (pression) et de traits expressifs (plume inclinée).
 
 ### Alternatives envisagées
-- **Undo/redo par trait** : coûteux (recalcul silhouette/occlusion à chaque coup) + compliqué
-  (backstack explosif). Rejeté.
-- **Brouillons sérialisés** : persistance projet complexe (divergence load/save). Rejeté — session
-  uniquement suffit avec le compteur « N essais » + avertissement export.
-- **PNG = SVG à l'écran** : ignorerait le choix de Thibault (SVG pour machine, PNG pour partage).
-  Rejeté — orientation diverge volontairement.
+
+- **Perf décor** : transformer les zones/fill/silhouette pour réduire les points (rejeté — c'est irréversible).
+  Choix : simplifier SEULEMENT le décor à l'import, zéro impact sur les motifs normaux ; pinceau/gomme
+  inchangés.
+
+- **Vert global vs vert-delta** : vert global montrait le "halo" visuel du brouillon (acceptable) mais masquait
+  la géométrie réelle dessous (mauvais). Rejeté — delta = **soustraction + superposition**.
+
+- **Palette sidebar vs flottante** : sidebar surchargée sur tablette, fenêtres étroites inutilisables
+  (touches chevauchavent). Palette flottante = gain d'espace + ergonomie tactile (petites icônes
+  regroupées, pas d'scroll interminable).
+
+- **Mode trait** : rond (existant) vs contour_seul / pot_de_peinture → rejeté. Pression + plume
+  = deux axes de variabilité naturels au stylet (pression captée, angle capté/géométriquement prévisible).
 
 ### Raison du choix
-Le brouillon vert donne un **feedback immédiat** (retouche visible à l'écran) tout en **préservant la
-version réelle**, et coûte 0 perf par frame (un seul re-render à la transition, vert baked au cache).
-Dual-orientation export reflète deux usages distincts : laser (miroir) vs aperçu (écran).
+
+Ces quatre améliorations surgissent de cas d'usage réels (Thibault en session). Elles convergent
+sur un objectif : **édition au stylet sur tablette ergonomique et expressive** (perf ok, feedback clair,
+interface adaptée, contrôle moteur). Les trois premières adressent les douleurs immédiates (lenteur,
+clarté, layout) ; la quatrième ajoute du pouvoir moteur (pression + plume) sans complexity ajoutée
+(interface simplement).
+
+### Conséquences
+
+- **Perf** : `ML.simplifySubpaths`, `#busy-overlay`, `editStaticGroup` + `editDraftGroup`, `recacheTimer`.
+  Tests : `node test/run.js` OK (aucune géométrie de test touchée).
+- **Rendu brouillon** : helpers `addedRegions(draft, real)`, trois points (`fillGroupContent`/`drawThumb`/`redrawEditLayer`).
+- **UI** : nouveau wrapper `#stage-wrap`, `#edit-palette` frère du canvas, auto-show/hide en édition.
+  Sélecteur `#mode-round/pressure/calli`, slider `#calli-angle`. Repliement `details[open]` mémorisé
+  en `edit.reopenDetails`.
+- **Édition** : pile `edit.history`, `pushStrokeSnapshot` (applyStroke/endShape/lasso) ; `undoStroke()` ;
+  `edit.pressures` (pression/pt) ; `edit.strokeMode` et `edit.calliAngle` (remplacent `edit.profile`).
+  Keydown : `Ctrl+Z` → `undoStroke()` si `edit.active`.
+- **Géométrie** : `ML.variableStroke(pts, radii)` (disques + quads), `ML.calligraphicStroke(pts, width, angle)`
+  (Minkowski nib). Validation geometry (`node test/run.js`) OK.
+- **Rétro-compat** : `edit.profile` → `edit.strokeMode` (tous les modes mappent au rendu rond tant que T11/T12
+  non branchés ; cette tâche les branche enfin).
+
+### Validation
+
+- Auto : `node test/run.js` ✓ (géométrie + helpers, sortie inchangée sur motifs de test).
+- Smoke-test Node (`ML.calligraphicStroke` + `ML.variableStroke`) ✓.
+- Visuelle : explicitement sautée (skip demandé par Thibault).
+
+### Impact IA
+
+Tous les 12 lots du plan marqués `[x]` (2026-06-23). Plan : `PLAN_ux_perf_edition.md` complète.
+Mise à jour contexte (STATUS/DECISIONS/SPEC/PROJECT_MAP) + commit/push vers `main`.
 
 ### Conséquences
 - **Édition** : `edit.draft` = brouillon local, `editDrafts` = map de brouillons en attente (session,

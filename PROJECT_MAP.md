@@ -47,41 +47,54 @@ Points de vigilance : pas de gestion de `<g transform="…">` (translate/scale) 
 
 Rôle : détecter les zones d'un motif (parent/profondeur/rôle), calculer les régions/surfaces gravées,
 calculer les surfaces réellement visibles (occlusion « autocollant » par surfaces) et écrire le SVG
-d'export ; convertir px↔mm. Lot 3 (T4) ajoute les helpers pour l'édition stylet.
+d'export ; convertir px↔mm. Lots 1-4 ajoutent les helpers pour l'édition stylet et la simplification
+décor.
 Fichiers clés : `src/geometry.js` (`ML.buildZones`, `ML.regionOf`, `ML.motifFill`, `ML.motifSilhouette`,
 `ML.occludeSurfaces`, `ML.writeSVG`, `ML.pxPathsToMm`, `ML.insetPolygon`, `ML.absArea`,
-`ML.strokeToPolygon`, `ML.surfaceUnion`, `ML.surfaceDifference`, `ML.silhouetteFromSurface`).
+`ML.strokeToPolygon`, `ML.surfaceUnion`, `ML.surfaceDifference`, `ML.silhouetteFromSurface`,
+`ML.simplifySubpaths`, `ML.variableStroke`, `ML.calligraphicStroke`).
 Flux : `buildZones` (parent = plus petit sous-chemin de même couleur contenant le point intérieur) →
 `motifFill` (union des régions REMPLI par couleur) → à l'export, pour chaque instance du **haut vers le
 bas**, soustraire (Clipper `ctDifference`) l'union des **silhouettes** au-dessus, puis intersection avec
 le contour, puis soustraction des zones interdites → `writeSVG` (un `<path fill-rule="evenodd">` par
-couleur, en mm). Édition stylet (T6) : `strokeToPolygon` (polyligne→polygone épais), `surfaceUnion`/`surfaceDifference`
-(union/différence de jeux de contours fermés), `silhouetteFromSurface` (enveloppe extérieure).
+couleur, en mm). Édition stylet : `strokeToPolygon` (polyligne→polygone épais, offset round),
+`surfaceUnion`/`surfaceDifference` (union/différence de jeux de contours fermés), `silhouetteFromSurface`
+(enveloppe extérieure). Perf décor (Lot 1 T1) : `simplifySubpaths` (ClipperLib.CleanPolygon, 0,1mm),
+réduit le volume avant traitement. Modes trait (Lot 4 T11-T12) : `variableStroke` (union de disques +
+quads avec radii variables par pression), `calligraphicStroke` (nib plat orienté balayé via Minkowski sum).
 Points de vigilance : coords entières Clipper (×1000) ; un trou reste toujours rattaché à la couleur de
 sa zone parente (ne pas le déplacer seul) ; toute modif géométrique doit passer `node test/run.js`.
 
-### Feature 3 — UI / édition / état (`src/app.js`)
+### Feature 3 — UI / édition / état (`src/app.js`, `index.html`, `src/style.css`)
 
 Rôle : bibliothèque de motifs, instances Konva éditables (dont l'éditeur de rôles de zones), packing,
-export, persistance projet. Lot 3 ajoute interactions tactiles (T2), layout responsive (T3), import calibré (T1),
-surface override (T5) et mode édition stylet (T6).
+export, persistance projet, édition stylet. Lots 1-4 enrichissent la perf (simplif décor, fond en cache,
+debounce), le rendu (vert=delta), l'UX (palette flottante, reorg sidebar, undo trait) et les outils (pression+plume).
 Fichiers clés : `src/app.js`, `index.html`, `src/style.css`.
 Flux : import → `buildMotifFromSVG` (centré, `zones` via `ML.buildZones`, `silhouette` via
-`ML.motifSilhouette`, plafond d'échelle 1/10 pour motif/1/1 pour décor via `fitScale`) → `addInstance`
-(Konva.Group : fond silhouette blanc opaque + une surface `evenodd` par couleur via `ML.motifFill`) →
-édition (Transformer/drag/clavier/éditeur de zones, **ou mode édition stylet verrouillé**) →
-`exportSVG` (mappe via `getAbsoluteTransform(mainLayer)` → `ML.occludeSurfaces` → `ML.pxPathsToMm` →
-`ML.writeSVG` → download).
+`ML.motifSilhouette`, plafond d'échelle 1/10 pour motif/1/1 pour décor via `fitScale`, **simplif décor via
+`ML.simplifySubpaths`**) → `addInstance` (Konva.Group : fond silhouette blanc opaque + une surface
+`evenodd` par couleur via `ML.motifFill`) → édition (Transformer/drag/clavier/éditeur de zones, **ou mode
+édition stylet verrouillé avec palette flottante**) → `exportSVG` (mappe via `getAbsoluteTransform(mainLayer)` →
+`ML.occludeSurfaces` → `ML.pxPathsToMm` → `ML.writeSVG` → download).
 Dépendances internes : appelle `ML.parseSVG` / `ML.buildZones` / `ML.motifFill` / `ML.motifSilhouette` /
-`ML.occludeSurfaces` / `ML.pxPathsToMm` / `ML.writeSVG` / (T4-T6) `ML.strokeToPolygon` /
-`ML.surfaceUnion` / `ML.surfaceDifference` / `ML.silhouetteFromSurface`.
-Mode édition stylet (T6) : `enterEdit()` / `exitEdit()` + tracé pointerdown/move/up en coordonnées locales
-via `getRelativePointerPosition()` → union/différence `motif.surface[motif.color]` → re-rendre.
-Tactile (T2) : pinch-to-zoom et pan deux doigts ; stage.draggable() mode.
-Responsive (T3) : sidebar repliable sous 900px via classe `.collapsed` + bouton toggle ☰.
+`ML.occludeSurfaces` / `ML.pxPathsToMm` / `ML.writeSVG` / `ML.strokeToPolygon` / `ML.surfaceUnion` /
+`ML.surfaceDifference` / `ML.silhouetteFromSurface` / `ML.simplifySubpaths` / `ML.variableStroke` /
+`ML.calligraphicStroke`.
+Mode édition stylet : `enterEdit()` / `exitEdit()` + tracé pointerdown/move/up en coordonnées locales via
+`getRelativePointerPosition()` → union/différence `motif.surface[motif.color]` → re-rendre. **Palette flottante**
+(`#edit-palette`) visible en édition seulement, contient slider taille (range), icônes outils, Annuler, Appliquer,
+Jeter, Sortir. **Sidebar repliée** automatiquement en édition (classe `.collapsed`), sections `<details>` repliées/restaurées.
+**Undo par trait** : pile `edit.history` ~30 snapshots, `undoStroke()` via bouton/Ctrl+Z contextuel. **Modes trait**
+(radio Rond/Pression/Plume) + slider angle calligraphie ; pression lit `e.evt.pressure` ; plume via `ML.calligraphicStroke`.
+**Rendu brouillon** : base couleur réelle + overlay vert uniquement sur matière ajoutée (`addedRegions`).
+Perf : **editStaticGroup** (fond en cache 1×) + **editDraftGroup** (brouillon retracé/trait) séparés ;
+**recacheTimer** debounce ~150ms ; **overlay import** non bloquant.
+Tactile (Lot 3 T2-T3) : pinch-to-zoom et pan deux doigts ; stage.draggable() mode ; cibles tactiles ≥40px.
+Responsive : sidebar repliable sous 900px via classe `.collapsed` + bouton toggle ☰.
 Points de vigilance : `PX_PER_MM=4` (sans perte) ; garder le Transformer (uiLayer) au-dessus après
 z-order ; pas d'ES modules ; un motif chargé sans `zones` (ancien format) est ignoré, pas migré ;
-mapping écran→local (T6) doit être validé en navigateur réel pour éviter décalage du trait.
+mapping écran→local doit être validé en navigateur réel pour éviter décalage du trait.
 
 ---
 

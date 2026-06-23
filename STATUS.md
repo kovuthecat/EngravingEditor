@@ -41,14 +41,37 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 
 ## Ce qui casse / n'est pas testé
 
-- **Édition stylet (Lot 3 T6)** : **validation tactile restant à faire** — code implémenté (Playwright confirmé en souris/un doigt), simulation tactile navigateur ou tablette réelle recommandée avant usage production.
+- **Édition stylet (Lot 3 T6 → Lot 4 T7/T10-T12)** : **validation tactile restant à faire** — code implémenté (Playwright confirmé en souris/un doigt), simulation tactile navigateur ou tablette réelle recommandée avant usage production. **Palette d'édition** (T7) : flottante visible seulement en mode édition, icônes tactiles ≥44px. **Mode pression + plume** (T10-T12) : sélecteur tri-états (Rond/Pression/Plume) + slider angle calligraphie (visible en mode Plume seulement).
 - **Édition par instance vs par motif** : l'édition stylet mute `motif.surface` (partagé par toutes les instances) — édition par instance seule non supportée (limitation D-006).
 - **Couleur unique sous édition** : le pinceau/gomme opère sur `motif.color` (couleur focale) ; édition multi-couleurs par motif non supportée.
 - **`src/svg.js` ignore `<g transform="…">`** : un SVG dont les `<path>` sont enveloppés dans un groupe avec translate/scale (ex. exports `potrace` typiques) s'importe à une échelle absolue fausse (proportions correctes, taille mm erronée). Constaté pendant la validation T5 (export d'un motif à ~1750mm au lieu de ~175mm). Pas corrigé — voir `SPEC.md` TODO.
 - **`vendor/clipper.js:6986`** fait un `module.exports = ClipperLib;` inconditionnel (hors du garde `typeof module`) → lève une `ReferenceError: module is not defined` non bloquante dans la console navigateur. Cosmétique, sans impact fonctionnel constaté. Pas corrigeable sans toucher `vendor/` (interdit) ou risquer de casser le chargement UMD de Konva — voir `Plan correction UI post audit.md §Non traité`.
 - Occlusion ~1 s pour ~40 instances (acceptable ; à surveiller au-delà de ~100) — non re-mesuré depuis le passage aux surfaces (probablement plus coûteux qu'avant, à profiler si lenteur perçue).
 - Validation navigateur faite via automation (Playwright + Chromium déjà en cache localement), pas encore par usage manuel direct de Thibault.
-- **⚠️ Nouveau goulot d'étranglement sur le décor : `motifSilhouette` + `motifFill`** (geometry.js), pas `buildZones` (résolu, voir « Corrigé » plus bas). Mesuré en isolation sur `decor hybride.svg` (3936 sous-chemins) : `motifSilhouette` ~8 s, `motifFill` ~6,3 s → l'import perçu en navigateur reste ~14-16 s malgré le fix `buildZones`. Cause probable : mêmes opérations Clipper (union) appliquées à un volume de points très supérieur aux motifs normaux, sans préfiltre. Non corrigé — candidat pour un futur lot perf (cf. backlog).
+
+### Corrigé 2026-06-23 (Lot 1-4 : perf décor + édition stylet tablette, `PLAN_ux_perf_edition.md`)
+
+**Lot 1 — Perf décor** (T1-T4) :
+- **T1** : simplification des sous-chemins du décor à l'import via `ML.simplifySubpaths(subpaths, 0.1mm)` (ClipperLib.CleanPolygon). Réduit le nombre de points d'un ordre de grandeur avant `buildZones`/`motifFill`/`motifSilhouette` → **import décor ~14-16s réduit drastiquement** (validation visuelle actuellement non faite, skip demandé).
+- **T2** : import non bloquant — overlay « Import en cours… » affiché via `requestAnimationFrame + setTimeout` (double yield), puis calcul lourd sans gel de l'UI (validation visuelle non faite, skip demandé).
+- **T3** : fond silhouette du calque d'édition misé en cache une fois (Konva `cache()`) au lieu d'être retracé par trait (`redrawEditLayer`). Scission `editLayer` → `editStaticGroup` (fond, cacé 1×) + `editDraftGroup` (brouillon, retracé/frame) → perf édition décor (validation visuelle non faite, skip demandé).
+- **T4** : debounce du recache bitmap (`transformend`) ~150ms au lieu de synchrone → perf manipulation décor.
+
+**Lot 2 — Vert uniquement sur matière ajoutée** (T5) :
+- **T5** : refactor du rendu du brouillon d'édition — au lieu d'afficher tout en vert (forçant `EDIT_DRAFT_COLOR`), affiche la base en couleur réelle + superpose en vert uniquement `addedRegions(draft, real)` = matière ajoutée absente du réel. Gomme = vrai trou (pas de vert, pas de surlignage). Trois points critiques : `fillGroupContent`, `drawThumb`, `redrawEditLayer` (validation visuelle non faite, skip demandé).
+
+**Lot 3 — Palette flottante + réorg sidebar** (T6-T9) :
+- **T6** : réorganisation sidebar — « Motifs & import » (collapsible fermé par défaut), « Avancé » avec Contour/Guides/Position fine ; Dupliquer/Supprimer + ordre Z restent directs.
+- **T7** : palette flottante `#edit-palette` (position absolue, top/left 8px) apparaît seulement en édition, remplace le contenu du `#stylet-editor` de la sidebar ; sidebar se replie automatiquement. Contient : slider taille (range au lieu de number) + affichage mm, icônes outils, Annuler, Appliquer, Jeter, Sortir. La déviation : `#edit-palette` frère de `#stage` dans un `#stage-wrap` nouveau (Konva détruit `#stage.innerHTML`) au lieu d'enfant direct (validation visuelle non faite, skip demandé).
+- **T8** : annuler par trait — pile `edit.history` (max 30 snapshots), `pushStrokeSnapshot()` avant chaque mutation (applyStroke, endShape, finalisations lasso) ; `undoStroke()` restaure le dernier snapshot ; Ctrl+Z contextuel en édition → undo trait au lieu de undo global (validation visuelle non faite, skip demandé).
+- **T9** : repli/restauration auto des sections `<details>` à l'entrée/sortie d'édition (mémorisation booléenne de l'état ouvert, pour ne pas forcer une réouverture des éléments que l'utilisateur aurait délibérément repliés avant édition).
+
+**Lot 4 — Pression stylet + plume calligraphique** (T10-T12) :
+- **T10** : sélecteur tri-états mode trait (Rond/Pression/Plume) avec slider angle calligraphie (visible seulement en mode Plume). UI remplace les anciens boutons profil rond/plat (inutiles). Les trois modes mappent provisoirement tous au rendu rond (T11/T12 les branchent).
+- **T11** : trait à largeur variable selon pression stylet — `ML.variableStroke(pts, radii)` construit l'union de disques + quadrilatères reliant (offset perpendiculaire variable par rayon d'extrémité). Mode pression lit `e.evt.pressure` (stylet) ou `e.evt.touches[0].force` (tactile) ou 0.5 (souris/défaut) ; largeur = slider × (0.25 + 0.75×pression). Gomme reste uniforme.
+- **T12** : plume calligraphique inclinée — `ML.calligraphicStroke(pts, widthPx, angleDeg)` définit un nib (segment plat étroit orienté à `angleDeg`), le balaye le long du tracé via `ClipperLib.Clipper.MinkowskiSum` (nib + pts, union finale). Effet plume : épais perpendiculaire au nib, fin parallèle. Un point → le nib seul. Aperçu live conserve `Konva.Line` approximatif (exactitude à la fin de trait). (validation visuelle non faite, skip demandé)
+
+**Tous les tests passent** (`node test/run.js` OK, sortie géométrique inchangée sur les 3 motifs de test ne contenant pas de décor/pression/plume).
 
 ### Corrigé 2026-06-22 (T3 — zone morte au redéploiement de la sidebar)
 

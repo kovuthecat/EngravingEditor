@@ -77,12 +77,12 @@ rectangles** (`+ Zone interdite`) qu'il pose sur les cavités/boutons (le plan c
 de référence gris). Ces zones : (1) sont **soustraites** à l'export (rien gravé dedans), (2) sont
 **évitées** par le packing. Éditables comme les motifs (déplacer/redim/tourner). Stockées dans le projet.
 
-## Mode édition stylet (Lot 3 T6, Lot 4 T5-T8)
+## Mode édition stylet (Lots 3-4 : T6-T12, `PLAN_ux_perf_edition.md`)
 
 Permet de **retoucher manuellement la surface gravée** d'un motif après import (pinceau/gomme au stylet ou
-à la souris), en restant verrouillé sur ce motif pendant l'édition. Édition est **non destructive** (Lot 4) :
-chaque coup mute un **brouillon temporaire**, rendu en **vert** sur l'instance, sans modifier `motif.surface`
-(la surface réelle) tant qu'on ne clique pas « Appliquer ».
+à la souris), en restant verrouillé sur ce motif pendant l'édition. Édition est **non destructive** : chaque coup
+mute un **brouillon temporaire** (`edit.draft`), rendu en **vert sur la matière ajoutée seule** (voir ci-dessous),
+sans modifier `motif.surface` (la surface réelle) tant qu'on ne clique pas « Appliquer ».
 
 - **Entrée en mode édition** : sélectionner un motif → bouton « Entrer » → verrouillage (sélection bloquée,
   `stage.draggable(false)`, poignées Transformer masquées), aucune interaction avec autres motifs.
@@ -112,12 +112,90 @@ chaque coup mute un **brouillon temporaire**, rendu en **vert** sur l'instance, 
   Les brouillons en attente (`editDrafts`) ne sont **pas sérialisés** (session uniquement) — recharger l'app
   les perd, d'où l'avertissement « N essais non appliqués » à l'export.
 
+### Affichage du brouillon (vert = matière ajoutée seule)
+
+Au lieu d'afficher tout le brouillon en vert, le rendu distingue :
+- **Base** : le brouillon rendu en **couleur réelle** (couleur focale du motif).
+- **Overlay vert** : **superposé** seulement sur les régions = `brouillon − surface réelle` (matière ajoutée absente
+  du réel). Gomme = vrai trou (pas de vert, pas de surlignage) — le trou apparaît tel quel.
+
+Implémenté en trois points (pour cohérence écran/vignette/export) :
+- `fillGroupContent` : rendu instance et son brouillon → base couleur réelle + overlay vert sur `addedRegions`.
+- `drawThumb` : rendu vignette → même logique en canvas 2D.
+- `redrawEditLayer` : rendu live pendant la édition → base `edit.draft` en couleur réelle, overlay vert calculé.
+
+Aide l'utilisateur à **voir clairement ce qui change** (impact visible du coup de stylet).
+
+### Modes de trait et expressivité (pression + plume)
+
+**Mode trait** (radio 3 boutons remplace les anciens profil rond/plat) :
+
+1. **Rond** : largeur constante (existant, `ML.strokeToPolygon` offset round).
+2. **Pression** : largeur variable selon `e.evt.pressure` (stylet) ou `e.evt.touches[0].force` (tactile) ou 0.5 (souris).
+   - Formule : `largeur = slider × (0.25 + 0.75 × pression)` → plage de ~25% (légèrement appuyé) à 100% (appuyé fort).
+   - Implémenté par `ML.variableStroke(pts, radii)` : disques de rayon variable à chaque point + quadrilatères
+     perpendiculaires reliant les disques → union Clipper. Gomme reste uniforme.
+3. **Plume** (calligraphique) : nib plat **orienté** à un angle réglable (slider 0–180°, incrément 5°), balayé le
+   long du tracé via Minkowski sum.
+   - Effet : **épais perpendiculaire au nib** (axe large), **fin parallèle** (axe étroit) — trait expressif type
+     plume d'encre.
+   - Implémenté par `ML.calligraphicStroke(pts, widthPx, angleDeg)` : construit un nib (rectangle plat étroit,
+     longueur = width, épaisseur ~15% de width) orienté à `angleDeg`, puis
+     `ClipperLib.Clipper.MinkowskiSum(nib, pts)` → union finale. Un seul point → le nib seul (translaté).
+   - Aperçu live : conserve la ligne `Konva.Line` simple (approximation) ; exactitude à la fin du trait via le helper.
+
+### Undo par trait (pile d'édition)
+
+- **Pile `edit.history`** : snapshots du brouillon (max ~30, borné pour ne pas grossir sans fin sur une longue
+  session).
+- **Snapshot** poussé avant chaque mutation : `pushStrokeSnapshot()` appelé au début de `applyStroke`, `endShape`
+  et finalisations lasso. Sauvegardie l'état de `edit.draft` avant le changement.
+- **Annuler par trait** : `undoStroke()` restaure le dernier snapshot. Clavier : **Ctrl+Z contextuel** en édition
+  → undo trait (au lieu de undo global du projet). Bouton « Annuler » en palette. Restaure aussi l'état lasso
+  si sélection en cours.
+- **Sortie d'édition** : pile purgée (session uniquement, ne persiste pas).
+
+### Palette d'édition flottante (interface ergonomique tablette)
+
+(Lot 3 T7 et T9) Déplacée du sidebar sur le canvas pour plus d'espace en édition sur petit écran.
+
+- **Position** : flottante `position:absolute` en haut-gauche du canvas (`#stage-wrap`), 8px de marge.
+- **Contenu** : slider taille (range, affichage mm direct), icônes outils (≥44px), Annuler, Appliquer, Jeter, Sortir.
+  Tous les `id` existants conservés (pas de renommage).
+- **Visibilité** : `hidden` par défaut ; `display:flex` seulement en mode édition (`enterEdit` → show, `exitEdit` → hide).
+- **Sidebar** : se **replie automatiquement** à l'entrée en édition (classe `.collapsed` ajoutée à `#app`) ; se
+  **déplie à la sortie** (classe retirée) — mais **mémorise l'état de l'utilisateur** (s'il l'avait replié manuellement
+  avant édition, ne le déplie pas de force).
+- **Sections `<details>` repliables** : au même temps, toutes les sections ouvertes (« Avancé », « Motifs & import »
+  etc.) se **replient** automatiquement à l'entrée, se **restaurent** à la sortie (mémorisation dans
+  `edit.reopenDetails`).
+
 Points clés :
 
 - Mapping écran→local critique : décalage = trait qui n'atterrit pas sous le stylet (validation obligatoire
   en navigateur réel ou tablette).
 - Pinceau = union, gomme = différence : respect de la géométrie Clipper (éviter slivers/inversions).
 - Deux doigts = pan (prioritaire) : ne pas dessiner à 2 pointeurs simultanés.
+
+### Perf édition (simplification décor + cache)
+
+Lot 1 améliorations ciblées sur le décor volumineux (~3936 sous-chemins, 549k points) :
+
+- **`ML.simplifySubpaths(subpaths, tolerancePx)`** (T1) : pour chaque sous-chemin du décor **uniquement** à l'import,
+  applique `ClipperLib.Clipper.CleanPolygon` (retire points quasi-colinéaires ou proches à moins de `tolerancePx`).
+  Réduit le volume de ~10× avant `buildZones`/`motifFill`/`motifSilhouette` → import ~14-16s réduit drastiquement,
+  export/occlusion/rendu plus réactif par la suite. Zéro impact sur les motifs normaux (ne sont pas simplifiés,
+  sortie de test inchangée).
+- **Import non bloquant** (T2) : overlay « Import en cours… » affiché via double yield (`requestAnimationFrame` +
+  `setTimeout`) avant le calcul lourd → navigateur peut peindre l'overlay, donnant du feedback utilisateur.
+- **Fond silhouette en cache** (T3) : le calque d'essai (`editLayer`) scindé en deux :
+  - `editStaticGroup` : fond blanc (silhouette du motif), **construit une seule fois** à l'entrée en édition,
+    puis **mis en cache** (`Konva.cache()`) et jamais retracé.
+  - `editDraftGroup` : brouillon coloré, **retracé par trait** (`redrawEditLayer` à chaque coup).
+  Économise la reconstruction de milliers de `Konva.Line` (décor) à chaque trait.
+- **Debounce recache au transformend** (T4) : après une transformation (déplacement/rotation du décor pendant l'édition),
+  le bitmap de cache n'est **pas** recalculé immédiatement (coûteux). Repoussé ~150ms après l'inactivité →
+  transformation fluide, recache une seule fois à la fin.
 
 ## Usage tablette (Lot 3, T2-T3)
 
