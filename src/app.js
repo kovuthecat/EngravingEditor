@@ -985,9 +985,11 @@
   // perf D-007) : seul editLayer est redessiné, instantanément, quelle que soit la taille du décor.
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-    // pression (T11) : largeur variable, slider = largeur max ; la gomme reste uniforme.
+    // pression (T11) / plume (T12) : largeur variable selon le mode ; la gomme reste uniforme.
     const poly = edit.strokeMode === "pressure" && edit.tool === "brush"
       ? ML.variableStroke(localPts, edit.pressures.map((p) => radiusPx * (0.25 + 0.75 * p)))
+      : edit.strokeMode === "calli" && edit.tool === "brush"
+      ? ML.calligraphicStroke(localPts, edit.sizeMm * PX_PER_MM, edit.calliAngle)
       : ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
     pushStrokeSnapshot();
     edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);

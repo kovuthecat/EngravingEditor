@@ -262,6 +262,30 @@
     return unionInt(new ClipperLib.Paths(), polys).map((path) => ({ pts: fromInt(path), closed: true }));
   };
 
+  // plume calligraphique inclinée (T12) : le nib = segment plat orienté à `angleDeg`, balayé le
+  // long de `pts` par somme de Minkowski (épais perpendiculairement au nib, fin dans son axe).
+  // Un seul point -> le nib seul (translaté au point).
+  ML.calligraphicStroke = function (pts, widthPx, angleDeg) {
+    if (!pts || !pts.length) return [];
+    const halfLen = widthPx / 2;
+    const halfThick = Math.max(1, widthPx * 0.15) / 2;
+    const rad = (angleDeg * Math.PI) / 180;
+    const ux = Math.cos(rad), uy = Math.sin(rad);
+    const nx = -uy, ny = ux;
+    const nib = [
+      [ux * halfLen + nx * halfThick, uy * halfLen + ny * halfThick],
+      [ux * halfLen - nx * halfThick, uy * halfLen - ny * halfThick],
+      [-ux * halfLen - nx * halfThick, -uy * halfLen - ny * halfThick],
+      [-ux * halfLen + nx * halfThick, -uy * halfLen + ny * halfThick],
+    ];
+    if (pts.length === 1) {
+      const at = nib.map(([x, y]) => [x + pts[0][0], y + pts[0][1]]);
+      return unionInt(new ClipperLib.Paths(), [at]).map((path) => ({ pts: fromInt(path), closed: true }));
+    }
+    const sweep = ClipperLib.Clipper.MinkowskiSum(toInt(nib), toInt(pts), false);
+    return unionInt(new ClipperLib.Paths(), sweep.map(fromInt)).map((path) => ({ pts: fromInt(path), closed: true }));
+  };
+
   // union (pinceau) de deux jeux de contours fermés {pts,closed} -> [{pts,closed:true}].
   // Conserve les trous (orientation) comme `motifFill`.
   ML.surfaceUnion = function (contours, addContours) {
