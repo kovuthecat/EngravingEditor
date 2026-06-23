@@ -175,6 +175,9 @@
       color: p.color,
       subpaths: p.subpaths.map((s) => ({ pts: s.pts.map(toPx), closed: s.closed })),
     }));
+    if (role === "DECOR") {
+      for (const p of pxPaths) p.subpaths = ML.simplifySubpaths(p.subpaths, 0.1 * PX_PER_MM);
+    }
     const all = pxPaths.flatMap((p) => p.subpaths.flatMap((s) => s.pts));
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const [minx, maxx] = minMax(xs), [miny, maxy] = minMax(ys);
@@ -1525,6 +1528,11 @@
   }
   function readFiles(files, cb) {
     [...files].forEach((f) => { const r = new FileReader(); r.onload = () => cb(f.name, r.result); r.readAsText(f); });
+  }
+  function runWithBusy(fn) {
+    const o = document.getElementById("busy-overlay");
+    o.hidden = false;
+    requestAnimationFrame(() => setTimeout(() => { try { fn(); } finally { o.hidden = true; } }, 0));
   }
 
   // ─── câblage UI ──────────────────────────────────────────────────────────────

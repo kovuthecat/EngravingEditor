@@ -8,6 +8,20 @@
   const toInt = (pts) => pts.map((p) => ({ X: Math.round(p[0] * S), Y: Math.round(p[1] * S) }));
   const fromInt = (path) => path.map((p) => [p.X / S, p.Y / S]);
 
+  // simplifie chaque sous-chemin via CleanPolygon (retire les points quasi-colinéaires/proches
+  // sous `tolerancePx`) — réduit le nb de points d'un import lourd (décor) sans perte visible.
+  // Sous-chemin réduit à < 3 points après nettoyage -> ignoré.
+  ML.simplifySubpaths = function (subpaths, tolerancePx) {
+    const out = [];
+    for (const s of subpaths) {
+      const cleaned = ClipperLib.Clipper.CleanPolygon(toInt(s.pts), tolerancePx * S);
+      const pts = fromInt(cleaned);
+      if (pts.length < 3) continue;
+      out.push({ pts, closed: s.closed });
+    }
+    return out;
+  };
+
   function area(pts) {
     let a = 0;
     for (let i = 0, n = pts.length; i < n; i++) {
