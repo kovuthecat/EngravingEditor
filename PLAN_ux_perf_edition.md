@@ -227,7 +227,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si un bloc déplacé fait perdre un `id` référencé en JS (erreur console), STOP et signaler
   l'`id` fautif (ne pas le recréer ailleurs en doublon).
 - **Commit :** `refactor(ui): regroupe import/contour/guides/position en collapsibles`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : voir HEAD (validation visuelle non faite — skip demandé)
 
 ### T7 — Palette d'édition flottante sur le canvas · Modèle : Sonnet
 - **Pourquoi ce modèle :** nouvelle surface UI overlay + recâblage des contrôles, jugement tactile, validation visuelle.
