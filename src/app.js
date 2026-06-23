@@ -704,7 +704,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false };
   let editPreview = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
@@ -754,6 +754,7 @@
     const inEdit = edit.active && edit.motifId === motif.id;
     document.getElementById("stylet-editor").style.display = "block";
     document.getElementById("btn-edit").textContent = inEdit ? "Sortir de l'édition" : "Entrer en édition";
+    document.getElementById("edit-palette").hidden = !inEdit;
     document.getElementById("stylet-tools").style.display = inEdit ? "block" : "none";
     document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "grid" : "none";
   }
@@ -817,6 +818,13 @@
     const motif = selectedMotif();
     if (!g || !motif) return;
     edit.active = true; edit.motifId = motif.id; edit.node = g;
+    // palette flottante (T7) : la sidebar se replie à l'entrée, sauf si déjà repliée manuellement
+    // (sidebarWasCollapsed mémorisé pour ne pas la rouvrir à tort à la sortie).
+    edit.sidebarWasCollapsed = document.getElementById("app").classList.contains("collapsed");
+    if (!edit.sidebarWasCollapsed) {
+      document.getElementById("app").classList.add("collapsed");
+      syncStageSize();
+    }
     const stashed = editDrafts.get(motif.id);
     edit.draft = deepCopyContours(stashed ? Object.values(stashed.surfaceByColor)[0] : exportFill(motif)[motif.color]);
     edit.dirty = false;
@@ -851,9 +859,14 @@
     editStaticGroup.clearCache();
     editStaticGroup.destroyChildren();
     editDraftGroup.destroyChildren();
+    document.getElementById("edit-palette").hidden = true;
     setCanvasLocked(false);
     stage.draggable(true);
     tr.visible(true);
+    if (!edit.sidebarWasCollapsed) {
+      document.getElementById("app").classList.remove("collapsed");
+      syncStageSize();
+    }
     uiLayer.batchDraw();
     if (motif && wasDirty) rerenderMotif(motif); // une fois (recache inclus) : passe en vert si en attente
     else if (editedNode) editedNode.cache({ pixelRatio: 2 }); // rien changé : juste recache (décaché à l'entrée)
@@ -1244,12 +1257,14 @@
   document.getElementById("btn-lasso-erase").onclick = finalizeLassoErase;
   document.getElementById("brush-size").oninput = (e) => {
     edit.sizeMm = parseFloat(e.target.value) || 3;
+    document.getElementById("brush-size-val").textContent = edit.sizeMm + " mm";
     document.querySelectorAll(".size-btn").forEach((b) => b.classList.toggle("on", parseFloat(b.dataset.sizeMm) === edit.sizeMm));
   };
   document.querySelectorAll(".size-btn").forEach((b) => {
     b.onclick = () => {
       edit.sizeMm = parseFloat(b.dataset.sizeMm);
       document.getElementById("brush-size").value = edit.sizeMm;
+      document.getElementById("brush-size-val").textContent = edit.sizeMm + " mm";
       document.querySelectorAll(".size-btn").forEach((s) => s.classList.toggle("on", s === b));
     };
   });
@@ -1257,6 +1272,9 @@
   document.getElementById("profile-flat").onclick = () => setEditProfile("flat");
   document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
   document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
+  // undoStroke fourni par T8 ; tant qu'elle n'existe pas encore, ce bouton est un no-op.
+  document.getElementById("btn-edit-undo").onclick = () => { if (typeof undoStroke === "function") undoStroke(); };
+  document.getElementById("btn-edit-exit").onclick = () => exitEdit();
   document.getElementById("btn-draft-apply-all").onclick = applyAllDrafts;
 
   // ─── actions clavier / boutons ──────────────────────────────────────────────

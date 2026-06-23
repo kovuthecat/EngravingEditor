@@ -269,8 +269,15 @@ par **pression du stylet** + **plume calligraphique inclinée**.
     d'outil OK, Appliquer/Jeter OK, « Sortir » referme la palette et rouvre la sidebar.
 - **Si bloqué :** si `syncStageSize()` n'existe pas sous ce nom, STOP et signaler (repérer le vrai resync de
   `#btn-sidebar-toggle` avant de l'appeler) ; ne pas dupliquer la logique de resize.
+- **Déviation signalée :** `#edit-palette` n'est PAS un enfant littéral de `#stage` dans le HTML statique —
+  `Konva.Stage` fait `container.innerHTML = ""` à la construction (`_buildDOM`), ce qui aurait effacé tout
+  contenu HTML placé en dur dans `<main id="stage">`. Utilisé le repli explicitement permis par le plan
+  (« ou frère, positionné absolu au-dessus ») : nouveau wrapper `#stage-wrap` (`position:relative`, flex)
+  contenant `<main id="stage">` et `#edit-palette` comme frères ; `#edit-palette` reste `position:absolute;
+  top/left:8px` mais relatif à `#stage-wrap` (équivalent visuel, robuste même si la sidebar ne se replie pas
+  sur grand écran, cf. media query 900px existante non modifiée).
 - **Commit :** `feat(edit): palette d'édition flottante tactile + sidebar repliée`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : voir HEAD (validation visuelle non faite — skip demandé)
 
 ### T8 — Annuler par trait pendant l'édition · Modèle : Sonnet
 - **Pourquoi ce modèle :** gestion d'état (pile de snapshots), interaction clavier/bouton, validation.
