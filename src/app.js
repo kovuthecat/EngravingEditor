@@ -212,25 +212,35 @@
     return { [motif.color]: merged };
   }
 
-  // silhouette du motif (occlusion "sticker" + fond blanc) : depuis motif.surface si présent
-  // (D-006), sinon la silhouette dérivée des zones (motif.silhouette). Lecture seule — ne mute
-  // jamais motif.silhouette (T6 le recalcule lui-même à l'édition).
+  // compat anciens projets (avant T1, D-007) : motif.silhouette pouvait être un polygone unique
+  // [[x,y]..] au lieu d'une liste de contours [[ [x,y].. ], ...]. Détection : sil[0][0] est un
+  // point (array) en multi-contours, un nombre en polygone unique.
+  function asContours(sil) {
+    if (!sil || !sil.length) return [];
+    return Array.isArray(sil[0][0]) ? sil : [sil];
+  }
+
+  // silhouette du motif (occlusion "sticker" + fond blanc), en liste de contours (multi-pièces,
+  // D-007/T1) : depuis motif.surface si présent (D-006), sinon la silhouette dérivée des zones
+  // (motif.silhouette, normalisée via asContours pour les anciens projets). Lecture seule — ne
+  // mute jamais motif.silhouette (T6 le recalcule lui-même à l'édition).
   function motifSilhouettePts(motif) {
-    if (!motif.surface) return motif.silhouette;
+    if (!motif.surface) return asContours(motif.silhouette);
     return ML.silhouetteFromSurface(Object.values(motif.surface).flat());
   }
 
   function drawThumb(cv, motif) {
     const ctx = cv.getContext("2d");
-    const silhouette = motifSilhouettePts(motif);
-    const xs = silhouette.map((p) => p[0]), ys = silhouette.map((p) => p[1]);
+    const silhouette = motifSilhouettePts(motif); // liste de contours (multi-pièces)
+    const allPts = silhouette.flat();
+    const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
     const [minx, maxx] = minMax(xs), [miny, maxy] = minMax(ys);
     const w = maxx - minx, h = maxy - miny;
     const s = Math.min(56 / (w || 1), 56 / (h || 1));
     ctx.save(); ctx.translate(32, 32); ctx.scale(s, s);
     if (motif.role !== "DECOR") {
       ctx.fillStyle = "#fff";
-      ctx.beginPath(); poly(ctx, silhouette, true); ctx.fill();
+      ctx.beginPath(); for (const contour of silhouette) poly(ctx, contour, true); ctx.fill();
     }
     const fillGroups = exportFill(motif);
     for (const color in fillGroups) {
@@ -251,15 +261,19 @@
   function fillGroupContent(g, motif) {
     g.destroyChildren();
     // fond opaque (silhouette) — masque ce qui est dessous ; le décor n'a pas de fond
-    // (see-through : ses vides laissent voir ce qui est placé dessous, cf. D-005)
-    const silhouette = motifSilhouettePts(motif);
-    if (motif.role !== "DECOR") {
-      g.add(new Konva.Line({ points: silhouette.flat(), closed: true, fill: "#ffffff", listening: true }));
-    } else {
-      // décor see-through : fill transparent (rgba alpha 0) — invisible à l'écran mais peint
-      // sur le canvas de hit avec sa colorKey opaque, donc toute la silhouette reste
-      // cliquable/déplaçable, et le groupe garde une bbox mesurable (pas de NaN Transformer).
-      g.add(new Konva.Line({ points: silhouette.flat(), closed: true, listening: true, fill: "rgba(0,0,0,0)" }));
+    // (see-through : ses vides laissent voir ce qui est placé dessous, cf. D-005).
+    // Multi-contours (T1) : une Konva.Line par pièce, pour que CHAQUE morceau du motif
+    // masque ce qui est derrière lui (pas seulement le plus gros).
+    const silhouette = motifSilhouettePts(motif); // liste de contours
+    for (const contour of silhouette) {
+      if (motif.role !== "DECOR") {
+        g.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: true }));
+      } else {
+        // décor see-through : fill transparent (rgba alpha 0) — invisible à l'écran mais peint
+        // sur le canvas de hit avec sa colorKey opaque, donc toute la silhouette reste
+        // cliquable/déplaçable, et le groupe garde une bbox mesurable (pas de NaN Transformer).
+        g.add(new Konva.Line({ points: contour.flat(), closed: true, listening: true, fill: "rgba(0,0,0,0)" }));
+      }
     }
     // surfaces : une par couleur focale, trous VIDE laissent voir le fond blanc (evenodd, imite drawBoundary)
     const fillGroups = exportFill(motif);
@@ -273,6 +287,16 @@
           for (const region of contours) tracePoly(c, region.pts);
           c.fillStyle = shape.fill();
           c.fill("evenodd");
+        },
+        // sceneFunc dessine sur ctx._context (canvas brut) : Konva ne connaît pas la bbox de ce
+        // Shape par défaut (getSelfRect renverrait 0x0) -> Transformer/positionMoveHandle/cache
+        // (T3) ne couvriraient pas la surface peinte. Bbox calculée sur les contours réels.
+        getSelfRect: () => {
+          const allPts = contours.flatMap((region) => region.pts);
+          if (!allPts.length) return { x: 0, y: 0, width: 0, height: 0 };
+          const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
+          const [minx, maxx] = minMax(xs), [miny, maxy] = minMax(ys);
+          return { x: minx, y: miny, width: maxx - minx, height: maxy - miny };
         },
       });
       g.add(shape);
@@ -301,7 +325,8 @@
   // à une fraction donnée de la cible. Sans ça un import s'installe à son échelle absolue SVG
   // et peut déborder largement (svg.js ignore <g transform>).
   function fitScale(motif, fraction) {
-    const xs = motif.silhouette.map((p) => p[0]), ys = motif.silhouette.map((p) => p[1]);
+    const allPts = asContours(motif.silhouette).flat();
+    const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
     const [mnx, mxx] = minMax(xs), [mny, mxy] = minMax(ys);
     const mw = (mxx - mnx) || 1, mh = (mxy - mny) || 1, mcx = (mnx + mxx) / 2, mcy = (mny + mxy) / 2;
     let tcx, tcy, tw, th;
@@ -772,14 +797,17 @@
         color,
         paths: fillGroups[color].map((r) => ({ pts: mapPts(r.pts), closed: true })),
       }));
-      const silhouette = mapPts(motifSilhouettePts(m));
+      // multi-pièces (T1) : silPieces = toutes les pièces de la silhouette, transformées. Pour un
+      // motif normal, occluder = silPieces (chaque morceau occulte) au lieu de [silhouette] (un seul
+      // bloc avant T1). Le décor garde son occlusion par surface réelle (fillPolys, D-005 inchangé).
+      const silPieces = asContours(motifSilhouettePts(m)).map(mapPts);
       const fillPolys = groups.flatMap((gr) => gr.paths.map((p) => p.pts));
       const marginPx = (m.margin || 0) * PX_PER_MM;
       return {
         role: m.role,
         groups,
-        occluder: m.role === "DECOR" ? fillPolys : [silhouette],
-        decorClear: ML.offsetPolygon(silhouette, marginPx),
+        occluder: m.role === "DECOR" ? fillPolys : silPieces,
+        decorClear: silPieces.flatMap((p) => ML.offsetPolygon(p, marginPx)),
       };
     });
   }

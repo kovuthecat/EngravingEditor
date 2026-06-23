@@ -181,20 +181,18 @@
     return out;
   };
 
-  // silhouette (occlusion "sticker") = union des contours les plus extérieurs (depth 0, toutes couleurs)
+  // silhouette (occlusion "sticker") = union des contours les plus extérieurs (depth 0, toutes
+  // couleurs). Multi-contours (D-007/T1) : renvoie TOUTES les pièces de l'union, pas seulement
+  // la plus grande -> [[ [x,y].. ], ...], chaque contour fermé (1er point répété).
   ML.motifSilhouette = function (zones) {
     const outer = zones.filter((z) => z.depth === 0).map((z) => z.pts);
     if (!outer.length) return [];
     const pieces = ML.unionPolys(outer);
-    if (!pieces.length) return [];
-    let best = pieces[0], bestA = ML.absArea(pieces[0]);
-    for (let i = 1; i < pieces.length; i++) {
-      const a = ML.absArea(pieces[i]);
-      if (a > bestA) { bestA = a; best = pieces[i]; }
-    }
-    const pts = best.slice();
-    if (pts.length && (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1])) pts.push(pts[0]);
-    return pts;
+    return pieces.filter((p) => p.length >= 3).map((piece) => {
+      const pts = piece.slice();
+      if (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1]) pts.push(pts[0]);
+      return pts;
+    });
   };
 
   // édition au stylet (D-006 chantier 3) : tracé -> polygone épais, union/différence de surface,
@@ -226,8 +224,8 @@
     return clipBy(contours || [], true, cutInt, ClipperLib.ClipType.ctDifference);
   };
 
-  // silhouette (contour extérieur) d'un jeu de contours fermés {pts,closed} — délègue à
-  // `motifSilhouette` en adaptant l'entrée « contours » en pseudo-zones de depth 0.
+  // silhouette (contours extérieurs, multi-pièces) d'un jeu de contours fermés {pts,closed} —
+  // délègue à `motifSilhouette` en adaptant l'entrée « contours » en pseudo-zones de depth 0.
   ML.silhouetteFromSurface = function (contours) {
     return ML.motifSilhouette((contours || []).map((c) => ({ pts: c.pts, depth: 0 })));
   };

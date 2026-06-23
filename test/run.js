@@ -40,15 +40,19 @@ for (const m of motifs) {
 }
 
 function translatePts(pts, dx, dy) { return pts.map(([x, y]) => [x + dx, y + dy]); }
+// silhouette = liste de contours (multi-pièces, T1) -> traduit chaque pièce séparément.
+function translateContours(contours, dx, dy) { return contours.map((c) => translatePts(c, dx, dy)); }
 function translateGroups(fillGroups, dx, dy) {
   return Object.keys(fillGroups).map((color) => ({
     color,
     paths: fillGroups[color].map((r) => ({ pts: translatePts(r.pts, dx, dy), closed: true })),
   }));
 }
-// centre un motif (silhouette + fillGroups) sur `target`, via le centre de son bbox — sert à garantir
-// un chevauchement franc entre décor/perso dans le cas Lot 2 (indépendant des coordonnées brutes du SVG).
-function centroid(pts) {
+// centre un motif (silhouette + fillGroups) sur `target`, via le centre de son bbox (toutes pièces
+// confondues) — sert à garantir un chevauchement franc entre décor/perso dans le cas Lot 2
+// (indépendant des coordonnées brutes du SVG).
+function centroid(contours) {
+  const pts = contours.flat();
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
 }
@@ -56,17 +60,18 @@ function centerAt(silhouette, fillGroups, target) {
   const c = centroid(silhouette);
   const dx = target[0] - c[0], dy = target[1] - c[1];
   const groups = translateGroups(fillGroups, dx, dy);
-  return { silhouette: translatePts(silhouette, dx, dy), groups, fillPolys: groups.flatMap((g) => g.paths.map((p) => p.pts)) };
+  return { silhouette: translateContours(silhouette, dx, dy), groups, fillPolys: groups.flatMap((g) => g.paths.map((p) => p.pts)) };
 }
 
 // ─── Lot 1 : grille serrée -> chevauchement, occlusion "autocollant" (motifs ordinaires, sans décor) ───
-// instance hors-décor : occluder = silhouette ; decorClear = silhouette (marge nulle, inutilisé ici).
+// instance hors-décor : occluder = silhouette (déjà une liste de pièces, T1) ; decorClear = silhouette
+// (marge nulle, inutilisé ici).
 function plainInstance(silhouette, groups) {
-  return { role: "PERSONNAGE", groups, occluder: [silhouette], decorClear: [silhouette] };
+  return { role: "PERSONNAGE", groups, occluder: silhouette, decorClear: silhouette };
 }
 const lot1Insts = motifs.map((m, i) => {
   const dx = (i % 3) * 80, dy = Math.floor(i / 3) * 80; // pas < taille des motifs -> chevauchement
-  const silhouette = translatePts(m.silhouette, dx, dy);
+  const silhouette = translateContours(m.silhouette, dx, dy);
   const groups = translateGroups(ML.motifFill(m.zones), dx, dy);
   return plainInstance(silhouette, groups);
 });
@@ -97,13 +102,13 @@ const decorFillMerged = [];
 for (const c in decorFillNative) decorFillMerged.push(...decorFillNative[c]);
 const decorC = centerAt(decorSrc.silhouette, { [decorColor]: decorFillMerged }, target);
 // occluder du décor = sa surface réelle (avec ses vides), PAS sa silhouette (cf. D-005 — sinon plus rien dessous ne serait visible)
-const decorInst = { role: "DECOR", groups: decorC.groups, occluder: decorC.fillPolys, decorClear: [decorC.silhouette] };
+const decorInst = { role: "DECOR", groups: decorC.groups, occluder: decorC.fillPolys, decorClear: decorC.silhouette };
 
 const aboveC = centerAt(persoAbove.silhouette, ML.motifFill(persoAbove.zones), target);
-const aboveInst = { role: "PERSONNAGE", groups: aboveC.groups, occluder: [aboveC.silhouette], decorClear: ML.offsetPolygon(aboveC.silhouette, marginPx) };
+const aboveInst = { role: "PERSONNAGE", groups: aboveC.groups, occluder: aboveC.silhouette, decorClear: aboveC.silhouette.flatMap((p) => ML.offsetPolygon(p, marginPx)) };
 
 const belowC = centerAt(persoBelow.silhouette, ML.motifFill(persoBelow.zones), target);
-const belowInst = { role: "PERSONNAGE", groups: belowC.groups, occluder: [belowC.silhouette], decorClear: [belowC.silhouette] };
+const belowInst = { role: "PERSONNAGE", groups: belowC.groups, occluder: belowC.silhouette, decorClear: belowC.silhouette };
 
 // ordre bas -> haut : perso caché, décor, perso posé
 const decorInsts = [belowInst, decorInst, aboveInst];
@@ -115,7 +120,7 @@ console.log(`\nOcclusion Lot 2 (décor D-005) : surface décor avant=${decorArea
 if (!(decorAreaAfter < decorAreaBefore)) fail("la surface du décor n'est pas réduite par le perso posé au-dessus (margin>0)");
 
 // preuve du HALO : la marge doit creuser PLUS que la silhouette seule du perso du dessus
-const decorVisibleNoMargin = ML.occludeSurfaces([belowInst, decorInst, { ...aboveInst, decorClear: [aboveC.silhouette] }], null, []);
+const decorVisibleNoMargin = ML.occludeSurfaces([belowInst, decorInst, { ...aboveInst, decorClear: aboveC.silhouette }], null, []);
 const decorAreaNoMargin = (decorVisibleNoMargin[decorColor] || []).reduce((a, p) => a + ML.signedArea(p.pts), 0);
 console.log(`  surface décor si marge=0 (silhouette seule du perso du dessus) = ${decorAreaNoMargin.toFixed(0)} (doit être > avec halo)`);
 if (!(decorAreaNoMargin > decorAreaAfter)) fail("la marge (halo) ne creuse pas davantage le décor que la silhouette seule du perso du dessus");
@@ -123,7 +128,7 @@ if (!(decorAreaNoMargin > decorAreaAfter)) fail("la marge (halo) ne creuse pas d
 // preuve du "caché derrière" : le perso du dessous doit rester PARTIELLEMENT visible (vides du décor),
 // contrairement à un décor occultant opaque (silhouette, modèle "sticker" explicitement rejeté en D-005)
 const belowOnlyReal = ML.occludeSurfaces([belowInst, decorInst], null, []);
-const belowOnlySticker = ML.occludeSurfaces([belowInst, { ...decorInst, occluder: [decorC.silhouette] }], null, []);
+const belowOnlySticker = ML.occludeSurfaces([belowInst, { ...decorInst, occluder: decorC.silhouette }], null, []);
 const belowAreaReal = (belowOnlyReal["#000000"] || []).reduce((a, p) => a + ML.signedArea(p.pts), 0);
 const belowAreaSticker = (belowOnlySticker["#000000"] || []).reduce((a, p) => a + ML.signedArea(p.pts), 0);
 console.log(`  surface perso caché visible : occluder=surface réelle (vides) -> ${belowAreaReal.toFixed(0)}  vs  occluder=silhouette (sticker) -> ${belowAreaSticker.toFixed(0)}`);
