@@ -86,12 +86,21 @@
   stage.on("click tap", (e) => { if (edit.active) return; if (e.target === stage && !panMoved) select(null); });
   tr.on("transform", positionMoveHandle); // suit échelle/rotation via les poignées
   tr.on("transformstart", recordHistory);
+  let recacheTimer = null;
   tr.on("transformend", () => {
     markProjectChanged();
     // T3 : après un gros changement d'échelle, le bitmap caché (fillGroupContent) peut sortir
     // flou — recache une seule instance (la sélectionnée), pas pendant le drag (inutile/coûteux).
-    const n = selected();
-    if (n && n.getAttr("motifId") !== undefined) { n.clearCache(); n.cache({ pixelRatio: 2 }); }
+    // T4 : debounce 150ms pour éviter un recache synchrone coûteux à chaque fin de transform
+    // (gros décor) quand l'utilisateur ajuste plusieurs fois d'affilée.
+    clearTimeout(recacheTimer);
+    recacheTimer = setTimeout(() => {
+      const n = selected();
+      if (n && n.getAttr("motifId") !== undefined) {
+        n.clearCache(); n.cache({ pixelRatio: 2 });
+        n.getLayer() && n.getLayer().batchDraw();
+      }
+    }, 150);
   });
 
   // zoom molette centré sur le curseur
