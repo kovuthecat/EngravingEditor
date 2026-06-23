@@ -322,10 +322,12 @@
     // image au lieu de re-tracer le décor (potentiellement des milliers de contours) à chaque
     // frame. pixelRatio:2 = compromis net/mémoire vu la plage de zoom de l'app (molette 0.1-8x,
     // pinch) ; au-delà, le bitmap peut réapparaître flou (recache sur transformend, voir plus bas).
-    // Exception : le groupe en cours d'édition stylet reste non caché — startStroke() ajoute
-    // l'aperçu de trait comme enfant de ce groupe ; un groupe caché n'afficherait pas cet ajout
-    // tardif. Recache à la sortie de l'édition (exitEdit). `edit` est déclaré plus bas dans ce
-    // fichier mais déjà initialisé à l'exécution (fillGroupContent n'est appelée qu'au runtime).
+    // Exception : le groupe en cours d'édition stylet reste non caché — startStroke() ajoute l'aperçu
+    // de trait comme enfant de ce groupe, et applyStroke() le re-rend ; un groupe caché afficherait
+    // un bitmap figé et ignorerait ces changements. NB : ce garde-fou ne couvre QUE le re-render
+    // pendant l'édition ; le décache initial à l'entrée se fait dans enterEdit() (g.clearCache()),
+    // car à la création le groupe est caché alors que edit.active est encore false. exitEdit() recache.
+    // `edit` est déclaré plus bas mais déjà initialisé au runtime (fillGroupContent n'est appelée qu'alors).
     if (!(edit.active && edit.node === g)) g.cache({ pixelRatio: 2 });
   }
   // re-rend toutes les instances d'un motif + sa vignette (après édition de rôles de zones)
@@ -654,9 +656,14 @@
     const motif = selectedMotif();
     if (!g || !motif) return;
     edit.active = true; edit.motifId = motif.id; edit.node = g;
+    // T3 : le groupe a été mis en cache (bitmap) à sa création. Un groupe caché affiche son bitmap
+    // figé et IGNORE les enfants ajoutés/modifiés ensuite (aperçu de trait, re-render après un trait).
+    // On le décache pour qu'il rende ses enfants en direct pendant toute l'édition ; exitEdit() recache.
+    g.clearCache();
     stage.draggable(false);
     setCanvasLocked(true);
     tr.visible(false); moveHandle.visible(false);
+    mainLayer.batchDraw();
     uiLayer.batchDraw();
     populateStyletEditor(motif);
   }
