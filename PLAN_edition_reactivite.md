@@ -313,7 +313,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
     changent l'épaisseur.
 - **Si bloqué :** si `etOpenButt` n'existe pas sous ce nom dans `ClipperLib.EndType`, STOP et signaler.
 - **Commit :** `feat(edit): tailles rapides + profil rond/plat du pinceau`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Validation visuelle (bouts rond/plat, boutons de taille) non faite — laissée à Thibault sur demande explicite (skip).
 
 ### T7 — Outils ligne droite + rectangle + ellipse · Modèle : Sonnet
 - **Pourquoi ce modèle :** géométrie + interaction (drag de pose), validation navigateur.
@@ -337,7 +337,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
     Maj contraint carré/cercle ; aperçu suit le pointeur ; Appliquer (T5) → présent à l'export.
 - **Si bloqué :** si l'aperçu reste affiché après `up`, STOP et signaler (détruire l'aperçu avant le final).
 - **Commit :** `feat(edit): outils ligne / rectangle / ellipse`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Précision d'implémentation non explicite dans le plan : `edit.tool` reste le set plat `{brush,eraser,line,rect,ellipse}` (un seul bouton actif à la fois), mais l'ajout/soustraction est porté par un champ séparé `edit.op` (`"add"`/`"sub"`), mis à jour seulement par les boutons Pinceau/Gomme et conservé (sticky) quand on bascule sur Ligne/Rectangle/Ellipse — pour permettre de soustraire avec une forme sans dupliquer les boutons. Maj (`shiftKey`) contraint carré/cercle ; aperçu (`Konva.Line`/`Rect`/`Ellipse`) toujours détruit à `up`. Validation visuelle (aperçu en direct, Maj, Appliquer après forme) non faite — laissée à Thibault sur demande explicite (skip).
 
 ### T8 — Lasso : sélectionner une portion (déplacer / effacer / dupliquer) · Modèle : Sonnet
 - **Pourquoi ce modèle :** plus complexe (sous-sélection géométrique + transform), validation navigateur.
