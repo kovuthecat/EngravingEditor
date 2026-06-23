@@ -19,11 +19,10 @@
   const stage = new Konva.Stage({ container: "stage", width: stageEl.clientWidth, height: stageEl.clientHeight, draggable: true });
   const boundaryLayer = new Konva.Layer({ listening: false }); // fond blanc du corps + trous creusés + marge
   const mainLayer = new Konva.Layer();
-  const maskLayer = new Konva.Layer({ listening: false });     // masque hors-corps + cavités (aperçu propre)
-  const zonesLayer = new Konva.Layer();   // zones interdites manuelles
+  const zonesLayer = new Konva.Layer();   // zones interdites manuelles + masque hors-corps/cavités (isMask, en bas du calque, listening:false)
   const guideLayer = new Konva.Layer();   // cadre laser déplaçable/orientable (repère zone de gravure machine)
   const uiLayer = new Konva.Layer();
-  stage.add(boundaryLayer, mainLayer, maskLayer, zonesLayer, guideLayer, uiLayer);
+  stage.add(boundaryLayer, mainLayer, zonesLayer, guideLayer, uiLayer);
   const BG = "#1c1f27"; // couleur de fond (= hors zone à graver)
 
   const tr = new Konva.Transformer({
@@ -495,8 +494,9 @@
     c.closePath();
   }
   function drawBoundary() {
-    boundaryLayer.destroyChildren(); maskLayer.destroyChildren();
-    if (!state.boundary) { boundaryLayer.batchDraw(); maskLayer.batchDraw(); return; }
+    boundaryLayer.destroyChildren();
+    zonesLayer.getChildren((n) => n.getAttr("isMask")).forEach((d) => d.destroy());
+    if (!state.boundary) { boundaryLayer.batchDraw(); zonesLayer.batchDraw(); return; }
     const holes = state.holes || [];
     // fond : corps en BLANC, cavités creusées (evenodd)
     boundaryLayer.add(new Konva.Shape({
@@ -520,7 +520,9 @@
       }
     }
     // masque : tout hors corps + cavités, en couleur de fond (aperçu net)
-    maskLayer.add(new Konva.Shape({
+    // vit dans zonesLayer (pas un calque dédié, cf. T4) : ajouté puis renvoyé au fond pour
+    // rester sous les zones interdites, à la même hauteur visuelle qu'avant (au-dessus des motifs).
+    const maskShape = new Konva.Shape({
       listening: false,
       sceneFunc: (ctx) => {
         const c = ctx._context, B = 1e5;
@@ -528,8 +530,11 @@
         tracePoly(c, state.boundary); for (const h of holes) tracePoly(c, h);
         c.fillStyle = BG; c.fill("evenodd");
       },
-    }));
-    boundaryLayer.batchDraw(); maskLayer.batchDraw();
+    });
+    maskShape.setAttr("isMask", true);
+    zonesLayer.add(maskShape);
+    maskShape.moveToBottom();
+    boundaryLayer.batchDraw(); zonesLayer.batchDraw();
   }
 
   // polygones réservés = cavités auto (SVG) + zones manuelles
@@ -637,7 +642,7 @@
 
   function setCanvasLocked(locked) {
     mainLayer.getChildren((n) => n.getClassName() === "Group").forEach((g) => g.draggable(!locked));
-    zonesLayer.getChildren().forEach((z) => z.draggable(!locked));
+    zonesLayer.getChildren((n) => n.getAttr("isZone")).forEach((z) => z.draggable(!locked));
     guideLayer.getChildren().forEach((f) => f.draggable(!locked));
   }
 

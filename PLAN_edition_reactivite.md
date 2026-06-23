@@ -28,6 +28,12 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
   pendant l'essai. **Appliquer** → `motif.surface = edit.draft`, recalcul silhouette, `rerenderMotif`
   (toutes instances + vignette), une seule fois. **Jeter** → on abandonne le brouillon. Portée = motif
   (cohérent D-006). Gain perf : le re-render lourd n'a lieu qu'à l'application.
+- **Brouillons multiples en attente (D-007, ajout Thibault 2026-06-23)** : quitter l'édition d'un motif avec
+  un brouillon modifié ne force plus Appliquer/Jeter — le brouillon est **rangé** dans `editDrafts` (map par
+  `motifId`, **session uniquement, non sérialisée**). Revenir sur ce motif **restaure** son brouillon. Un
+  **compteur « N essais en attente »** + un bouton **« Tout appliquer »** + un **garde-fou à l'export** (SVG
+  ET PNG avertissent s'il reste des essais non appliqués) évitent l'oubli. Choix : les brouillons en attente
+  **ne sont pas rendus** sur les instances non éditées (sinon on perd le gain perf — autant appliquer).
 - **Cause racine perf** (mesurée à l'audit) : tout est sur `mainLayer` ; le décor `sceneFunc` re-trace des
   milliers de contours **à chaque frame** de drag/zoom. Correctif Konva standard = `node.cache()`
   (rasterise le groupe en bitmap ; on déplace une image au lieu de re-tracer).
@@ -157,65 +163,133 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
 - **Si bloqué :** si le cache casse la transparence du décor ou le hit, STOP — ne pas désactiver T2 pour
   faire passer.
 - **Commit :** `perf(render): cache Konva des groupes d'instances (drag fluide)`
-- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Validation visuelle (FPS, transparence décor, hit après cache) laissée à Thibault (non faite par l'exécutant). Note non prévue par le plan : `startStroke` (édition stylet) ajoute l'aperçu de trait comme enfant du groupe édité — un groupe caché n'afficherait pas cet ajout tardif. Ajout d'une garde dans `fillGroupContent` (pas de cache pendant `edit.active` sur ce nœud) + recache dans `exitEdit`.
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Validation visuelle (FPS, transparence décor, hit après cache) laissée à Thibault (non faite par l'exécutant). Note non prévue par le plan : `startStroke` (édition stylet) ajoute l'aperçu de trait comme enfant du groupe édité — un groupe caché n'afficherait pas cet ajout tardif. Ajout d'une garde dans `fillGroupContent` (pas de cache pendant `edit.active` sur ce nœud) + recache dans `exitEdit`. **Régression corrigée (Opus, 2026-06-23) :** cette garde seule était insuffisante — le groupe est mis en cache **à la création** (alors que `edit.active` est encore `false`), donc à l'entrée en édition il affichait un bitmap figé : aucun trait visible avant la sortie. Correctif = `g.clearCache()` + `mainLayer.batchDraw()` dans `enterEdit()` (le groupe rend ses enfants en direct pendant l'édition ; `exitEdit` recache). `node test/run.js` toujours OK. **À revérifier en navigateur : le trait pinceau/gomme est désormais visible pendant le dessin ET après application, en mode édition.**
 
-### T4 — Réactivité : fusionner boundaryLayer + maskLayer (6 → 5 calques) · Modèle : Sonnet
+### T4 — Réactivité : fondre maskLayer dans zonesLayer (6 → 5 calques) · Modèle : Sonnet
 - **Pourquoi ce modèle :** refactor de rendu à risque visuel léger, validation navigateur.
-- **But :** réduire d'un calque (avertissement Konva « >5 layers ») en fusionnant les deux calques
-  `listening:false` (fond corps + masque hors-corps), sans changer l'aspect.
-- **Lire :** `src/app.js` création des calques (20-26), `drawBoundary` (444-480).
-- **Modifier :** `src/app.js` (déclaration des calques + `drawBoundary`).
-- **Hors périmètre :** ne pas toucher `mainLayer`/`zonesLayer`/`guideLayer`/`uiLayer` ; ne rien changer à
-  la géométrie du contour.
+- **But :** réduire d'un calque (avertissement Konva « >5 layers ») **sans changer l'aspect**, en
+  supprimant `maskLayer` et en déplaçant sa `Konva.Shape` de masque comme **enfant du bas** de
+  `zonesLayer` (donc juste **au-dessus** de `mainLayer`, à la même place qu'aujourd'hui dans la pile).
+- **Correction de conception (Opus, 2026-06-23 — l'ancien T4 était erroné) :** l'ancien plan disait de
+  fusionner `boundaryLayer` + `maskLayer` (« les deux calques `listening:false` »). **Impossible :** ils
+  **enjambent `mainLayer`** — `boundaryLayer` est **sous** les motifs (fond blanc du corps, sur lequel les
+  motifs se peignent), `maskLayer` est **au-dessus** (il repeint en couleur de fond tout ce qui déborde du
+  corps : bords courbes du décor mis à l'échelle sur la bbox, cavités). Un calque unique n'occupe **qu'une**
+  position dans la pile → il ne peut pas être à la fois sous et au-dessus de `mainLayer`. On retire donc
+  l'autre calque `listening:false` superflu (`maskLayer`) en le **fondant dans le calque adjacent du
+  dessus** (`zonesLayer`), ce qui préserve l'ordre de rendu **à l'identique**.
+- **Lire :** `src/app.js` création des calques (20-26), `drawBoundary` (497-533, en particulier le bloc
+  masque 522-531 et les `destroyChildren`/`batchDraw` 498-499 et 532), `setLocked`/toggle verrou (≈640,
+  `zonesLayer.getChildren().forEach(... draggable)`), `loadProject` (892, 907-909).
+- **Modifier :** `src/app.js` (déclaration des calques + `drawBoundary` + la ligne `draggable` du verrou).
+- **Hors périmètre :** ne pas toucher `boundaryLayer`/`mainLayer`/`guideLayer`/`uiLayer` ; ne rien changer à
+  la géométrie du contour ni du masque (mêmes points, même `evenodd`) ; ne pas toucher l'export.
 - **Étapes :**
-  1. Supprimer `maskLayer` ; déplacer sa `Konva.Shape` de masque dans `boundaryLayer` **au-dessus** du fond
-     blanc (ordre des enfants : fond blanc/marge d'abord, masque ensuite — vérifier que le masque ne
-     recouvre pas la marge ambre ; sinon réordonner pour garder la marge visible).
-  2. Mettre à jour tous les `maskLayer.*` (destroy/add/batchDraw) vers `boundaryLayer`.
+  1. Supprimer la déclaration `const maskLayer = …` (22) et la retirer du `stage.add(...)` (26) → il reste
+     `boundaryLayer, mainLayer, zonesLayer, guideLayer, uiLayer` (5 calques).
+  2. Dans `drawBoundary`, la `Konva.Shape` du masque (522-531) est désormais **ajoutée à `zonesLayer`** avec
+     un attribut repère `isMask` (`sh.setAttr("isMask", true)`), `listening:false`, puis **`sh.moveToBottom()`**
+     pour qu'elle reste sous les zones interdites (donc à la même hauteur visuelle qu'avant : au-dessus des
+     motifs, sous zones/cadre/ui).
+  3. Remplacer les `maskLayer.destroyChildren()` (498) et `maskLayer.batchDraw()` (499, 532) : pour le
+     **destroy**, ne **pas** vider `zonesLayer` (ça supprimerait les zones interdites !) — détruire
+     **uniquement** l'ancien masque : `zonesLayer.findOne((n) => n.getAttr("isMask"))?.destroy()` (ou une
+     boucle `getChildren((n)=>n.getAttr("isMask")).forEach(d=>d.destroy())`). Pour le **draw**, utiliser
+     `zonesLayer.batchDraw()`.
+  4. **Verrou (≈640)** : `zonesLayer.getChildren().forEach((z) => z.draggable(!locked))` engloberait le
+     masque ; restreindre aux zones réelles : `zonesLayer.getChildren((n) => n.getAttr("isZone")).forEach(...)`
+     (le masque est `listening:false`, donc inoffensif, mais on évite de le rendre « draggable »).
+  5. **Vérif `loadProject`** (rien à coder, juste valider l'ordre) : 892 fait `zonesLayer.destroyChildren()`
+     (supprime aussi l'ancien masque), puis 907 `drawBoundary()` **recrée** le masque dans `zonesLayer`
+     (en bas), puis 908 `makeZone(...)` rempile les zones **par-dessus**. Ordre préservé.
 - **Validation :**
-  - auto : `node test/run.js` → OK.
-  - visuel : import contour → aspect **identique** (corps blanc, cavités creusées, hors-corps en fond,
-    marge ambre visible) ; console : plus d'avertissement « 6 layers ».
-- **Si bloqué :** si l'ordre des enfants masque la marge ou le contour, STOP et signaler.
-- **Commit :** `perf(render): fusionne boundary+mask en un calque (5 max)`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+  - auto : `node test/run.js` → OK (aucune géométrie touchée).
+  - visuel : import contour → aspect **identique** (corps blanc, cavités creusées, hors-corps en couleur de
+    fond, marge ambre visible) ; un motif/décor qui déborde du corps est **toujours masqué** ; les **zones
+    interdites restent visibles et cliquables** par-dessus le masque ; charger un projet avec zones →
+    masque + zones bien rendus ; console : **plus d'avertissement « 6 layers »**.
+- **Si bloqué :** si après le merge le masque **recouvre les zones interdites** (mauvais ordre → il n'est
+  pas `moveToBottom`) ou si `zonesLayer.destroyChildren` efface le masque sans que `drawBoundary` le recrée
+  (zones qui disparaissent), STOP et signaler — ne pas remettre `maskLayer`, ne pas vider `zonesLayer` dans
+  `drawBoundary`.
+- **Commit :** `perf(render): fond maskLayer dans zonesLayer (5 calques, ordre inchangé)`
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Validation visuelle (aspect identique, débord motif/décor toujours masqué, zones cliquables par-dessus, console sans avertissement 6 layers) laissée à Thibault (non faite par l'exécutant).
 
-### T5 — Calque d'essai (édition non destructive : Appliquer / Jeter) · Modèle : Sonnet
-- **Pourquoi ce modèle :** chantier central (état d'édition + Konva + perf), validation navigateur lourde.
-- **But :** éditer sur un **brouillon** sans modifier le motif ni ses copies ; **Appliquer** valide sur le
-  motif sélectionné, **Jeter** abandonne. Supprime le re-render à chaque trait (gain perf majeur).
-- **Lire :** `src/app.js` bloc édition stylet (577-690) : `edit`, `enterEdit`/`exitEdit`, `applyStroke`,
-  `startStroke`/`moveStroke`/`endStroke`, handlers stage (667-680) ; `index.html` `#stylet-editor` (92-103).
+### T5 — Calques d'essai multiples (édition non destructive : Appliquer / Jeter / Tout appliquer) · Modèle : Sonnet
+- **Pourquoi ce modèle :** chantier central (état d'édition multi-brouillons + Konva + perf + garde-fou
+  export), validation navigateur lourde.
+- **But :** éditer sur un **brouillon** sans modifier le motif ni ses copies ; pouvoir **laisser un brouillon
+  en attente**, éditer un autre motif, **y revenir** (le brouillon est restauré) ; **Appliquer** valide le
+  motif courant, **Jeter** l'abandonne, **Tout appliquer** valide tous les essais en attente d'un coup.
+  Supprime le re-render à chaque trait (gain perf majeur).
+- **Décision de conception (Thibault, 2026-06-23) :** un brouillon en attente **reste visible** sur ses
+  instances, **rendu en vert** (couleur provisoire `EDIT_DRAFT_COLOR`, ~`#22c55e`) tant qu'il n'est pas
+  validé. Pas de coût perf par frame : on ne fait **qu'un seul `rerenderMotif`** à la transition (sortie
+  d'édition / Appliquer / Jeter), pas un re-render par trait — le vert est *baked* dans le cache du groupe
+  (suit drag/zoom). Le vert **remplace** l'affichage de la surface réelle (gère la gomme correctement), il
+  n'est pas une simple surcouche. En complément : un **compteur « N essais en attente »**, un bouton
+  **« Tout appliquer »**, et un **garde-fou à l'export** (SVG ET PNG avertissent s'il reste des essais non
+  appliqués). Le brouillon vert est **display-only** : l'export utilise toujours `motif.surface` (réel) tant
+  qu'on n'a pas appliqué.
+- **Lire :** `src/app.js` bloc édition stylet (628-743) : `edit`, `enterEdit`/`exitEdit`, `applyStroke`,
+  `startStroke`/`moveStroke`/`endStroke`, handlers stage (720-733), `btn-edit` (740) ; `exportSVG` (786-800) ;
+  suppression d'instance/motif (purge des brouillons orphelins) ; `index.html` `#stylet-editor` (92-103) ;
   `DECISIONS.md §D-006` (portée = motif).
-- **Modifier :** `src/app.js` (bloc édition), `index.html` (`#stylet-editor` : 2 boutons), `src/style.css`
-  (si besoin un style de bouton).
-- **Hors périmètre :** ne pas changer la portée (reste = motif, D-006) ; ne pas réintroduire de raster ;
-  ne pas modifier l'export.
+- **Modifier :** `src/app.js` (bloc édition + `fillGroupContent`/`drawThumb` pour le rendu vert + garde-fou
+  export), `index.html` (`#stylet-editor` : boutons Appliquer/Jeter + bloc global « N essais en attente /
+  Tout appliquer », placé près des exports), `src/style.css` (styles boutons + compteur).
+- **Hors périmètre :** portée inchangée (= motif, D-006) ; pas de raster ; **ne pas sérialiser** les
+  brouillons dans la sauvegarde projet (session uniquement) ; ne pas modifier le cœur d'export
+  (`pxPathsToMm`/occlusion) ; le vert est **display-only** (n'entre jamais dans l'export ni l'occlusion).
 - **Étapes :**
-  1. Ajouter au calque dédié : créer un `Konva.Layer` `editLayer` (ou réutiliser un groupe sur `uiLayer`)
-     visible seulement en édition, placé au même `getAbsoluteTransform` que `edit.node`.
-  2. À `enterEdit` : initialiser `edit.draft = copie profonde de exportFill(motif)[couleur focale]`
-     (tableau de contours). `edit.dirty = false`. Rendre `edit.draft` sur `editLayer` (une `Konva.Shape`
-     evenodd, couleur focale). Les autres instances et la vignette **ne changent pas**.
-  3. Chaque trait/outil (T6/T7/T8) mute **`edit.draft`** (Clipper union si pinceau / différence si gomme)
-     via les helpers existants (`surfaceUnion`/`surfaceDifference`), met `edit.dirty=true`, et **redessine
-     uniquement `editLayer`** (pas de `rerenderMotif`). Aperçu de trait en cours inchangé.
-  4. Boutons : **« Appliquer au motif »** → `motif.surface = { [couleur]: edit.draft }` ;
-     `motif.silhouette = ML.silhouetteFromSurface(...)` ; `rerenderMotif(motif)` (une fois) ; `recordHistory`
-     avant ; `edit.dirty=false`. **« Jeter l'essai »** → ré-initialiser `edit.draft` depuis le motif,
-     `edit.dirty=false`, redessiner `editLayer`.
-  5. `exitEdit` : si `edit.dirty`, demander (confirm) Appliquer ou Jeter avant de sortir ; nettoyer
-     `editLayer`. Restaurer l'état (comme aujourd'hui).
-  6. Vérifier que `recordHistory`/undo encadrent **l'application**, pas chaque trait du brouillon.
+  1. `editLayer` : `Konva.Layer` (ou groupe sur `uiLayer`) visible seulement en édition, calé sur
+     `edit.node.getAbsoluteTransform()`.
+  2. **Map de brouillons** : `const editDrafts = new Map()` (clé `motifId` → `{ surfaceByColor, dirty }`),
+     **non sérialisée**.
+  3. `enterEdit` : si `editDrafts.has(motif.id)`, **restaurer** ce brouillon dans `edit.draft` ; sinon
+     `edit.draft = copie profonde de exportFill(motif)[couleur focale]`, `edit.dirty=false`. Rendre
+     `edit.draft` sur `editLayer` (une `Konva.Shape` evenodd, couleur focale).
+  4. Chaque trait/outil (T6/T7/T8) mute **`edit.draft`** (Clipper union si pinceau / différence si gomme) via
+     `surfaceUnion`/`surfaceDifference`, met `edit.dirty=true`, et **redessine uniquement `editLayer`** (pas de
+     `rerenderMotif`).
+  5. **Rendu vert du brouillon en attente** : dans `fillGroupContent`, si `editDrafts.has(motif.id)`, rendre
+     **le brouillon** (`editDrafts.get(id).surfaceByColor`) **en `EDIT_DRAFT_COLOR` (~`#22c55e`)** au lieu de
+     `motif.surface` (le vert *remplace* l'affichage → gomme correcte). Idem `drawThumb` (vignette verte =
+     repère « ce motif a un essai en attente »). La **silhouette/occlusion reste celle du réel** (`motif.silhouette`,
+     non modifié) — le vert est purement visuel. Comme c'est dans `fillGroupContent`, le vert est *baked* dans
+     le cache du groupe → suit drag/zoom sans coût par frame.
+  6. `exitEdit` : si `edit.dirty`, **ranger** `edit.draft` dans `editDrafts` (plus de confirm bloquant) ;
+     nettoyer `editLayer` ; **`rerenderMotif(motif)` une fois** (les instances passent au vert via l'étape 5) ;
+     rafraîchir le compteur. Restaurer le reste de l'état (comme aujourd'hui).
+  7. **« Appliquer au motif »** (motif courant) → `recordHistory()` ; `motif.surface = { [couleur]: edit.draft }` ;
+     `motif.silhouette = ML.silhouetteFromSurface(...)` ; retirer `motif.id` d'`editDrafts` ; `rerenderMotif(motif)`
+     (une fois → repasse de vert à la couleur réelle) ; `edit.dirty=false`.
+  8. **« Jeter l'essai »** → retirer `motif.id` d'`editDrafts`, ré-initialiser `edit.draft` depuis le motif,
+     `edit.dirty=false` ; `rerenderMotif(motif)` (repasse au réel) + redessiner `editLayer` si encore en édition.
+  9. **« Tout appliquer (N) »** (visible hors édition aussi) → `recordHistory()` **une fois** ; pour chaque
+     entrée d'`editDrafts` : appliquer comme étape 7 (surface, silhouette, `rerenderMotif`) ; vider la map ;
+     rafraîchir le compteur.
+  10. **Compteur** : afficher « N essais en attente » + bouton « Tout appliquer » dès `editDrafts.size > 0`.
+  11. **Garde-fou export** : dans `exportSVG` (et `exportPNG` de T9), si `editDrafts.size > 0`, **avertir/
+      confirmer** « N essais non appliqués — appliquer maintenant ? » (Appliquer-tout / Exporter quand même /
+      Annuler).
+  12. **Purge** : à la suppression d'une instance/d'un motif (et après undo qui supprime un motif), retirer
+      l'entrée correspondante d'`editDrafts` (pas de brouillon orphelin).
+  13. Vérifier que `recordHistory`/undo encadrent **l'application** (simple ou Tout appliquer), pas chaque
+      trait du brouillon.
 - **Validation :**
   - auto : `node test/run.js` → OK.
-  - visuel : entrer en édition sur un motif posé en 2 exemplaires → peindre : **seul l'exemplaire édité**
-    montre le brouillon, l'autre exemplaire et la vignette restent inchangés ; **Jeter** → le brouillon
-    disparaît, motif intact ; re-peindre → **Appliquer** → les 2 exemplaires + la vignette se mettent à
-    jour, `motif.surface` exporté correct ; chaque trait est **instantané** (plus de gel par trait).
-- **Si bloqué :** si le mapping écran→local du brouillon décale le trait, STOP et signaler (réutiliser
-  `getRelativePointerPosition` comme l'actuel `localPoint`).
-- **Commit :** `feat(edit): calque d'essai non destructif (Appliquer/Jeter)`
+  - visuel : éditer le motif A (peindre), quitter sans valider → A (toutes ses instances + sa vignette)
+    s'affiche **en vert** + badge « 1 essai en attente » ; éditer B, **revenir sur A** → le brouillon de A
+    est **restauré** (édition en couleur réelle pendant le tracé, vert au repos) ; **Tout appliquer** → A et B
+    repassent à leur couleur réelle, instances + vignettes à jour, map vidée, badge à 0 ; **Jeter** sur un
+    essai → vert retiré, motif intact ; déplacer/zoomer un motif en attente → le vert **suit** sans gel
+    (baked au cache) ; tenter un export avec un essai en attente → **avertissement**, et le SVG/PNG exporté
+    contient la **couleur réelle** (pas le vert) ; chaque trait reste **instantané** (plus de gel par trait).
+- **Si bloqué :** si la restauration décale le brouillon (mapping écran→local), STOP (réutiliser
+  `getRelativePointerPosition` comme l'actuel `localPoint`) ; si un brouillon orphelin subsiste après
+  suppression, STOP et signaler.
+- **Commit :** `feat(edit): calques d'essai multiples (Appliquer / Jeter / Tout appliquer)`
 - **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
 
 ### T6 — Pinceau : tailles mémorisées + profil rond / plat · Modèle : Haiku
@@ -315,6 +389,8 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
      Aucune inversion d'axe → le PNG sort exactement comme à l'écran.
   4. `canvas.toBlob` → `pattern.png` (option `image/jpeg` qualité ~0.92). Réutiliser `download`.
   5. Garde anti-mémoire : si pixels totaux > ~40 Mpx, avertir et plafonner le DPI.
+  6. **Garde-fou essais (dépend de T5)** : avant d'exporter, si `editDrafts.size > 0`, appliquer le même
+     avertissement/confirm qu'`exportSVG` (Appliquer-tout / Exporter quand même / Annuler).
 - **Validation :**
   - auto : `node test/run.js` → OK (export SVG inchangé).
   - visuel : exporter SVG **et** PNG de la même compo → le **PNG correspond à l'écran**, le SVG reste en
@@ -424,3 +500,13 @@ T1, T2, T3, T5 touchent app.js → série pour éviter les conflits d'édition.
   ticket séparé touchant `pxPathsToMm`.
 - **Édition = motif** (D-006) : le calque d'essai s'applique au motif sélectionné (toutes ses instances),
   pas à une instance isolée.
+- **Essais en attente = session-only** (D-007, T5) : les brouillons non appliqués vivent dans `editDrafts`
+  (map en mémoire), **ne sont pas sauvegardés** dans le projet. Fermer/recharger l'app perd les essais non
+  appliqués — d'où le compteur « N essais en attente », le bouton « Tout appliquer » et l'avertissement à
+  l'export (SVG et PNG).
+- **Brouillon en attente affiché en vert** (D-007, T5, choix Thibault 2026-06-23) : un motif avec un essai
+  non validé s'affiche **en vert** (`EDIT_DRAFT_COLOR`) sur toutes ses instances + sa vignette, jusqu'à
+  Appliquer/Jeter. C'est **display-only** : silhouette, occlusion et export restent calés sur `motif.surface`
+  réel. Coût perf nul par frame (un seul `rerenderMotif` à chaque transition, vert *baked* dans le cache).
+  **Limite assumée :** si le brouillon déborde la silhouette réelle (traits ajoutés au-delà), le vert peut
+  apparaître sans fond blanc / hors occlusion calculée — provisoire, résolu à l'application.
