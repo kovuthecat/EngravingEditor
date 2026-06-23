@@ -156,14 +156,18 @@
           <span id="draft-count-label" class="note">0 essai en attente</span>
           <button id="btn-draft-apply-all" class="btn sm">Tout appliquer</button>
         </div>
+        <div class="row"><label for="export-dpi">DPI (PNG/JPEG)</label><input id="export-dpi" type="number" value="300" min="50" max="1200" step="50" /></div>
         <div class="grid2">
           <button id="btn-export" class="btn primary">Exporter SVG</button>
+          <button id="btn-export-png" class="btn sm">Exporter PNG</button>
+          <button id="btn-export-jpeg" class="btn sm">Exporter JPEG</button>
           <button id="btn-save" class="btn sm">Enregistrer</button>
           <label class="btn sm">Charger
             <input id="load-project" type="file" accept=".json" hidden />
           </label>
           <button id="btn-clear" class="btn sm danger">Tout effacer</button>
         </div>
+        <p class="note">SVG = miroir vertical (gravure) ; PNG/JPEG = sens écran (aperçu/partage). Si des essais sont en attente, les deux avertissent avant export.</p>
       </section>
     </aside>
 

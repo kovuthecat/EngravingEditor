@@ -526,6 +526,14 @@
         if (ring.length < 3) continue;
         boundaryLayer.add(new Konva.Line({ points: ring.flat(), closed: true, stroke: "#f59e0b", strokeWidth: 1.5, dash: [8, 5] }));
       }
+      // T10 : même guide ambre autour des vides internes, mais vers l'EXTÉRIEUR du vide (= dans le
+      // corps) -> offsetPolygon (positif, élargit) au lieu d'insetPolygon (rétrécit le contour).
+      for (const hole of holes) {
+        for (const ring of ML.offsetPolygon(hole, state.margin.mm * PX_PER_MM)) {
+          if (ring.length < 3) continue;
+          boundaryLayer.add(new Konva.Line({ points: ring.flat(), closed: true, stroke: "#f59e0b", strokeWidth: 1.5, dash: [8, 5] }));
+        }
+      }
     }
     // masque : tout hors corps + cavités, en couleur de fond (aperçu net)
     // vit dans zonesLayer (pas un calque dédié, cf. T4) : ajouté puis renvoyé au fond pour
@@ -1286,6 +1294,52 @@
     download("pattern.svg", ML.writeSVG(groupsMm, { w, h }), "image/svg+xml");
   }
 
+  // ─── export PNG/JPEG haute déf, sens écran (T9) ─────────────────────────────
+  // Réutilise la même géométrie visible que exportSVG (instancesBottomToTop + occludeSurfaces) mais
+  // SANS passer par pxPathsToMm : le PNG reste en repère écran (pas de -y), divergence volontaire
+  // d'orientation avec le SVG, qui lui garde son miroir vertical (décision Thibault, cf. plan T9).
+  const RASTER_MAX_PX = 40e6; // garde anti-mémoire (~40 Mpx)
+  function exportPNG(format) {
+    if (!guardPendingDrafts()) return;
+    const insts = instancesBottomToTop();
+    if (!insts.length) { alert("Rien à exporter."); return; }
+    const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
+    const colors = Object.keys(visible);
+    const allPts = colors.flatMap((color) => visible[color].flatMap((p) => p.pts));
+    if (!allPts.length) { alert("Rien de visible à exporter."); return; }
+    const [minx, maxx] = minMax(allPts.map((p) => p[0]));
+    const [miny, maxy] = minMax(allPts.map((p) => p[1]));
+    let dpi = parseFloat(document.getElementById("export-dpi").value) || 300;
+    let pxToOut = (dpi / 25.4) / PX_PER_MM;
+    let outW = (maxx - minx) * pxToOut, outH = (maxy - miny) * pxToOut;
+    if (outW * outH > RASTER_MAX_PX) {
+      dpi = Math.max(50, Math.floor(dpi * Math.sqrt(RASTER_MAX_PX / (outW * outH))));
+      pxToOut = (dpi / 25.4) / PX_PER_MM;
+      outW = (maxx - minx) * pxToOut; outH = (maxy - miny) * pxToOut;
+      alert(`Export plafonné à ${dpi} dpi pour rester sous ~40 Mpx (taille demandée trop grande).`);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(outW));
+    canvas.height = Math.max(1, Math.round(outH));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.translate(-minx * pxToOut, -miny * pxToOut);
+    ctx.scale(pxToOut, pxToOut);
+    for (const color of colors) {
+      ctx.beginPath();
+      for (const p of visible[color]) tracePoly(ctx, p.pts);
+      ctx.fillStyle = color;
+      ctx.fill("evenodd");
+    }
+    const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+    const ext = format === "jpeg" ? "jpg" : "png";
+    canvas.toBlob((blob) => {
+      if (!blob) { alert("Export impossible (toBlob indisponible sur ce navigateur)."); return; }
+      downloadBlob(`pattern.${ext}`, blob);
+    }, mime, format === "jpeg" ? 0.92 : undefined);
+  }
+
   // ─── projet (save/load JSON) ────────────────────────────────────────────────
   function projectData() {
     return {
@@ -1464,6 +1518,11 @@
     a.href = URL.createObjectURL(new Blob([text], { type: mime }));
     a.download = name; a.click(); URL.revokeObjectURL(a.href);
   }
+  function downloadBlob(name, blob) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  }
   function readFiles(files, cb) {
     [...files].forEach((f) => { const r = new FileReader(); r.onload = () => cb(f.name, r.result); r.readAsText(f); });
   }
@@ -1507,6 +1566,8 @@
   document.getElementById("frame-w").oninput = resizeFrame;
   document.getElementById("frame-h").oninput = resizeFrame;
   document.getElementById("btn-export").onclick = exportSVG;
+  document.getElementById("btn-export-png").onclick = () => exportPNG("png");
+  document.getElementById("btn-export-jpeg").onclick = () => exportPNG("jpeg");
   document.getElementById("btn-pack").onclick = () =>
     packing(parseInt(document.getElementById("pack-count").value) || 30,
       parseFloat(document.getElementById("pack-smin").value) || 0.6,

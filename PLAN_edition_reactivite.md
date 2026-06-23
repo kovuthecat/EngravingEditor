@@ -398,7 +398,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
 - **Si bloqué :** si `toBlob` est indisponible en `file://` selon le navigateur, STOP et signaler
   (fallback `toDataURL` à valider, pas inventer).
 - **Commit :** `feat(export): PNG/JPEG haute déf aligné sur le SVG`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). `exportPNG(format)` ajoutée à côté d'`exportSVG`, réutilise `instancesBottomToTop`/`ML.occludeSurfaces`/`reservedPolys` sans passer par `pxPathsToMm` (repère écran, pas de `-y`). DPI réglable via `#export-dpi` (défaut 300) ; garde anti-mémoire : si la sortie dépasserait ~40 Mpx, le DPI est replafonné automatiquement (`Math.sqrt` du ratio) avec un avertissement, pas de plantage. `canvas.toBlob` (PNG, ou JPEG qualité 0.92) → nouveau helper `downloadBlob` (variante de `download` acceptant un `Blob` au lieu d'un texte). Garde-fou essais en attente réutilisé via `guardPendingDrafts()` (même fonction qu'`exportSVG`, pas de duplication). **Si bloqué (toBlob indisponible en file://)** : non testé en navigateur réel — validation visuelle laissée à Thibault sur demande explicite (skip).
 
 ### T10 — Guide offset autour des vides internes (vers le corps) · Modèle : Haiku
 - **Pourquoi ce modèle :** ajout localisé dans `drawBoundary`, helper `offsetPolygon` déjà présent.
@@ -423,7 +423,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
 - **Si bloqué :** si `offsetPolygon` renvoie un polygone vide pour un trou minuscule, l'ignorer (continue),
   ne pas planter.
 - **Commit :** `feat(guide): offset des vides internes vers le corps`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Boucle ajoutée dans `drawBoundary` juste après l'inset du contour, à l'intérieur du même `if (state.margin.show && state.margin.mm > 0)` (un seul réglage, comme prévu) : pour chaque `hole` de `state.holes`, `ML.offsetPolygon(hole, marginPx)` (positif = élargit vers le corps), même style trait (ambre, tirets). Pas de champ séparé créé. `node test/run.js` → OK (purement visuel, géométrie de test inchangée). Validation visuelle (liseré ambre autour de chaque cavité, du côté corps) laissée à Thibault sur demande explicite (skip).
 
 ### T11 — Déclutter sidebar : section « Avancé » repliée · Modèle : Sonnet
 - **Pourquoi ce modèle :** réorganisation DOM/CSS avec jugement d'ergonomie, validation visuelle.
