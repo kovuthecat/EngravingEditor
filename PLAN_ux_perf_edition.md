@@ -328,7 +328,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si `exitEdit` est aussi appelé hors interaction (ex. `clear`/`load` à 1368/1583) et rouvre des
   sections de façon indésirable, STOP et signaler (peut nécessiter de garder le garde `edit.reopenDetails` nul).
 - **Commit :** `feat(edit): repli/restauration auto des sections en édition`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : a0022e7 (validation visuelle non faite — skip demandé)
 
 # ─────────────  LOT 4 — Pression stylet + plume calligraphique  ─────────────
 
