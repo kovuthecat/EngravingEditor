@@ -704,7 +704,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
   let editPreview = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
@@ -985,7 +985,7 @@
   // perf D-007) : seul editLayer est redessiné, instantanément, quelle que soit la taille du décor.
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-    const poly = ML.strokeToPolygon(localPts, radiusPx, edit.profile);
+    const poly = ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
     pushStrokeSnapshot();
     edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
     edit.dirty = true;
@@ -1017,7 +1017,7 @@
   function shapePolygon(tool, a, b, constrain) {
     if (tool === "line") {
       const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-      return ML.strokeToPolygon([a, b], radiusPx, edit.profile);
+      return ML.strokeToPolygon([a, b], radiusPx, edit.strokeMode);
     }
     if (tool === "rect") return rectPolygon(a, b, constrain);
     return ellipsePolygon(a, b, constrain);
@@ -1028,7 +1028,7 @@
     if (tool === "line") {
       return new Konva.Line({
         points: a.concat(a), stroke, strokeWidth: edit.sizeMm * PX_PER_MM,
-        lineCap: edit.profile === "flat" ? "butt" : "round", opacity: 0.55, listening: false,
+        lineCap: edit.strokeMode === "flat" ? "butt" : "round", opacity: 0.55, listening: false,
       });
     }
     if (tool === "rect") {
@@ -1268,10 +1268,12 @@
       document.getElementById(id).classList.toggle("on", id === "tool-" + tool);
     });
   }
-  function setEditProfile(profile) {
-    edit.profile = profile;
-    document.getElementById("profile-round").classList.toggle("on", profile === "round");
-    document.getElementById("profile-flat").classList.toggle("on", profile === "flat");
+  function setStrokeMode(mode) {
+    edit.strokeMode = mode;
+    document.getElementById("mode-round").classList.toggle("on", mode === "round");
+    document.getElementById("mode-pressure").classList.toggle("on", mode === "pressure");
+    document.getElementById("mode-calli").classList.toggle("on", mode === "calli");
+    document.getElementById("calli-angle-row").hidden = mode !== "calli";
   }
   document.getElementById("btn-edit").onclick = () => { if (edit.active) exitEdit(); else enterEdit(); };
   document.getElementById("tool-brush").onclick = () => setEditTool("brush");
@@ -1296,8 +1298,10 @@
       document.querySelectorAll(".size-btn").forEach((s) => s.classList.toggle("on", s === b));
     };
   });
-  document.getElementById("profile-round").onclick = () => setEditProfile("round");
-  document.getElementById("profile-flat").onclick = () => setEditProfile("flat");
+  document.getElementById("mode-round").onclick = () => setStrokeMode("round");
+  document.getElementById("mode-pressure").onclick = () => setStrokeMode("pressure");
+  document.getElementById("mode-calli").onclick = () => setStrokeMode("calli");
+  document.getElementById("calli-angle").oninput = (e) => { edit.calliAngle = +e.target.value || 0; };
   document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
   document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
   document.getElementById("btn-edit-undo").onclick = () => undoStroke();

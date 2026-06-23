@@ -359,7 +359,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si `edit.profile` est référencé ailleurs que les 4 endroits listés, STOP et lister les
   occurrences avant de renommer.
 - **Commit :** `feat(edit): sélecteur de mode de trait (rond/pression/plume) + angle`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : voir HEAD (validation visuelle non faite — skip demandé)
 
 ### T11 — Trait à largeur variable selon la pression du stylet · Modèle : Sonnet
 - **Pourquoi ce modèle :** géométrie (nouveau helper Clipper) + capture d'événement, validation `node test/run.js`.
