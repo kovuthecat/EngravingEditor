@@ -230,6 +230,12 @@
     return { [motif.color]: merged };
   }
 
+  // matière du brouillon absente du réel = ajout (T5) : seule cette portion s'affiche en vert,
+  // le reste du brouillon se peint en couleur réelle (une gomme devient un vrai trou, sans surlignage).
+  function addedRegions(realContours, draftContours) {
+    return ML.surfaceDifference(draftContours, realContours || []);
+  }
+
   // compat anciens projets (avant T1, D-007) : motif.silhouette pouvait être un polygone unique
   // [[x,y]..] au lieu d'une liste de contours [[ [x,y].. ], ...]. Détection : sil[0][0] est un
   // point (array) en multi-contours, un nombre en polygone unique.
@@ -260,15 +266,26 @@
       ctx.fillStyle = "#fff";
       ctx.beginPath(); for (const contour of silhouette) poly(ctx, contour, true); ctx.fill();
     }
-    // D-007/T5 : un essai en attente (non appliqué) s'affiche en vert sur la vignette, à la
-    // place de la couleur réelle — motif.surface n'est pas modifié tant que non Appliqué.
+    // D-007/T5 : un essai en attente (non appliqué) garde sa couleur réelle sur la vignette ;
+    // seule la matière AJOUTÉE par l'essai (absente du réel) se surligne en vert. Une gomme
+    // (matière retirée) redevient donc un trou normal, sans surlignage.
     const pendingDraft = editDrafts.get(motif.id);
     const fillGroups = pendingDraft ? pendingDraft.surfaceByColor : exportFill(motif);
+    const realFill = pendingDraft ? exportFill(motif) : null;
     for (const color in fillGroups) {
       ctx.beginPath();
       for (const region of fillGroups[color]) poly(ctx, region.pts, true);
-      ctx.fillStyle = pendingDraft ? EDIT_DRAFT_COLOR : color;
+      ctx.fillStyle = color;
       ctx.fill("evenodd");
+      if (pendingDraft) {
+        const added = addedRegions(realFill[color], fillGroups[color]);
+        if (added.length) {
+          ctx.beginPath();
+          for (const region of added) poly(ctx, region.pts, true);
+          ctx.fillStyle = EDIT_DRAFT_COLOR;
+          ctx.fill("evenodd");
+        }
+      }
     }
     ctx.restore();
   }
@@ -297,15 +314,18 @@
       }
     }
     // surfaces : une par couleur focale, trous VIDE laissent voir le fond blanc (evenodd, imite drawBoundary)
-    // D-007/T5 : un essai en attente (editDrafts) remplace l'affichage réel par le brouillon, rendu
-    // en vert (gère la gomme correctement). motif.surface/silhouette restent inchangés (display-only) ;
-    // le vert est baked dans le cache du groupe ci-dessous (g.cache), donc 0 coût par frame.
+    // D-007/T5 : un essai en attente (editDrafts) se peint en couleur RÉELLE comme un motif normal
+    // (une gomme redevient un vrai trou, sans surlignage) ; seule la matière AJOUTÉE par l'essai
+    // (absente du réel, cf. addedRegions) reçoit une Shape de surcharge en vert, non interactive.
+    // motif.surface/silhouette restent inchangés (display-only) ; le vert est baked dans le cache
+    // du groupe ci-dessous (g.cache), donc 0 coût par frame.
     const pendingDraft = editDrafts.get(motif.id);
     const fillGroups = pendingDraft ? pendingDraft.surfaceByColor : exportFill(motif);
+    const realFill = pendingDraft ? exportFill(motif) : null;
     for (const color in fillGroups) {
       const contours = fillGroups[color];
       const shape = new Konva.Shape({
-        fill: pendingDraft ? EDIT_DRAFT_COLOR : color,
+        fill: color,
         fillRule: "evenodd", // trous VIDE laissent passer le clic (hitFunc ci-dessous)
         sceneFunc: (ctx, shape) => {
           const c = ctx._context;
@@ -336,6 +356,23 @@
         },
       });
       g.add(shape);
+      if (pendingDraft) {
+        const added = addedRegions(realFill[color], contours);
+        if (added.length) {
+          g.add(new Konva.Shape({
+            fill: EDIT_DRAFT_COLOR,
+            fillRule: "evenodd",
+            listening: false, // surcharge visuelle seule ; le clic reste géré par la Shape réelle ci-dessus
+            sceneFunc: (ctx, shape) => {
+              const c = ctx._context;
+              c.beginPath();
+              for (const region of added) tracePoly(c, region.pts);
+              c.fillStyle = shape.fill();
+              c.fill("evenodd");
+            },
+          }));
+        }
+      }
     }
     // T3 perf : rasterise le groupe (scène + hit) en bitmap pour que drag/zoom déplacent une
     // image au lieu de re-tracer le décor (potentiellement des milliers de contours) à chaque
@@ -715,7 +752,9 @@
     document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "grid" : "none";
   }
 
-  // (ré)affiche le calque d'essai : silhouette réelle (fond) + brouillon courant en couleur focale.
+  // (ré)affiche le calque d'essai : silhouette réelle (fond) + brouillon courant en couleur focale,
+  // + (T5) surcharge verte sur la seule matière ajoutée par l'essai en cours (vs la surface réelle,
+  // exportFill(motif) — qui ignore le brouillon en cours).
   function redrawEditLayer(motif) {
     editLayer.destroyChildren();
     for (const contour of motifSilhouettePts(motif)) {
@@ -733,6 +772,19 @@
           c.fill("evenodd");
         },
       }));
+      const added = addedRegions(exportFill(motif)[motif.color], draft);
+      if (added.length) {
+        editLayer.add(new Konva.Shape({
+          fill: EDIT_DRAFT_COLOR, fillRule: "evenodd", listening: false,
+          sceneFunc: (ctx, shape) => {
+            const c = ctx._context;
+            c.beginPath();
+            for (const region of added) tracePoly(c, region.pts);
+            c.fillStyle = shape.fill();
+            c.fill("evenodd");
+          },
+        }));
+      }
     }
     uiLayer.batchDraw();
   }
