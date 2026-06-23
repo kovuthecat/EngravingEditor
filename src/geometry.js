@@ -226,6 +226,12 @@
     return clipBy(contours || [], true, cutInt, ClipperLib.ClipType.ctDifference);
   };
 
+  // intersection (lasso, T8) : portion de `contours` à l'intérieur de `clipContours` -> [{pts,closed:true}].
+  ML.surfaceIntersect = function (contours, clipContours) {
+    const clipInt = unionInt(new ClipperLib.Paths(), (clipContours || []).map((c) => c.pts));
+    return clipBy(contours || [], true, clipInt, ClipperLib.ClipType.ctIntersection);
+  };
+
   // silhouette (contours extérieurs, multi-pièces) d'un jeu de contours fermés {pts,closed} —
   // délègue à `motifSilhouette` en adaptant l'entrée « contours » en pseudo-zones de depth 0.
   ML.silhouetteFromSurface = function (contours) {

@@ -107,8 +107,15 @@
               <button id="tool-line" class="btn sm tool-btn">Ligne</button>
               <button id="tool-rect" class="btn sm tool-btn">Rectangle</button>
               <button id="tool-ellipse" class="btn sm tool-btn">Ellipse</button>
+              <button id="tool-lasso" class="btn sm tool-btn">Lasso</button>
             </div>
             <p class="note">Ligne/Rectangle/Ellipse utilisent le mode Pinceau (ajoute) ou Gomme (retire) actif. Maj = carré/cercle contraint.</p>
+            <p class="note">Lasso : entoure une portion existante du brouillon, glisse-la si besoin (clic-glisser sur la zone surlignée), puis choisis une action. Échap annule la sélection.</p>
+            <div id="lasso-actions" style="display:none;gap:6px;margin:6px 0">
+              <button id="btn-lasso-move" class="btn sm">Déplacer</button>
+              <button id="btn-lasso-duplicate" class="btn sm">Dupliquer</button>
+              <button id="btn-lasso-erase" class="btn sm danger">Effacer</button>
+            </div>
             <div class="row"><label>Taille (mm)</label><input id="brush-size" type="number" value="3" min="0.5" step="0.5" /></div>
             <div style="display:flex;gap:6px;margin:6px 0">
               <button class="btn sm tool-btn size-btn" data-size-mm="1">1 mm</button>

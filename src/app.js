@@ -647,8 +647,10 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null };
   let editPreview = null;
+  // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
+  let lassoHighlight = null;
   // brouillons en attente (D-007) : motifId -> { surfaceByColor }. Session uniquement, jamais
   // sérialisé dans le projet (cf. projectData) ; purgé par loadProject (nouveau projet = nouveaux ids).
   const editDrafts = new Map();
@@ -733,6 +735,7 @@
     const stashed = editDrafts.get(motif.id);
     edit.draft = deepCopyContours(stashed ? Object.values(stashed.surfaceByColor)[0] : exportFill(motif)[motif.color]);
     edit.dirty = false;
+    clearLassoSelection(); // pas de sélection lasso résiduelle d'une session d'édition précédente
     // T3 : le groupe a été mis en cache (bitmap) à sa création. Un groupe caché affiche son bitmap
     // figé et ignore les enfants ajoutés ensuite ; on le décache (exitEdit recache), mais le calque
     // d'essai (editLayer, jamais caché) est désormais ce qui affiche réellement le tracé en direct.
@@ -756,6 +759,7 @@
     // restauré si on revient sur ce motif (enterEdit), visible en vert sur ses instances (T5 §5).
     if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
     edit.active = false; edit.drawing = false; edit.pts = []; edit.draft = []; edit.dirty = false;
+    clearLassoSelection();
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     editLayer.visible(false);
     editLayer.destroyChildren();
@@ -775,6 +779,7 @@
   function applyMotifDraft(motif) {
     const draft = effectiveDraft(motif);
     if (draft == null) return;
+    clearLassoSelection(); // une sélection lasso en attente porte sur edit.draft tel qu'avant l'Appliquer
     recordHistory();
     motif.surface = { [motif.color]: draft };
     motif.silhouette = ML.silhouetteFromSurface(Object.values(motif.surface).flat());
@@ -792,6 +797,7 @@
   // jette le brouillon effectif (live ou rangé) : le motif retrouve sa surface réelle inchangée.
   function discardMotifDraft(motif) {
     if (effectiveDraft(motif) == null) return;
+    clearLassoSelection();
     editDrafts.delete(motif.id);
     if (edit.active && edit.motifId === motif.id) {
       edit.draft = deepCopyContours(exportFill(motif)[motif.color]);
@@ -806,6 +812,7 @@
   // aussi pendant une édition live (cf. UI) : on range d'abord le brouillon en cours s'il est
   // modifié, sinon "Tout appliquer" perdrait silencieusement les traits non encore rangés.
   function applyAllDrafts() {
+    clearLassoSelection();
     if (edit.active && edit.dirty) {
       const liveMotif = state.motifs.find((m) => m.id === edit.motifId);
       if (liveMotif) editDrafts.set(liveMotif.id, { surfaceByColor: { [liveMotif.color]: edit.draft } });
@@ -975,35 +982,160 @@
     if (motif && edit.pts.length) applyStroke(motif, edit.pts);
     edit.pts = [];
   }
+
+  // outil lasso (T8) : entoure une portion existante du brouillon (polyligne fermée au up) pour
+  // la sélectionner. edit.lasso = {inside, rest, offset} ne mute PAS edit.draft — c'est un aperçu
+  // draggable (offset glissé à la main, cf. moveLassoDrag) tant que Déplacer/Dupliquer/Effacer
+  // (#lasso-actions) ou Échap n'a pas tranché. inside/rest sont calculés une fois à la fermeture
+  // du lasso ; seul `offset` change pendant le glissé (pas de recalcul Clipper par frame).
+  function pointInContours(pt, contours) {
+    let count = 0;
+    for (const c of contours) if (ML.pointInPoly(pt, c.pts)) count++;
+    return count % 2 === 1; // evenodd à travers tous les contours (trous compris)
+  }
+  function translateContours(contours, offset) {
+    const [dx, dy] = offset;
+    return (contours || []).map((c) => ({ pts: c.pts.map(([x, y]) => [x + dx, y + dy]), closed: c.closed }));
+  }
+  function renderLassoHighlight() {
+    if (lassoHighlight) { lassoHighlight.destroy(); lassoHighlight = null; }
+    if (edit.lasso) {
+      const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
+      lassoHighlight = new Konva.Shape({
+        listening: false, fill: "#fb923c", fillRule: "evenodd", opacity: 0.85,
+        sceneFunc: (ctx, shape) => {
+          const c = ctx._context;
+          c.beginPath();
+          for (const region of moved) tracePoly(c, region.pts);
+          c.fillStyle = shape.fill();
+          c.fill("evenodd");
+        },
+      });
+      editLayer.add(lassoHighlight);
+    }
+    uiLayer.batchDraw();
+  }
+  function clearLassoSelection() {
+    edit.lasso = null;
+    edit.lassoDragAnchor = null;
+    if (lassoHighlight) { lassoHighlight.destroy(); lassoHighlight = null; }
+    document.getElementById("lasso-actions").style.display = "none";
+    uiLayer.batchDraw();
+  }
+  function startLassoTrace() {
+    edit.drawing = true;
+    edit.pts = [localPoint()];
+    editPreview = new Konva.Line({
+      points: edit.pts.flat(), stroke: "#fbbf24", strokeWidth: 1.5, dash: [8, 6], listening: false,
+    });
+    editLayer.add(editPreview);
+  }
+  function moveLassoTrace() {
+    edit.pts.push(localPoint());
+    editPreview.points(edit.pts.flat());
+    uiLayer.batchDraw();
+  }
+  function endLassoTrace() {
+    edit.drawing = false;
+    if (editPreview) { editPreview.destroy(); editPreview = null; }
+    if (edit.pts.length > 2) applyLassoTrace(edit.pts);
+    edit.pts = [];
+  }
+  // ferme la polyligne tracée et sépare le brouillon en inside (sous le lasso) / rest (hors lasso) ;
+  // si rien n'est sous le lasso, pas de sélection (silencieux, comme un clic dans le vide).
+  function applyLassoTrace(pts) {
+    const lassoPoly = [{ pts: pts.concat([pts[0]]), closed: true }];
+    const inside = ML.surfaceIntersect(edit.draft, lassoPoly);
+    if (!inside.length) return;
+    const rest = ML.surfaceDifference(edit.draft, lassoPoly);
+    edit.lasso = { inside, rest, offset: [0, 0] };
+    renderLassoHighlight();
+    document.getElementById("lasso-actions").style.display = "flex";
+  }
+  // pointerdown en mode lasso : si une sélection existe déjà et que le clic tombe dedans (en
+  // tenant compte de son offset courant), démarre un glissé manuel ; sinon la sélection en cours
+  // est abandonnée (clic à côté = on retrace) et un nouveau lasso démarre.
+  function startLassoPointer() {
+    if (edit.lasso) {
+      const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
+      if (pointInContours(localPoint(), moved)) { edit.lassoDragAnchor = localPoint(); return; }
+      clearLassoSelection();
+    }
+    startLassoTrace();
+  }
+  function moveLassoDrag() {
+    const p = localPoint();
+    const dx = p[0] - edit.lassoDragAnchor[0], dy = p[1] - edit.lassoDragAnchor[1];
+    edit.lasso.offset = [edit.lasso.offset[0] + dx, edit.lasso.offset[1] + dy];
+    edit.lassoDragAnchor = p;
+    renderLassoHighlight();
+  }
+  // boutons contextuels (#lasso-actions) : tranchent le sort de la sélection avec son offset
+  // courant (translation manuelle si l'utilisateur a glissé, [0,0] sinon).
+  function finalizeLassoMove() {
+    if (!edit.lasso) return;
+    const motif = state.motifs.find((m) => m.id === edit.motifId);
+    const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
+    edit.draft = ML.surfaceUnion(edit.lasso.rest, moved);
+    edit.dirty = true;
+    clearLassoSelection();
+    if (motif) redrawEditLayer(motif);
+  }
+  function finalizeLassoDuplicate() {
+    if (!edit.lasso) return;
+    const motif = state.motifs.find((m) => m.id === edit.motifId);
+    const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
+    edit.draft = ML.surfaceUnion(edit.draft, moved);
+    edit.dirty = true;
+    clearLassoSelection();
+    if (motif) redrawEditLayer(motif);
+  }
+  function finalizeLassoErase() {
+    if (!edit.lasso) return;
+    const motif = state.motifs.find((m) => m.id === edit.motifId);
+    edit.draft = edit.lasso.rest;
+    edit.dirty = true;
+    clearLassoSelection();
+    if (motif) redrawEditLayer(motif);
+  }
+
   const isFreehandTool = (tool) => tool === "brush" || tool === "eraser";
   // capté au niveau du stage (pas du groupe) : la portée est le motif verrouillé, pas ce qui
   // est sous le pointeur. Deux doigts = pan (T2) a priorité, donc ignoré ici. brush/eraser = tracé
   // libre (startStroke/moveStroke/endStroke) ; line/rect/ellipse = ancrage+aperçu (T7, startShape/
-  // moveShape/endShape) — même dispatch stage, le tool actif décide de la branche.
+  // moveShape/endShape) ; lasso (T8) = trace une sélection OU glisse celle déjà sélectionnée
+  // (edit.lassoDragAnchor, hors du flag edit.drawing — sinon il faudrait re-brancher tous les
+  // autres outils) — même dispatch stage, le tool actif décide de la branche.
   stage.on("mousedown touchstart", (e) => {
     if (!edit.active) return;
     if (e.evt.touches && e.evt.touches.length !== 1) return;
     e.evt.preventDefault();
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
+    if (edit.tool === "lasso") { startLassoPointer(); return; }
     if (isFreehandTool(edit.tool)) startStroke(motif); else startShape(motif, e);
   });
   stage.on("mousemove touchmove", (e) => {
-    if (!edit.active || !edit.drawing) return;
+    if (!edit.active) return;
     if (e.evt.touches && e.evt.touches.length !== 1) return;
+    if (edit.lassoDragAnchor) { e.evt.preventDefault(); moveLassoDrag(); return; }
+    if (!edit.drawing) return;
     e.evt.preventDefault();
-    if (isFreehandTool(edit.tool)) moveStroke(); else moveShape(e);
+    if (isFreehandTool(edit.tool)) moveStroke(); else if (edit.tool === "lasso") moveLassoTrace(); else moveShape(e);
   });
   stage.on("mouseup touchend touchcancel", () => {
-    if (!edit.active || !edit.drawing) return;
-    if (isFreehandTool(edit.tool)) endStroke(); else endShape();
+    if (!edit.active) return;
+    if (edit.lassoDragAnchor) { edit.lassoDragAnchor = null; return; }
+    if (!edit.drawing) return;
+    if (isFreehandTool(edit.tool)) endStroke(); else if (edit.tool === "lasso") endLassoTrace(); else endShape();
   });
 
   function setEditTool(tool) {
+    if (edit.tool === "lasso" && tool !== "lasso") clearLassoSelection();
     edit.tool = tool;
     if (tool === "brush") edit.op = "add";
     else if (tool === "eraser") edit.op = "sub";
-    ["tool-brush", "tool-eraser", "tool-line", "tool-rect", "tool-ellipse"].forEach((id) => {
+    ["tool-brush", "tool-eraser", "tool-line", "tool-rect", "tool-ellipse", "tool-lasso"].forEach((id) => {
       document.getElementById(id).classList.toggle("on", id === "tool-" + tool);
     });
   }
@@ -1018,6 +1150,10 @@
   document.getElementById("tool-line").onclick = () => setEditTool("line");
   document.getElementById("tool-rect").onclick = () => setEditTool("rect");
   document.getElementById("tool-ellipse").onclick = () => setEditTool("ellipse");
+  document.getElementById("tool-lasso").onclick = () => setEditTool("lasso");
+  document.getElementById("btn-lasso-move").onclick = finalizeLassoMove;
+  document.getElementById("btn-lasso-duplicate").onclick = finalizeLassoDuplicate;
+  document.getElementById("btn-lasso-erase").onclick = finalizeLassoErase;
   document.getElementById("brush-size").oninput = (e) => {
     edit.sizeMm = parseFloat(e.target.value) || 3;
     document.querySelectorAll(".size-btn").forEach((b) => b.classList.toggle("on", parseFloat(b.dataset.sizeMm) === edit.sizeMm));
@@ -1070,6 +1206,7 @@
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSel(); }
     else if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); duplicateSel(); }
     else if (e.key === "]") zorder("up"); else if (e.key === "[") zorder("down");
+    else if (e.key === "Escape" && edit.lasso) { e.preventDefault(); clearLassoSelection(); }
   });
 
   // ─── packing assisté (Phase 1 : dispersion dans le contour) ──────────────────
