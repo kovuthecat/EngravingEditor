@@ -47,31 +47,41 @@ Points de vigilance : pas de gestion de `<g transform="…">` (translate/scale) 
 
 Rôle : détecter les zones d'un motif (parent/profondeur/rôle), calculer les régions/surfaces gravées,
 calculer les surfaces réellement visibles (occlusion « autocollant » par surfaces) et écrire le SVG
-d'export ; convertir px↔mm.
+d'export ; convertir px↔mm. Lot 3 (T4) ajoute les helpers pour l'édition stylet.
 Fichiers clés : `src/geometry.js` (`ML.buildZones`, `ML.regionOf`, `ML.motifFill`, `ML.motifSilhouette`,
-`ML.occludeSurfaces`, `ML.writeSVG`, `ML.pxPathsToMm`, `ML.insetPolygon`, `ML.absArea`).
+`ML.occludeSurfaces`, `ML.writeSVG`, `ML.pxPathsToMm`, `ML.insetPolygon`, `ML.absArea`,
+`ML.strokeToPolygon`, `ML.surfaceUnion`, `ML.surfaceDifference`, `ML.silhouetteFromSurface`).
 Flux : `buildZones` (parent = plus petit sous-chemin de même couleur contenant le point intérieur) →
 `motifFill` (union des régions REMPLI par couleur) → à l'export, pour chaque instance du **haut vers le
 bas**, soustraire (Clipper `ctDifference`) l'union des **silhouettes** au-dessus, puis intersection avec
 le contour, puis soustraction des zones interdites → `writeSVG` (un `<path fill-rule="evenodd">` par
-couleur, en mm).
+couleur, en mm). Édition stylet (T6) : `strokeToPolygon` (polyligne→polygone épais), `surfaceUnion`/`surfaceDifference`
+(union/différence de jeux de contours fermés), `silhouetteFromSurface` (enveloppe extérieure).
 Points de vigilance : coords entières Clipper (×1000) ; un trou reste toujours rattaché à la couleur de
 sa zone parente (ne pas le déplacer seul) ; toute modif géométrique doit passer `node test/run.js`.
 
 ### Feature 3 — UI / édition / état (`src/app.js`)
 
 Rôle : bibliothèque de motifs, instances Konva éditables (dont l'éditeur de rôles de zones), packing,
-export, persistance projet.
+export, persistance projet. Lot 3 ajoute interactions tactiles (T2), layout responsive (T3), import calibré (T1),
+surface override (T5) et mode édition stylet (T6).
 Fichiers clés : `src/app.js`, `index.html`, `src/style.css`.
 Flux : import → `buildMotifFromSVG` (centré, `zones` via `ML.buildZones`, `silhouette` via
-`ML.motifSilhouette`) → `addInstance` (Konva.Group : fond silhouette blanc opaque + une surface
-`evenodd` par couleur via `ML.motifFill`) → édition (Transformer/drag/clavier/éditeur de zones) →
+`ML.motifSilhouette`, plafond d'échelle 1/10 pour motif/1/1 pour décor via `fitScale`) → `addInstance`
+(Konva.Group : fond silhouette blanc opaque + une surface `evenodd` par couleur via `ML.motifFill`) →
+édition (Transformer/drag/clavier/éditeur de zones, **ou mode édition stylet verrouillé**) →
 `exportSVG` (mappe via `getAbsoluteTransform(mainLayer)` → `ML.occludeSurfaces` → `ML.pxPathsToMm` →
 `ML.writeSVG` → download).
 Dépendances internes : appelle `ML.parseSVG` / `ML.buildZones` / `ML.motifFill` / `ML.motifSilhouette` /
-`ML.occludeSurfaces` / `ML.pxPathsToMm` / `ML.writeSVG`.
+`ML.occludeSurfaces` / `ML.pxPathsToMm` / `ML.writeSVG` / (T4-T6) `ML.strokeToPolygon` /
+`ML.surfaceUnion` / `ML.surfaceDifference` / `ML.silhouetteFromSurface`.
+Mode édition stylet (T6) : `enterEdit()` / `exitEdit()` + tracé pointerdown/move/up en coordonnées locales
+via `getRelativePointerPosition()` → union/différence `motif.surface[motif.color]` → re-rendre.
+Tactile (T2) : pinch-to-zoom et pan deux doigts ; stage.draggable() mode.
+Responsive (T3) : sidebar repliable sous 900px via classe `.collapsed` + bouton toggle ☰.
 Points de vigilance : `PX_PER_MM=4` (sans perte) ; garder le Transformer (uiLayer) au-dessus après
-z-order ; pas d'ES modules ; un motif chargé sans `zones` (ancien format) est ignoré, pas migré.
+z-order ; pas d'ES modules ; un motif chargé sans `zones` (ancien format) est ignoré, pas migré ;
+mapping écran→local (T6) doit être validé en navigateur réel pour éviter décalage du trait.
 
 ---
 

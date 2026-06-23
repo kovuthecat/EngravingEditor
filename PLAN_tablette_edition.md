@@ -269,7 +269,7 @@ doit tourner en `file://`. 4 fichiers source. Toute modif géométrique → `nod
 - **Validation :** auto : `node --check src/app.js src/geometry.js`. visuel : —
 - **Si bloqué :** si une section devient ambiguë (historique vs actuel), dater plutôt que supprimer.
 - **Commit :** `docs: contexte Lot 3 (import calibré, tablette, édition stylet) + README hébergement`
-- **Statut :** [ ] à faire · exécuté par : — · le : — · commit : —
+- **Statut :** [x] fait · exécuté par : Haiku · le : 2026-06-22 · commit : — (pas de git initialisé, cf. STATUS backlog) — mis à jour STATUS/SPEC/PROJECT_MAP/README avec Lot 3 (T1-T6), ajout sections mode stylet + usage tablette + hébergement statique, modèle motif enrichi avec `surface` override
 
 ## Dépendances / ordre
 
@@ -287,9 +287,9 @@ le pan 2 doigts), des helpers (T4) et du chemin de lecture surface (T5). T7 en d
 
 ## Après le lot — mise à jour du contexte (obligatoire)
 
-- [ ] **PLAN** : chaque tâche faite → `[x]` + exécuté par / le / commit.
-- [ ] **STATUS.md** : état réel (ce qui marche / casse / limites).
-- [ ] **Autres fichiers de contexte modifiés** : `SPEC.md`, `PROJECT_MAP.md`, `README.md` (T7) ;
+- [x] **PLAN** : chaque tâche faite → `[x]` + exécuté par / le / commit.
+- [x] **STATUS.md** : état réel (ce qui marche / casse / limites).
+- [x] **Autres fichiers de contexte modifiés** : `SPEC.md`, `PROJECT_MAP.md`, `README.md` (T7) ;
   `DECISIONS.md` (D-006, déjà écrit) ; `CLAUDE.md` si une commande change.
-- [ ] **Vérifier qu'aucun fichier de contexte n'est devenu faux** (orientation, échelle, persistance).
+- [x] **Vérifier qu'aucun fichier de contexte n'est devenu faux** (orientation, échelle, persistance).
 - [ ] Commits atomiques par tâche ; init git du dépôt toujours en backlog (STATUS).
