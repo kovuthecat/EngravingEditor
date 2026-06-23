@@ -647,7 +647,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false };
   let editPreview = null;
   // brouillons en attente (D-007) : motifId -> { surfaceByColor }. Session uniquement, jamais
   // sérialisé dans le projet (cf. projectData) ; purgé par loadProject (nouveau projet = nouveaux ids).
@@ -855,9 +855,99 @@
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
     const poly = ML.strokeToPolygon(localPts, radiusPx, edit.profile);
-    edit.draft = edit.tool === "brush" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
+    edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
     edit.dirty = true;
     redrawEditLayer(motif);
+  }
+
+  // outils ligne/rectangle/ellipse (T7) : pointerdown = ancrage, move = aperçu sur editLayer,
+  // up = polygone final unioné/différencié dans edit.draft selon le mode actif (edit.op, fixé par
+  // Pinceau/Gomme — cf. setEditTool). Maj (shiftKey) contraint rectangle en carré / ellipse en cercle.
+  function rectPolygon(a, b, square) {
+    let w = b[0] - a[0], h = b[1] - a[1];
+    if (square) {
+      const s = Math.max(Math.abs(w), Math.abs(h));
+      w = (w < 0 ? -1 : 1) * s; h = (h < 0 ? -1 : 1) * s;
+    }
+    const x0 = a[0], y0 = a[1], x1 = a[0] + w, y1 = a[1] + h;
+    return [{ pts: [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]], closed: true }];
+  }
+  function ellipsePolygon(a, b, circle) {
+    let rx = Math.abs(b[0] - a[0]), ry = Math.abs(b[1] - a[1]);
+    if (circle) { const r = Math.max(rx, ry); rx = r; ry = r; }
+    const n = 48, pts = [];
+    for (let i = 0; i <= n; i++) {
+      const t = (i / n) * Math.PI * 2;
+      pts.push([a[0] + rx * Math.cos(t), a[1] + ry * Math.sin(t)]);
+    }
+    return [{ pts, closed: true }];
+  }
+  function shapePolygon(tool, a, b, constrain) {
+    if (tool === "line") {
+      const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
+      return ML.strokeToPolygon([a, b], radiusPx, edit.profile);
+    }
+    if (tool === "rect") return rectPolygon(a, b, constrain);
+    return ellipsePolygon(a, b, constrain);
+  }
+  function makeShapePreview(tool, motif) {
+    const stroke = edit.op === "add" ? motif.color : "#ff0000";
+    const a = edit.shapeAnchor;
+    if (tool === "line") {
+      return new Konva.Line({
+        points: a.concat(a), stroke, strokeWidth: edit.sizeMm * PX_PER_MM,
+        lineCap: edit.profile === "flat" ? "butt" : "round", opacity: 0.55, listening: false,
+      });
+    }
+    if (tool === "rect") {
+      return new Konva.Rect({ x: a[0], y: a[1], width: 0, height: 0, fill: stroke, opacity: 0.55, listening: false });
+    }
+    return new Konva.Ellipse({ x: a[0], y: a[1], radiusX: 0, radiusY: 0, fill: stroke, opacity: 0.55, listening: false });
+  }
+  function startShape(motif, e) {
+    edit.drawing = true;
+    edit.shapeAnchor = localPoint();
+    edit.shapeCurrent = edit.shapeAnchor;
+    edit.shapeConstrain = !!(e.evt && e.evt.shiftKey);
+    editPreview = makeShapePreview(edit.tool, motif);
+    editLayer.add(editPreview);
+    uiLayer.batchDraw();
+  }
+  function moveShape(e) {
+    const a = edit.shapeAnchor, p = localPoint();
+    edit.shapeCurrent = p;
+    edit.shapeConstrain = !!(e.evt && e.evt.shiftKey);
+    if (edit.tool === "line") {
+      editPreview.points(a.concat(p));
+    } else if (edit.tool === "rect") {
+      let w = p[0] - a[0], h = p[1] - a[1];
+      if (edit.shapeConstrain) {
+        const s = Math.max(Math.abs(w), Math.abs(h));
+        w = (w < 0 ? -1 : 1) * s; h = (h < 0 ? -1 : 1) * s;
+      }
+      editPreview.x(Math.min(a[0], a[0] + w));
+      editPreview.y(Math.min(a[1], a[1] + h));
+      editPreview.width(Math.abs(w));
+      editPreview.height(Math.abs(h));
+    } else {
+      let rx = Math.abs(p[0] - a[0]), ry = Math.abs(p[1] - a[1]);
+      if (edit.shapeConstrain) { const r = Math.max(rx, ry); rx = r; ry = r; }
+      editPreview.radiusX(rx);
+      editPreview.radiusY(ry);
+    }
+    uiLayer.batchDraw();
+  }
+  function endShape() {
+    edit.drawing = false;
+    if (editPreview) { editPreview.destroy(); editPreview = null; }
+    const motif = state.motifs.find((m) => m.id === edit.motifId);
+    if (motif) {
+      const poly = shapePolygon(edit.tool, edit.shapeAnchor, edit.shapeCurrent, edit.shapeConstrain);
+      edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
+      edit.dirty = true;
+      redrawEditLayer(motif);
+    }
+    edit.shapeAnchor = null; edit.shapeCurrent = null;
   }
 
   function localPoint() {
@@ -868,7 +958,7 @@
     edit.drawing = true;
     edit.pts = [localPoint()];
     editPreview = new Konva.Line({
-      points: edit.pts.flat(), stroke: edit.tool === "brush" ? motif.color : "#ff0000",
+      points: edit.pts.flat(), stroke: edit.op === "add" ? motif.color : "#ff0000",
       strokeWidth: edit.sizeMm * PX_PER_MM, lineCap: "round", lineJoin: "round", opacity: 0.55, listening: false,
     });
     editLayer.add(editPreview);
@@ -885,27 +975,37 @@
     if (motif && edit.pts.length) applyStroke(motif, edit.pts);
     edit.pts = [];
   }
+  const isFreehandTool = (tool) => tool === "brush" || tool === "eraser";
   // capté au niveau du stage (pas du groupe) : la portée est le motif verrouillé, pas ce qui
-  // est sous le pointeur. Deux doigts = pan (T2) a priorité, donc ignoré ici.
+  // est sous le pointeur. Deux doigts = pan (T2) a priorité, donc ignoré ici. brush/eraser = tracé
+  // libre (startStroke/moveStroke/endStroke) ; line/rect/ellipse = ancrage+aperçu (T7, startShape/
+  // moveShape/endShape) — même dispatch stage, le tool actif décide de la branche.
   stage.on("mousedown touchstart", (e) => {
     if (!edit.active) return;
     if (e.evt.touches && e.evt.touches.length !== 1) return;
     e.evt.preventDefault();
     const motif = state.motifs.find((m) => m.id === edit.motifId);
-    if (motif) startStroke(motif);
+    if (!motif) return;
+    if (isFreehandTool(edit.tool)) startStroke(motif); else startShape(motif, e);
   });
   stage.on("mousemove touchmove", (e) => {
     if (!edit.active || !edit.drawing) return;
     if (e.evt.touches && e.evt.touches.length !== 1) return;
     e.evt.preventDefault();
-    moveStroke();
+    if (isFreehandTool(edit.tool)) moveStroke(); else moveShape(e);
   });
-  stage.on("mouseup touchend touchcancel", () => { if (edit.active && edit.drawing) endStroke(); });
+  stage.on("mouseup touchend touchcancel", () => {
+    if (!edit.active || !edit.drawing) return;
+    if (isFreehandTool(edit.tool)) endStroke(); else endShape();
+  });
 
   function setEditTool(tool) {
     edit.tool = tool;
-    document.getElementById("tool-brush").classList.toggle("on", tool === "brush");
-    document.getElementById("tool-eraser").classList.toggle("on", tool === "eraser");
+    if (tool === "brush") edit.op = "add";
+    else if (tool === "eraser") edit.op = "sub";
+    ["tool-brush", "tool-eraser", "tool-line", "tool-rect", "tool-ellipse"].forEach((id) => {
+      document.getElementById(id).classList.toggle("on", id === "tool-" + tool);
+    });
   }
   function setEditProfile(profile) {
     edit.profile = profile;
@@ -915,6 +1015,9 @@
   document.getElementById("btn-edit").onclick = () => { if (edit.active) exitEdit(); else enterEdit(); };
   document.getElementById("tool-brush").onclick = () => setEditTool("brush");
   document.getElementById("tool-eraser").onclick = () => setEditTool("eraser");
+  document.getElementById("tool-line").onclick = () => setEditTool("line");
+  document.getElementById("tool-rect").onclick = () => setEditTool("rect");
+  document.getElementById("tool-ellipse").onclick = () => setEditTool("ellipse");
   document.getElementById("brush-size").oninput = (e) => {
     edit.sizeMm = parseFloat(e.target.value) || 3;
     document.querySelectorAll(".size-btn").forEach((b) => b.classList.toggle("on", parseFloat(b.dataset.sizeMm) === edit.sizeMm));
