@@ -46,8 +46,6 @@
           <input id="import-svg" type="file" accept=".svg" hidden />
         </label>
         <p class="note">SVG « creusé » : corps en blanc + cavités auto-réservées, à l'échelle réelle.</p>
-        <button id="btn-zone" class="btn sm">+ Zone interdite (cavité)</button>
-        <p class="note">Zone manuelle : rien n'y sera gravé et le packing l'évite.</p>
       </section>
 
       <section>
@@ -55,19 +53,27 @@
         <div class="row-check"><label><input id="chk-margin" type="checkbox" checked /> Marge de sécurité</label></div>
         <div class="row"><label>Marge (mm)</label><input id="margin-mm" type="number" value="5" min="0" step="0.5" /></div>
         <p class="note">Offset intérieur du contour : zone à éviter près du bord en cas de calage imprécis de la guitare sous le laser.</p>
+      </section>
+
+      <details class="advanced">
+        <summary>Avancé</summary>
+
+        <h3>Cadre laser</h3>
         <div class="row-check"><label><input id="chk-frame" type="checkbox" /> Cadre laser (Falcon 2)</label></div>
         <div class="row"><label>Largeur (mm)</label><input id="frame-w" type="number" value="400" min="1" /></div>
         <div class="row"><label>Hauteur (mm)</label><input id="frame-h" type="number" value="415" min="1" /></div>
         <p class="note">Cadre déplaçable (glisser) et orientable (poignée de rotation) : vérifie ce qui rentre dans la zone de gravure de la machine.</p>
-      </section>
 
-      <section>
-        <h2>Packing assisté</h2>
+        <h3>Zone interdite</h3>
+        <button id="btn-zone" class="btn sm">+ Zone interdite (cavité)</button>
+        <p class="note">Zone manuelle : rien n'y sera gravé et le packing l'évite.</p>
+
+        <h3>Packing assisté</h3>
         <div class="row"><label>Nombre</label><input id="pack-count" type="number" value="30" min="1" /></div>
         <div class="row"><label>Échelle min</label><input id="pack-smin" type="number" value="0.6" step="0.1" /></div>
         <div class="row"><label>Échelle max</label><input id="pack-smax" type="number" value="1.2" step="0.1" /></div>
         <button id="btn-pack" class="btn">Disperser dans le contour</button>
-      </section>
+      </details>
 
       <section id="inspector" style="display:none">
         <h2>Sélection</h2>
@@ -128,10 +134,13 @@
           <button id="btn-front" class="btn sm">⏫ Tout devant</button>
           <button id="btn-back" class="btn sm">⏬ Tout derrière</button>
         </div>
-        <div id="zone-editor" style="display:none">
-          <p class="note">Zones du motif (REMPLI / VIDE) :</p>
-          <div id="zone-list"></div>
-        </div>
+        <details class="advanced">
+          <summary>Avancé — zones (REMPLI / VIDE)</summary>
+          <div id="zone-editor" style="display:none">
+            <p class="note">Zones du motif (REMPLI / VIDE) :</p>
+            <div id="zone-list"></div>
+          </div>
+        </details>
       </section>
 
       <section>

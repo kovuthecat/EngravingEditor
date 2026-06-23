@@ -451,7 +451,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
 - **Si bloqué :** si un `id` déplacé n'est plus trouvé au chargement de `app.js` (erreur console), STOP et
   signaler (un `id` a été perdu lors du déplacement).
 - **Commit :** `refactor(ui): replie packing/zones/cadre/zones-motif dans « Avancé »`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log`). Un seul `<details class="advanced">` dans la sidebar globale regroupe Cadre laser / + Zone interdite / Packing assisté (placé après « Guides de gravure », fermé par défaut). L'éditeur REMPLI/VIDE (`#zone-editor`) est devenu un `<details class="advanced">` interne à l'inspecteur, fermé par défaut ; le div `#zone-editor` garde son toggle `style.display` géré par `app.js` (montré seulement si l'utilisateur déplie). Marge de sécurité restée visible hors repli (sert au guide T10). Aucun `id` déplacé, aucun handler touché. `node test/run.js` → OK. Validation visuelle laissée à Thibault (non faite par l'exécutant, sur demande explicite).
 
 ---
 

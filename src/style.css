@@ -30,6 +30,15 @@ header h1 { font-size: 16px; margin: 0; color: #fff; }
 #sidebar section { margin-bottom: 18px; }
 #sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #8b93a1; margin: 0 0 8px; }
 
+#sidebar details.advanced { margin-bottom: 18px; }
+#sidebar details.advanced summary { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #8b93a1;
+  cursor: pointer; list-style: none; display: flex; align-items: center; min-height: 40px; padding: 4px 0; }
+#sidebar details.advanced summary::-webkit-details-marker { display: none; }
+#sidebar details.advanced summary::before { content: "▸"; display: inline-block; width: 14px; font-size: 11px; color: #6b7280; }
+#sidebar details.advanced[open] summary::before { content: "▾"; }
+#sidebar details.advanced h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin: 14px 0 6px; }
+#sidebar details.advanced h3:first-of-type { margin-top: 10px; }
+
 #stage { flex: 1; min-width: 0; background: #1c1f27; background-image: radial-gradient(#2a2f3a 1px, transparent 1px); background-size: 24px 24px; touch-action: none; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; text-align: center; padding: 8px 10px; margin: 2px 0; border: 1px solid #2f3644; border-radius: 6px;
