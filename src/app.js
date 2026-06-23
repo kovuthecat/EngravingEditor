@@ -715,7 +715,13 @@
   // calé sur la transform de edit.node (relative à mainLayer, comme uiLayer) -> suit pan/zoom sans
   // resync (même parent stage). Affiche silhouette réelle (fond blanc) + brouillon en couleur focale
   // (édition = couleur réelle pendant le tracé ; le vert n'apparaît qu'au repos, via fillGroupContent).
+  // (T3) scindé en deux sous-groupes : editStaticGroup (fond silhouette, construit + mis en cache UNE
+  // FOIS par enterEdit/buildEditStatic) et editDraftGroup (brouillon, retracé par redrawEditLayer à
+  // chaque trait) — évite de reconstruire des milliers de Konva.Line (décor) à chaque trait.
   const editLayer = new Konva.Group({ visible: false, listening: false });
+  const editStaticGroup = new Konva.Group({ listening: false });
+  const editDraftGroup = new Konva.Group({ listening: false });
+  editLayer.add(editStaticGroup, editDraftGroup);
   uiLayer.add(editLayer);
 
   function deepCopyContours(contours) {
@@ -752,17 +758,24 @@
     document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "grid" : "none";
   }
 
-  // (ré)affiche le calque d'essai : silhouette réelle (fond) + brouillon courant en couleur focale,
-  // + (T5) surcharge verte sur la seule matière ajoutée par l'essai en cours (vs la surface réelle,
-  // exportFill(motif) — qui ignore le brouillon en cours).
-  function redrawEditLayer(motif) {
-    editLayer.destroyChildren();
+  // (T3) fond silhouette : construit UNE SEULE FOIS par enterEdit (après syncEditLayerTransform),
+  // puis mis en cache (bitmap) — sur le décor (des milliers de sous-chemins), c'était le coût
+  // dominant de redrawEditLayer répété à chaque trait. exitEdit purge editStaticGroup.
+  function buildEditStatic(motif) {
+    editStaticGroup.destroyChildren();
     for (const contour of motifSilhouettePts(motif)) {
-      editLayer.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: false }));
+      editStaticGroup.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: false }));
     }
+    editStaticGroup.cache();
+  }
+  // (ré)affiche le brouillon courant en couleur focale, + (T5) surcharge verte sur la seule matière
+  // ajoutée par l'essai en cours (vs la surface réelle, exportFill(motif) — qui ignore le brouillon
+  // en cours). Le fond silhouette (editStaticGroup) n'est plus retracé ici (T3, cf. buildEditStatic).
+  function redrawEditLayer(motif) {
+    editDraftGroup.destroyChildren();
     if (edit.draft.length) {
       const draft = edit.draft;
-      editLayer.add(new Konva.Shape({
+      editDraftGroup.add(new Konva.Shape({
         fill: motif.color, fillRule: "evenodd", listening: false,
         sceneFunc: (ctx, shape) => {
           const c = ctx._context;
@@ -774,7 +787,7 @@
       }));
       const added = addedRegions(exportFill(motif)[motif.color], draft);
       if (added.length) {
-        editLayer.add(new Konva.Shape({
+        editDraftGroup.add(new Konva.Shape({
           fill: EDIT_DRAFT_COLOR, fillRule: "evenodd", listening: false,
           sceneFunc: (ctx, shape) => {
             const c = ctx._context;
@@ -816,6 +829,7 @@
     setCanvasLocked(true);
     tr.visible(false); moveHandle.visible(false);
     syncEditLayerTransform();
+    buildEditStatic(motif);
     redrawEditLayer(motif);
     editLayer.visible(true);
     mainLayer.batchDraw();
@@ -834,7 +848,9 @@
     clearLassoSelection();
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     editLayer.visible(false);
-    editLayer.destroyChildren();
+    editStaticGroup.clearCache();
+    editStaticGroup.destroyChildren();
+    editDraftGroup.destroyChildren();
     setCanvasLocked(false);
     stage.draggable(true);
     tr.visible(true);
