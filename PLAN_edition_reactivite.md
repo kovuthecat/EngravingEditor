@@ -157,7 +157,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
 - **Si bloqué :** si le cache casse la transparence du décor ou le hit, STOP — ne pas désactiver T2 pour
   faire passer.
 - **Commit :** `perf(render): cache Konva des groupes d'instances (drag fluide)`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). Validation visuelle (FPS, transparence décor, hit après cache) laissée à Thibault (non faite par l'exécutant). Note non prévue par le plan : `startStroke` (édition stylet) ajoute l'aperçu de trait comme enfant du groupe édité — un groupe caché n'afficherait pas cet ajout tardif. Ajout d'une garde dans `fillGroupContent` (pas de cache pendant `edit.active` sur ce nœud) + recache dans `exitEdit`.
 
 ### T4 — Réactivité : fusionner boundaryLayer + maskLayer (6 → 5 calques) · Modèle : Sonnet
 - **Pourquoi ce modèle :** refactor de rendu à risque visuel léger, validation navigateur.

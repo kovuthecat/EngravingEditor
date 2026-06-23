@@ -86,7 +86,13 @@
   stage.on("click tap", (e) => { if (edit.active) return; if (e.target === stage && !panMoved) select(null); });
   tr.on("transform", positionMoveHandle); // suit échelle/rotation via les poignées
   tr.on("transformstart", recordHistory);
-  tr.on("transformend", markProjectChanged);
+  tr.on("transformend", () => {
+    markProjectChanged();
+    // T3 : après un gros changement d'échelle, le bitmap caché (fillGroupContent) peut sortir
+    // flou — recache une seule instance (la sélectionnée), pas pendant le drag (inutile/coûteux).
+    const n = selected();
+    if (n && n.getAttr("motifId") !== undefined) { n.clearCache(); n.cache({ pixelRatio: 2 }); }
+  });
 
   // zoom molette centré sur le curseur
   stage.on("wheel", (e) => {
@@ -312,11 +318,20 @@
       });
       g.add(shape);
     }
+    // T3 perf : rasterise le groupe (scène + hit) en bitmap pour que drag/zoom déplacent une
+    // image au lieu de re-tracer le décor (potentiellement des milliers de contours) à chaque
+    // frame. pixelRatio:2 = compromis net/mémoire vu la plage de zoom de l'app (molette 0.1-8x,
+    // pinch) ; au-delà, le bitmap peut réapparaître flou (recache sur transformend, voir plus bas).
+    // Exception : le groupe en cours d'édition stylet reste non caché — startStroke() ajoute
+    // l'aperçu de trait comme enfant de ce groupe ; un groupe caché n'afficherait pas cet ajout
+    // tardif. Recache à la sortie de l'édition (exitEdit). `edit` est déclaré plus bas dans ce
+    // fichier mais déjà initialisé à l'exécution (fillGroupContent n'est appelée qu'au runtime).
+    if (!(edit.active && edit.node === g)) g.cache({ pixelRatio: 2 });
   }
   // re-rend toutes les instances d'un motif + sa vignette (après édition de rôles de zones)
   function rerenderMotif(motif) {
     mainLayer.getChildren((n) => n.getClassName() === "Group" && n.getAttr("motifId") === motif.id)
-      .forEach((g) => fillGroupContent(g, motif));
+      .forEach((g) => fillGroupContent(g, motif)); // recache déjà inclus (fillGroupContent)
     mainLayer.batchDraw();
     const cv = motifThumbs[motif.id];
     if (cv) drawThumb(cv, motif);
@@ -324,7 +339,7 @@
   function makeGroup(motif, x, y, rotation, scale) {
     const g = new Konva.Group({ x, y, rotation: rotation || 0, scaleX: scale || 1, scaleY: scale || 1, draggable: true });
     g.setAttr("motifId", motif.id);
-    fillGroupContent(g, motif);
+    fillGroupContent(g, motif); // peuple + cache (voir fillGroupContent)
     g.on("click tap", (e) => { e.cancelBubble = true; if (edit.active) return; select(g); });
     g.on("dragstart", () => { recordHistory(); select(g); });
     g.on("dragend", markProjectChanged);
@@ -648,8 +663,10 @@
   function exitEdit() {
     if (!edit.active) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
+    const editedNode = edit.node;
     edit.active = false; edit.drawing = false; edit.pts = [];
     if (editPreview) { editPreview.destroy(); editPreview = null; }
+    if (editedNode) editedNode.cache({ pixelRatio: 2 }); // T3 : recache (laissé non caché pendant l'édition)
     setCanvasLocked(false);
     stage.draggable(true);
     tr.visible(true);
