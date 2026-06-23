@@ -417,7 +417,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si `ClipperLib.Clipper.MinkowskiSum` n'existe pas dans le vendored, STOP et signaler (fallback
   possible = union de rectangles orientés stampés le long du trait, mais à valider — ne pas improviser sans accord).
 - **Commit :** `feat(edit): plume calligraphique inclinée (nib orienté)`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : eb53bb2 (validation visuelle non faite — skip demandé)
 
 ---
 
