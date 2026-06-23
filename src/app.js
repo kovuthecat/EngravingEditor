@@ -609,8 +609,10 @@
   function updateInspector() {
     const g = selected();
     const box = document.getElementById("inspector");
-    if (!g) { box.style.display = "none"; hideZoneEditor(); hideMotifEditor(); hideStyletEditor(); return; }
+    const selPalette = document.getElementById("selection-palette");
+    if (!g) { box.style.display = "none"; selPalette.hidden = true; hideZoneEditor(); hideMotifEditor(); hideStyletEditor(); return; }
     box.style.display = "block";
+    selPalette.hidden = edit.active; // toute sélection -> palette flottante visible, sauf en édition (edit-palette prend le relais)
     document.getElementById("insp-rot").value = Math.round(g.rotation());
     document.getElementById("insp-scale").value = g.scaleX().toFixed(2);
     const motif = state.motifs.find((x) => x.id === g.getAttr("motifId"));
@@ -620,12 +622,16 @@
   // ─── éditeur rôle/couleur/marge du motif sélectionné ────────────────────────
   function hideMotifEditor() {
     document.getElementById("motif-editor").style.display = "none";
+    document.getElementById("btn-edit").style.display = "none";
+    document.getElementById("selection-role-row").style.display = "none";
   }
   function populateMotifEditor(motif) {
     document.getElementById("insp-role").value = motif.role;
     document.getElementById("insp-color").value = motif.color;
     document.getElementById("insp-margin").value = motif.margin;
     document.getElementById("motif-editor").style.display = "block";
+    document.getElementById("btn-edit").style.display = "";
+    document.getElementById("selection-role-row").style.display = "flex";
   }
   function selectedMotif() {
     const g = selected();
@@ -769,6 +775,7 @@
     const inEdit = edit.active && edit.motifId === motif.id;
     document.getElementById("stylet-editor").style.display = "block";
     document.getElementById("btn-edit").textContent = inEdit ? "Sortir de l'édition" : "Entrer en édition";
+    document.getElementById("selection-palette").hidden = inEdit;
     document.getElementById("edit-palette").hidden = !inEdit;
     document.getElementById("stylet-tools").style.display = inEdit ? "block" : "none";
     document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "grid" : "none";

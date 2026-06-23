@@ -76,31 +76,17 @@
 
       <section id="inspector" style="display:none">
         <h2>Sélection</h2>
-        <div class="grid2">
-          <button id="btn-dup" class="btn sm">Dupliquer</button>
-          <button id="btn-del" class="btn sm danger">Supprimer</button>
-        </div>
+        <button id="btn-dup" class="btn sm">Dupliquer</button>
         <div id="motif-editor" style="display:none">
-          <p class="note">Motif (rôle / couleur / marge) :</p>
-          <div class="row"><label>Rôle</label>
-            <select id="insp-role">
-              <option value="PERSONNAGE">Personnage</option>
-              <option value="SYMBOLE">Symbole</option>
-              <option value="DECOR">Décor</option>
-            </select>
-          </div>
+          <p class="note">Motif (couleur / marge) :</p>
           <div class="row"><label>Couleur</label><input id="insp-color" type="color" /></div>
           <div class="row"><label>Marge (mm)</label><input id="insp-margin" type="number" step="0.5" min="0" /></div>
         </div>
         <div id="stylet-editor" style="display:none">
-          <p class="note">Édition (stylet) :</p>
-          <button id="btn-edit" class="btn sm">Entrer en édition</button>
           <p class="note">Essai en attente (non appliqué) = affiché en <span class="draft-swatch"></span> vert sur ce motif, jusqu'à Appliquer/Jeter.</p>
         </div>
         <p class="note">Ordre (z) :</p>
         <div class="grid2">
-          <button id="btn-up" class="btn sm">▲ Monter d'un cran</button>
-          <button id="btn-down" class="btn sm">▼ Descendre d'un cran</button>
           <button id="btn-front" class="btn sm">⏫ Tout devant</button>
           <button id="btn-back" class="btn sm">⏬ Tout derrière</button>
         </div>
@@ -141,6 +127,21 @@
 
     <div id="stage-wrap">
       <main id="stage"></main>
+      <div id="selection-palette" hidden>
+        <button id="btn-edit" class="btn sm">Entrer en édition</button>
+        <div class="row" id="selection-role-row"><label>Rôle</label>
+          <select id="insp-role">
+            <option value="PERSONNAGE">Personnage</option>
+            <option value="SYMBOLE">Symbole</option>
+            <option value="DECOR">Décor</option>
+          </select>
+        </div>
+        <div class="grid2">
+          <button id="btn-up" class="btn sm">▲ Monter</button>
+          <button id="btn-down" class="btn sm">▼ Descendre</button>
+        </div>
+        <button id="btn-del" class="btn sm danger">Supprimer</button>
+      </div>
       <div id="edit-palette" hidden>
         <div id="stylet-tools">
           <div class="grid2">

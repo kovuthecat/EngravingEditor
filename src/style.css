@@ -42,10 +42,10 @@ header h1 { font-size: 16px; margin: 0; color: #fff; }
 #stage-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
 #stage { flex: 1; min-width: 0; background: #1c1f27; background-image: radial-gradient(#2a2f3a 1px, transparent 1px); background-size: 24px 24px; touch-action: none; }
 
-#edit-palette { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 6px;
+#edit-palette, #selection-palette { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 6px;
   padding: 8px; background: rgba(18,21,28,.92); border: 1px solid #2f3644; border-radius: 10px; z-index: 20;
   max-width: 220px; max-height: calc(100% - 16px); overflow-y: auto; }
-#edit-palette[hidden] { display: none; }
+#edit-palette[hidden], #selection-palette[hidden] { display: none; }
 #brush-size { width: 100%; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; text-align: center; padding: 8px 10px; margin: 2px 0; border: 1px solid #2f3644; border-radius: 6px;
