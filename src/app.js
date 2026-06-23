@@ -26,6 +26,21 @@
   stage.add(boundaryLayer, mainLayer, zonesLayer, guideLayer, uiLayer);
   const BG = "#1c1f27"; // couleur de fond (= hors zone à graver)
 
+  // Safari iOS/iPadOS plafonne la taille d'un <canvas> (aire ≈ 16,7 M px ≈ 4096², et un côté max) ;
+  // au-delà il renvoie SILENCIEUSEMENT un canvas vide. node.cache({pixelRatio:2}) sur un grand décor
+  // dépassait cette limite -> bitmap vide -> fond invisible sur iPad (visible sur desktop, limite bien
+  // plus haute, et visible en édition car le groupe y est décaché). On borne donc pixelRatio pour que
+  // le canvas de cache (boundingBox locale × pixelRatio) reste sous les limites iOS. Correctness > netteté.
+  const MAX_CACHE_DIM = 4096;          // côté max d'un canvas iOS
+  const MAX_CACHE_AREA = 16777216;     // aire max d'un canvas iOS (4096²)
+  function safeCache(node, desiredPR) {
+    const r = node.getClientRect({ skipTransform: true, skipShadow: true, skipStroke: true });
+    const w = Math.max(1, r.width), h = Math.max(1, r.height);
+    let pr = Math.min(desiredPR || 1, MAX_CACHE_DIM / w, MAX_CACHE_DIM / h, Math.sqrt(MAX_CACHE_AREA / (w * h)));
+    if (!isFinite(pr) || pr <= 0) pr = 1;
+    node.cache({ pixelRatio: pr });
+  }
+
   const tr = new Konva.Transformer({
     rotateEnabled: true, keepRatio: true,
     enabledAnchors: ["top-left", "top-right", "bottom-left", "bottom-right"],
@@ -97,7 +112,7 @@
     recacheTimer = setTimeout(() => {
       const n = selected();
       if (n && n.getAttr("motifId") !== undefined) {
-        n.clearCache(); n.cache({ pixelRatio: 2 });
+        n.clearCache(); safeCache(n, 2);
         n.getLayer() && n.getLayer().batchDraw();
       }
     }, 150);
@@ -384,7 +399,7 @@
     // pendant l'édition ; le décache initial à l'entrée se fait dans enterEdit() (g.clearCache()),
     // car à la création le groupe est caché alors que edit.active est encore false. exitEdit() recache.
     // `edit` est déclaré plus bas mais déjà initialisé au runtime (fillGroupContent n'est appelée qu'alors).
-    if (!(edit.active && edit.node === g)) g.cache({ pixelRatio: 2 });
+    if (!(edit.active && edit.node === g)) safeCache(g, 2);
   }
   // re-rend toutes les instances d'un motif + sa vignette (après édition de rôles de zones)
   function rerenderMotif(motif) {
@@ -789,7 +804,7 @@
     for (const contour of motifSilhouettePts(motif)) {
       editStaticGroup.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: false }));
     }
-    editStaticGroup.cache();
+    safeCache(editStaticGroup, 1);
   }
   // (ré)affiche le brouillon courant en couleur focale, + (T5) surcharge verte sur la seule matière
   // ajoutée par l'essai en cours (vs la surface réelle, exportFill(motif) — qui ignore le brouillon
@@ -899,7 +914,7 @@
     edit.reopenDetails = null;
     uiLayer.batchDraw();
     if (motif && wasDirty) rerenderMotif(motif); // une fois (recache inclus) : passe en vert si en attente
-    else if (editedNode) editedNode.cache({ pixelRatio: 2 }); // rien changé : juste recache (décaché à l'entrée)
+    else if (editedNode) safeCache(editedNode, 2); // rien changé : juste recache (décaché à l'entrée)
     positionMoveHandle();
     refreshDraftCounter();
     if (motif) populateStyletEditor(motif);

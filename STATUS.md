@@ -14,6 +14,8 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 
 **Restant** : mise à jour contexte Lot 4 (DECISIONS.md D-007, STATUS.md, SPEC.md § export PNG / calque d'essai) — en cours dans cette session.
 
+**Correctif (2026-06-23)** : **fond invisible sur iPad** hors mode édition (régression du cache Konva T3). Cause : Safari iOS plafonne la taille d'un `<canvas>` (aire ≈ 16,7 M px ≈ 4096², côté max) ; `cache({pixelRatio:2})` sur un grand décor dépassait la limite → bitmap vide. Fix : helper `safeCache(node, pr)` qui borne `pixelRatio` selon la bounding box (tous les `cache()` y passent). À **valider visuellement sur iPad**.
+
 ## Ce qui fonctionne
 
 - **Import SVG motifs** (multi) → bibliothèque avec vignettes (corps + couleurs + trous) ; clic = pose une instance.
