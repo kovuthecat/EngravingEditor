@@ -290,7 +290,7 @@ outils pinceau évolués + ligne/formes + lasso ; export **garde le miroir** ; 4
   `getRelativePointerPosition` comme l'actuel `localPoint`) ; si un brouillon orphelin subsiste après
   suppression, STOP et signaler.
 - **Commit :** `feat(edit): calques d'essai multiples (Appliquer / Jeter / Tout appliquer)`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir `git log` — message ci-dessus). `editLayer` implémenté comme groupe sur `uiLayer` (pas un `Konva.Layer` dédié, pour rester à 5 calques après T4) calé sur `edit.node.getAbsoluteTransform(mainLayer).decompose()`. `effectiveDraft`/restauration lisent `Object.values(surfaceByColor)[0]` plutôt que la clé `motif.color` (robuste si la couleur focale change pendant qu'un essai est en attente). « Tout appliquer » range d'abord le brouillon live non rangé (s'il existe) avant de boucler sur `editDrafts`, pour ne pas perdre les derniers traits non encore mis en attente. Garde-fou export câblé sur `exportSVG` (PNG suivra en T9). Validation visuelle (restauration de brouillon, vert qui suit drag/zoom, Appliquer/Jeter/Tout appliquer, export avec avertissement) laissée à Thibault (non faite par l'exécutant).
 
 ### T6 — Pinceau : tailles mémorisées + profil rond / plat · Modèle : Haiku
 - **Pourquoi ce modèle :** mécanique, paramétrage d'un helper existant + UI simple.

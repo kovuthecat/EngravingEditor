@@ -3,6 +3,7 @@
 (function () {
   const ML = window.ML;
   const PX_PER_MM = 4; // échelle d'affichage (lossless: reconverti à l'export)
+  const EDIT_DRAFT_COLOR = "#22c55e"; // D-007 : couleur d'un essai en attente (non appliqué)
 
   // ─── état ────────────────────────────────────────────────────────────────
   const state = {
@@ -247,11 +248,14 @@
       ctx.fillStyle = "#fff";
       ctx.beginPath(); for (const contour of silhouette) poly(ctx, contour, true); ctx.fill();
     }
-    const fillGroups = exportFill(motif);
+    // D-007/T5 : un essai en attente (non appliqué) s'affiche en vert sur la vignette, à la
+    // place de la couleur réelle — motif.surface n'est pas modifié tant que non Appliqué.
+    const pendingDraft = editDrafts.get(motif.id);
+    const fillGroups = pendingDraft ? pendingDraft.surfaceByColor : exportFill(motif);
     for (const color in fillGroups) {
       ctx.beginPath();
       for (const region of fillGroups[color]) poly(ctx, region.pts, true);
-      ctx.fillStyle = color;
+      ctx.fillStyle = pendingDraft ? EDIT_DRAFT_COLOR : color;
       ctx.fill("evenodd");
     }
     ctx.restore();
@@ -281,11 +285,15 @@
       }
     }
     // surfaces : une par couleur focale, trous VIDE laissent voir le fond blanc (evenodd, imite drawBoundary)
-    const fillGroups = exportFill(motif);
+    // D-007/T5 : un essai en attente (editDrafts) remplace l'affichage réel par le brouillon, rendu
+    // en vert (gère la gomme correctement). motif.surface/silhouette restent inchangés (display-only) ;
+    // le vert est baked dans le cache du groupe ci-dessous (g.cache), donc 0 coût par frame.
+    const pendingDraft = editDrafts.get(motif.id);
+    const fillGroups = pendingDraft ? pendingDraft.surfaceByColor : exportFill(motif);
     for (const color in fillGroups) {
       const contours = fillGroups[color];
       const shape = new Konva.Shape({
-        fill: color,
+        fill: pendingDraft ? EDIT_DRAFT_COLOR : color,
         fillRule: "evenodd", // trous VIDE laissent passer le clic (hitFunc ci-dessous)
         sceneFunc: (ctx, shape) => {
           const c = ctx._context;
@@ -632,13 +640,41 @@
   document.getElementById("insp-rot").oninput = (e) => { const g = selected(); if (g) { g.rotation(parseFloat(e.target.value) || 0); mainLayer.batchDraw(); scheduleLocalSave(); } };
   document.getElementById("insp-scale").oninput = (e) => { const g = selected(); if (g) { const s = parseFloat(e.target.value) || 1; g.scale({ x: s, y: s }); mainLayer.batchDraw(); scheduleLocalSave(); } };
 
-  // ─── édition au stylet (D-006 chantier 3) : pinceau/gomme verrouillés sur le motif ──────────
-  // edit.node = instance Konva sur laquelle le tracé est capté (mappage écran->local) ; la
-  // mutation (motif.surface) s'applique au motif de bibliothèque -> rerenderMotif propage à
-  // toutes ses copies. Verrouillage : draggable désactivé partout, clics/dragstart ignorés
-  // (cf. guards plus haut), tr+moveHandle masqués ; deux doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", sizeMm: 3, drawing: false, pts: [] };
+  // ─── édition au stylet (D-006/D-007) : calque d'essai non destructif ────────────────────────
+  // edit.node = instance Konva sur laquelle le tracé est capté (mappage écran->local). Les traits
+  // mutent edit.draft (brouillon LOCAL, pas motif.surface) -> aucun re-render des instances pendant
+  // le dessin (gain perf majeur). Le brouillon n'est rangé dans editDrafts qu'à la sortie d'édition
+  // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
+  // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
+  // doigts restent le pan (T2).
+  const edit = { active: false, motifId: null, node: null, tool: "brush", sizeMm: 3, drawing: false, pts: [], draft: [], dirty: false };
   let editPreview = null;
+  // brouillons en attente (D-007) : motifId -> { surfaceByColor }. Session uniquement, jamais
+  // sérialisé dans le projet (cf. projectData) ; purgé par loadProject (nouveau projet = nouveaux ids).
+  const editDrafts = new Map();
+  // calque d'essai : groupe sur uiLayer (pas un Layer dédié, cf. T4/avertissement Konva >5 layers),
+  // calé sur la transform de edit.node (relative à mainLayer, comme uiLayer) -> suit pan/zoom sans
+  // resync (même parent stage). Affiche silhouette réelle (fond blanc) + brouillon en couleur focale
+  // (édition = couleur réelle pendant le tracé ; le vert n'apparaît qu'au repos, via fillGroupContent).
+  const editLayer = new Konva.Group({ visible: false, listening: false });
+  uiLayer.add(editLayer);
+
+  function deepCopyContours(contours) {
+    return (contours || []).map((c) => ({ pts: c.pts.map((p) => p.slice()), closed: c.closed }));
+  }
+  // brouillon effectif d'un motif pour Appliquer/Jeter : la session live si elle l'édite, sinon
+  // l'essai rangé dans editDrafts ; null si rien en attente. Lit la première (unique en pratique,
+  // une seule couleur focale éditée) entrée de surfaceByColor par valeur, pas par clé motif.color :
+  // motif.color peut avoir changé depuis le stash (éditeur rôle/couleur), la clé stockée serait alors périmée.
+  function effectiveDraft(motif) {
+    if (edit.active && edit.motifId === motif.id) return edit.draft;
+    const stashed = editDrafts.get(motif.id);
+    return stashed ? Object.values(stashed.surfaceByColor)[0] || [] : null;
+  }
+  function motifHasPendingWork(motif) {
+    if (editDrafts.has(motif.id)) return true;
+    return edit.active && edit.motifId === motif.id && edit.dirty;
+  }
 
   function setCanvasLocked(locked) {
     mainLayer.getChildren((n) => n.getClassName() === "Group").forEach((g) => g.draggable(!locked));
@@ -654,6 +690,39 @@
     document.getElementById("stylet-editor").style.display = "block";
     document.getElementById("btn-edit").textContent = inEdit ? "Sortir de l'édition" : "Entrer en édition";
     document.getElementById("stylet-tools").style.display = inEdit ? "block" : "none";
+    document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "grid" : "none";
+  }
+
+  // (ré)affiche le calque d'essai : silhouette réelle (fond) + brouillon courant en couleur focale.
+  function redrawEditLayer(motif) {
+    editLayer.destroyChildren();
+    for (const contour of motifSilhouettePts(motif)) {
+      editLayer.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: false }));
+    }
+    if (edit.draft.length) {
+      const draft = edit.draft;
+      editLayer.add(new Konva.Shape({
+        fill: motif.color, fillRule: "evenodd", listening: false,
+        sceneFunc: (ctx, shape) => {
+          const c = ctx._context;
+          c.beginPath();
+          for (const region of draft) tracePoly(c, region.pts);
+          c.fillStyle = shape.fill();
+          c.fill("evenodd");
+        },
+      }));
+    }
+    uiLayer.batchDraw();
+  }
+  // cale editLayer (uiLayer) sur la transform de edit.node (mainLayer) : tous deux enfants directs
+  // du même stage sans transform propre -> relative à mainLayer suffit (même convention que
+  // instancesBottomToTop). Appelé une fois à l'entrée : le nœud reste verrouillé (non draggable)
+  // pendant toute l'édition, pas de resync nécessaire (pan/zoom du stage s'applique aux deux côtés).
+  function syncEditLayerTransform() {
+    const t = edit.node.getAbsoluteTransform(mainLayer).decompose();
+    editLayer.position({ x: t.x, y: t.y });
+    editLayer.rotation(t.rotation);
+    editLayer.scale({ x: t.scaleX, y: t.scaleY });
   }
 
   function enterEdit() {
@@ -661,13 +730,19 @@
     const motif = selectedMotif();
     if (!g || !motif) return;
     edit.active = true; edit.motifId = motif.id; edit.node = g;
+    const stashed = editDrafts.get(motif.id);
+    edit.draft = deepCopyContours(stashed ? Object.values(stashed.surfaceByColor)[0] : exportFill(motif)[motif.color]);
+    edit.dirty = false;
     // T3 : le groupe a été mis en cache (bitmap) à sa création. Un groupe caché affiche son bitmap
-    // figé et IGNORE les enfants ajoutés/modifiés ensuite (aperçu de trait, re-render après un trait).
-    // On le décache pour qu'il rende ses enfants en direct pendant toute l'édition ; exitEdit() recache.
+    // figé et ignore les enfants ajoutés ensuite ; on le décache (exitEdit recache), mais le calque
+    // d'essai (editLayer, jamais caché) est désormais ce qui affiche réellement le tracé en direct.
     g.clearCache();
     stage.draggable(false);
     setCanvasLocked(true);
     tr.visible(false); moveHandle.visible(false);
+    syncEditLayerTransform();
+    redrawEditLayer(motif);
+    editLayer.visible(true);
     mainLayer.batchDraw();
     uiLayer.batchDraw();
     populateStyletEditor(motif);
@@ -676,30 +751,113 @@
     if (!edit.active) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     const editedNode = edit.node;
-    edit.active = false; edit.drawing = false; edit.pts = [];
+    const wasDirty = edit.dirty;
+    // D-007 : plus de confirm bloquant -- un brouillon modifié est simplement rangé (en attente),
+    // restauré si on revient sur ce motif (enterEdit), visible en vert sur ses instances (T5 §5).
+    if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
+    edit.active = false; edit.drawing = false; edit.pts = []; edit.draft = []; edit.dirty = false;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
-    if (editedNode) editedNode.cache({ pixelRatio: 2 }); // T3 : recache (laissé non caché pendant l'édition)
+    editLayer.visible(false);
+    editLayer.destroyChildren();
     setCanvasLocked(false);
     stage.draggable(true);
     tr.visible(true);
-    positionMoveHandle();
     uiLayer.batchDraw();
+    if (motif && wasDirty) rerenderMotif(motif); // une fois (recache inclus) : passe en vert si en attente
+    else if (editedNode) editedNode.cache({ pixelRatio: 2 }); // rien changé : juste recache (décaché à l'entrée)
+    positionMoveHandle();
+    refreshDraftCounter();
     if (motif) populateStyletEditor(motif);
   }
 
-  // applique un trait terminé (déjà en coords locales du motif) : union (pinceau) ou
-  // différence (gomme) sous la couleur focale, puis recalcule la silhouette et re-rend.
-  function applyStroke(motif, localPts) {
+  // applique au motif (réel) le brouillon effectif (live ou rangé) : recordHistory encadre
+  // l'application elle-même, pas chaque trait du brouillon (cf. applyStroke ci-dessous).
+  function applyMotifDraft(motif) {
+    const draft = effectiveDraft(motif);
+    if (draft == null) return;
     recordHistory();
-    if (!motif.surface) motif.surface = exportFill(motif); // init paresseuse (D-006)
-    const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-    const poly = ML.strokeToPolygon(localPts, radiusPx);
-    const key = motif.color;
-    const current = motif.surface[key] || [];
-    motif.surface[key] = edit.tool === "brush" ? ML.surfaceUnion(current, poly) : ML.surfaceDifference(current, poly);
+    motif.surface = { [motif.color]: draft };
     motif.silhouette = ML.silhouetteFromSurface(Object.values(motif.surface).flat());
+    editDrafts.delete(motif.id);
+    if (edit.active && edit.motifId === motif.id) {
+      edit.draft = deepCopyContours(draft);
+      edit.dirty = false;
+      redrawEditLayer(motif);
+    }
     rerenderMotif(motif);
     markProjectChanged();
+    refreshDraftCounter();
+    populateStyletEditor(motif);
+  }
+  // jette le brouillon effectif (live ou rangé) : le motif retrouve sa surface réelle inchangée.
+  function discardMotifDraft(motif) {
+    if (effectiveDraft(motif) == null) return;
+    editDrafts.delete(motif.id);
+    if (edit.active && edit.motifId === motif.id) {
+      edit.draft = deepCopyContours(exportFill(motif)[motif.color]);
+      edit.dirty = false;
+      redrawEditLayer(motif);
+    }
+    rerenderMotif(motif); // repasse au réel (retire le vert s'il n'était pas en édition live)
+    refreshDraftCounter();
+    populateStyletEditor(motif);
+  }
+  // applique tous les essais en attente (editDrafts) d'un coup : un seul recordHistory. Visible
+  // aussi pendant une édition live (cf. UI) : on range d'abord le brouillon en cours s'il est
+  // modifié, sinon "Tout appliquer" perdrait silencieusement les traits non encore rangés.
+  function applyAllDrafts() {
+    if (edit.active && edit.dirty) {
+      const liveMotif = state.motifs.find((m) => m.id === edit.motifId);
+      if (liveMotif) editDrafts.set(liveMotif.id, { surfaceByColor: { [liveMotif.color]: edit.draft } });
+    }
+    if (!editDrafts.size) return;
+    recordHistory();
+    for (const [motifId, entry] of editDrafts) {
+      const motif = state.motifs.find((m) => m.id === motifId);
+      if (!motif) continue;
+      motif.surface = entry.surfaceByColor;
+      motif.silhouette = ML.silhouetteFromSurface(Object.values(motif.surface).flat());
+      rerenderMotif(motif);
+    }
+    editDrafts.clear();
+    if (edit.active) {
+      const motif = state.motifs.find((m) => m.id === edit.motifId);
+      if (motif) {
+        edit.draft = deepCopyContours(exportFill(motif)[motif.color]);
+        edit.dirty = false;
+        redrawEditLayer(motif);
+      }
+    }
+    markProjectChanged();
+    refreshDraftCounter();
+    const sel = selectedMotif();
+    if (sel) populateStyletEditor(sel);
+  }
+  // garde-fou export (SVG ici, PNG en T9) : prévient si des essais ne seraient pas reflétés
+  // (l'export lit toujours motif.surface réel, jamais le brouillon vert display-only).
+  function guardPendingDrafts() {
+    if (!editDrafts.size) return true;
+    const n = editDrafts.size;
+    const applyNow = confirm(`${n} essai(s) non appliqué(s) — OK pour tout appliquer puis exporter, Annuler pour choisir.`);
+    if (applyNow) { applyAllDrafts(); return true; }
+    return confirm("Exporter quand même ? Les essais en attente n'apparaîtront pas dans l'export.");
+  }
+  function refreshDraftCounter() {
+    const n = editDrafts.size;
+    const box = document.getElementById("draft-summary");
+    document.getElementById("draft-count-label").textContent = n === 1 ? "1 essai en attente" : `${n} essais en attente`;
+    box.style.display = n > 0 ? "flex" : "none";
+  }
+
+  // applique un trait terminé (déjà en coords locales du motif) au BROUILLON (pas motif.surface) :
+  // union (pinceau) ou différence (gomme) sous la couleur focale. Aucun rerenderMotif ici (gain
+  // perf D-007) : seul editLayer est redessiné, instantanément, quelle que soit la taille du décor.
+  function applyStroke(motif, localPts) {
+    const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
+    const poly = ML.strokeToPolygon(localPts, radiusPx);
+    edit.draft = edit.tool === "brush" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
+    edit.dirty = true;
+    redrawEditLayer(motif);
   }
 
   function localPoint() {
@@ -713,12 +871,12 @@
       points: edit.pts.flat(), stroke: edit.tool === "brush" ? motif.color : "#ff0000",
       strokeWidth: edit.sizeMm * PX_PER_MM, lineCap: "round", lineJoin: "round", opacity: 0.55, listening: false,
     });
-    edit.node.add(editPreview);
+    editLayer.add(editPreview);
   }
   function moveStroke() {
     edit.pts.push(localPoint());
     editPreview.points(edit.pts.flat());
-    mainLayer.batchDraw();
+    uiLayer.batchDraw();
   }
   function endStroke() {
     edit.drawing = false;
@@ -753,6 +911,9 @@
   document.getElementById("tool-brush").onclick = () => setEditTool("brush");
   document.getElementById("tool-eraser").onclick = () => setEditTool("eraser");
   document.getElementById("brush-size").oninput = (e) => { edit.sizeMm = parseFloat(e.target.value) || 3; };
+  document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
+  document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
+  document.getElementById("btn-draft-apply-all").onclick = applyAllDrafts;
 
   // ─── actions clavier / boutons ──────────────────────────────────────────────
   function duplicateSel() {
@@ -852,6 +1013,7 @@
     });
   }
   function exportSVG() {
+    if (!guardPendingDrafts()) return; // D-007/T5 : avertit si des essais en attente ne seraient pas reflétés
     const insts = instancesBottomToTop();
     if (!insts.length) { alert("Rien à exporter."); return; }
     const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
@@ -898,6 +1060,7 @@
     document.getElementById("library").innerHTML = "";
     for (const k in motifThumbs) delete motifThumbs[k];
     state.motifs = []; state.boundary = data.boundary || null; state.holes = data.holes || null; state.contourRef = data.contourRef || null; state.seq = 0;
+    editDrafts.clear(); refreshDraftCounter(); // D-007 : essais en attente non sérialisés, purgés au chargement (ids périmés)
     state.margin = data.margin || { show: true, mm: 5 };
     document.getElementById("chk-margin").checked = state.margin.show;
     document.getElementById("margin-mm").value = state.margin.mm;
@@ -1115,5 +1278,6 @@
     });
 
   updateInspector();
+  refreshDraftCounter();
   restoreLocalProject();
 })();
