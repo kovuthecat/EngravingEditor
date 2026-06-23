@@ -108,7 +108,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si l'overlay n'apparaît jamais (peinture non déclenchée), STOP et signaler — ne pas empiler
   des `setTimeout` arbitraires.
 - **Commit :** `feat(ui): overlay d'import non bloquant`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : voir HEAD (validation visuelle non faite — skip demandé)
 
 ### T3 — Édition : fond silhouette statique (ne plus le retracer par trait) · Modèle : Sonnet
 - **Pourquoi ce modèle :** refactor Konva du calque d'essai, validation visuelle de fluidité.
@@ -158,7 +158,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
     ~150 ms après le dernier ajustement.
 - **Si bloqué :** si `selected()` n'est pas accessible dans le `setTimeout`, STOP et signaler.
 - **Commit :** `perf(ui): debounce recache au transformend`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : (voir git log)
 
 # ─────────────  LOT 2 — Vert sur la matière ajoutée seulement  ─────────────
 
