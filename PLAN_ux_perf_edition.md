@@ -389,7 +389,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si aucune source de pression n'est disponible (toujours 0.5), le signaler comme limitation
   (pas un échec) ; si `variableStroke` produit des trous/artefacts, STOP et joindre un cas.
 - **Commit :** `feat(edit): trait à largeur variable selon la pression du stylet`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : dc50e7b (validation visuelle non faite — skip demandé)
 
 ### T12 — Plume calligraphique inclinée · Modèle : Sonnet
 - **Pourquoi ce modèle :** géométrie (Minkowski / nib orienté), validation `node test/run.js` + visuelle.
