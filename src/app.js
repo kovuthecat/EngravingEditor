@@ -704,7 +704,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [] };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
   let editPreview = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
@@ -833,6 +833,10 @@
     const motif = selectedMotif();
     if (!g || !motif) return;
     edit.active = true; edit.motifId = motif.id; edit.node = g;
+    // repli auto des sections sidebar à l'entrée (T9) : mémorise les <details> ouverts pour les
+    // rouvrir tels quels à la sortie (un <details> resté fermé reste fermé).
+    edit.reopenDetails = [...document.querySelectorAll("#sidebar details[open]")];
+    edit.reopenDetails.forEach((d) => { d.open = false; });
     // palette flottante (T7) : la sidebar se replie à l'entrée, sauf si déjà repliée manuellement
     // (sidebarWasCollapsed mémorisé pour ne pas la rouvrir à tort à la sortie).
     edit.sidebarWasCollapsed = document.getElementById("app").classList.contains("collapsed");
@@ -884,6 +888,8 @@
       document.getElementById("app").classList.remove("collapsed");
       syncStageSize();
     }
+    (edit.reopenDetails || []).forEach((d) => { d.open = true; });
+    edit.reopenDetails = null;
     uiLayer.batchDraw();
     if (motif && wasDirty) rerenderMotif(motif); // une fois (recache inclus) : passe en vert si en attente
     else if (editedNode) editedNode.cache({ pixelRatio: 2 }); // rien changé : juste recache (décaché à l'entrée)
