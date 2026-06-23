@@ -137,7 +137,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si le brouillon n'apparaît plus / décalé après la scission, STOP (problème de transform ou
   d'ordre des sous-groupes) — signaler, ne pas re-fusionner en cachant le bug.
 - **Commit :** `perf(edit): fond silhouette statique mis en cache (1 tracé/session)`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : a04f3dd (validation visuelle non faite — skip demandé)
 
 ### T4 — Debounce du recache au transformend · Modèle : Haiku
 - **Pourquoi ce modèle :** mécanique, localisé (un handler), peu de jugement.
