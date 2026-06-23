@@ -704,7 +704,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, profile: "round", drawing: false, pts: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [] };
   let editPreview = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
@@ -726,6 +726,21 @@
 
   function deepCopyContours(contours) {
     return (contours || []).map((c) => ({ pts: c.pts.map((p) => p.slice()), closed: c.closed }));
+  }
+  // pile d'annulation par trait (T8) : un snapshot avant chaque mutation de edit.draft (trait,
+  // forme, lasso), bornée pour ne pas grossir sans fin sur une longue session (décor). Session
+  // uniquement (jamais sérialisée) ; réinitialisée par enterEdit/exitEdit — ne touche pas
+  // l'historique global du projet (recordHistory/undo).
+  function pushStrokeSnapshot() {
+    edit.history.push(deepCopyContours(edit.draft));
+    if (edit.history.length > 30) edit.history.shift();
+  }
+  function undoStroke() {
+    if (!edit.active || !edit.history.length) return;
+    edit.draft = edit.history.pop();
+    edit.dirty = true;
+    clearLassoSelection();
+    redrawEditLayer(state.motifs.find((m) => m.id === edit.motifId));
   }
   // brouillon effectif d'un motif pour Appliquer/Jeter : la session live si elle l'édite, sinon
   // l'essai rangé dans editDrafts ; null si rien en attente. Lit la première (unique en pratique,
@@ -828,6 +843,7 @@
     const stashed = editDrafts.get(motif.id);
     edit.draft = deepCopyContours(stashed ? Object.values(stashed.surfaceByColor)[0] : exportFill(motif)[motif.color]);
     edit.dirty = false;
+    edit.history = [];
     clearLassoSelection(); // pas de sélection lasso résiduelle d'une session d'édition précédente
     // T3 : le groupe a été mis en cache (bitmap) à sa création. Un groupe caché affiche son bitmap
     // figé et ignore les enfants ajoutés ensuite ; on le décache (exitEdit recache), mais le calque
@@ -853,6 +869,7 @@
     // restauré si on revient sur ce motif (enterEdit), visible en vert sur ses instances (T5 §5).
     if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
     edit.active = false; edit.drawing = false; edit.pts = []; edit.draft = []; edit.dirty = false;
+    edit.history = [];
     clearLassoSelection();
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     editLayer.visible(false);
@@ -963,6 +980,7 @@
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
     const poly = ML.strokeToPolygon(localPts, radiusPx, edit.profile);
+    pushStrokeSnapshot();
     edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
     edit.dirty = true;
     redrawEditLayer(motif);
@@ -1051,6 +1069,7 @@
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (motif) {
       const poly = shapePolygon(edit.tool, edit.shapeAnchor, edit.shapeCurrent, edit.shapeConstrain);
+      pushStrokeSnapshot();
       edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
       edit.dirty = true;
       redrawEditLayer(motif);
@@ -1177,6 +1196,7 @@
     if (!edit.lasso) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
+    pushStrokeSnapshot();
     edit.draft = ML.surfaceUnion(edit.lasso.rest, moved);
     edit.dirty = true;
     clearLassoSelection();
@@ -1186,6 +1206,7 @@
     if (!edit.lasso) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
+    pushStrokeSnapshot();
     edit.draft = ML.surfaceUnion(edit.draft, moved);
     edit.dirty = true;
     clearLassoSelection();
@@ -1194,6 +1215,7 @@
   function finalizeLassoErase() {
     if (!edit.lasso) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
+    pushStrokeSnapshot();
     edit.draft = edit.lasso.rest;
     edit.dirty = true;
     clearLassoSelection();
@@ -1272,8 +1294,7 @@
   document.getElementById("profile-flat").onclick = () => setEditProfile("flat");
   document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
   document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
-  // undoStroke fourni par T8 ; tant qu'elle n'existe pas encore, ce bouton est un no-op.
-  document.getElementById("btn-edit-undo").onclick = () => { if (typeof undoStroke === "function") undoStroke(); };
+  document.getElementById("btn-edit-undo").onclick = () => undoStroke();
   document.getElementById("btn-edit-exit").onclick = () => exitEdit();
   document.getElementById("btn-draft-apply-all").onclick = applyAllDrafts;
 
@@ -1308,7 +1329,7 @@
   }
   window.addEventListener("keydown", (e) => {
     if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
-    if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); undo(); }
+    if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); if (edit.active) undoStroke(); else undo(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSel(); }
     else if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); duplicateSel(); }
     else if (e.key === "]") zorder("up"); else if (e.key === "[") zorder("down");

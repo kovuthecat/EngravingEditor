@@ -306,7 +306,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si une mutation de `edit.draft` n'est pas couverte par un snapshot (un trait non annulable),
   STOP et lister les points de mutation manquants.
 - **Commit :** `feat(edit): annuler par trait (pile de brouillon) + Ctrl+Z contextuel`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : voir HEAD (validation visuelle non faite — skip demandé)
 
 ### T9 — Repli auto des sections à l'entrée d'édition, restauration à la sortie · Modèle : Sonnet
 - **Pourquoi ce modèle :** gestion d'état UI (mémoriser/restaurer l'ouvert), petit mais transverse aux `<details>`.
