@@ -193,7 +193,7 @@ par **pression du stylet** + **plume calligraphique inclinée**.
 - **Si bloqué :** si `exportFill(motif)[color]` est `undefined` pour une couleur du brouillon (motif neuf jamais
   rempli), traiter le réel comme `[]` (tout est « ajouté ») — ne pas planter ; si le comportement diverge, STOP.
 - **Commit :** `feat(edit): vert uniquement sur la matière ajoutée par l'essai`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-23   ·   commit : 2e5f26e (validation visuelle non faite — skip demandé)
 
 # ─────────────  LOT 3 — Palette flottante tactile + réorg sidebar  ─────────────
 
