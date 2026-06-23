@@ -4,20 +4,15 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 
 > **Frontières** — **STATUS** : état actuel + backlog futur · **PLAN.md** : tâches actives en cours d'exécution.
 
-> **Dernière mise à jour :** 2026-06-22
+> **Dernière mise à jour :** 2026-06-23
 
 ## Phase actuelle
 
-Phase 2 — pipeline SVG + zones (Lot 1, `DECISIONS.md §D-004`). **Atteint (T1-T7).**
+**Lot 4 terminé** (`PLAN_edition_reactivite.md`, `DECISIONS.md §D-007`, 2026-06-23) : édition **non destructive** (calques d'essai), **perf** (silhouette multi-contours, hitFunc clic, cache Konva, fusion calques), **outils** (pinceau/gomme/ligne/rect/ellipse/lasso), **export PNG** (sens écran, divergent du SVG miroir), **guide offset** des vides internes, **UI épurée** (sidebar « Avancé »).
 
-Objectif : faire passer l'outil du DXF au SVG de bout en bout — motifs décomposés en zones
-REMPLI/VIDE (édition de rôle), surface gravée = union des régions REMPLI par couleur, occlusion par
-surfaces (plus par traits), export SVG couleur/`evenodd` en mm. Retrait total du DXF (entrée + sortie).
+**Tâches faites** : **Lot 1** (D-004, T1-T7, pipeline SVG) ; **Lot 2** (D-005, T8-T12, rôles décor/perso/symbole) ; **Lot 3** (D-006, `PLAN_tablette_edition.md`, import calibré/tablette/édition stylet) ; **Lot 4** (D-007, `PLAN_edition_reactivite.md`, T1-T11, réactivité+édition non destructive).
 
-Lot 2 (décor / personnage / symbole, `DECISIONS.md §D-005`) : **T8-T11 faits**, T12 (doc) restant —
-voir `PLAN.md`.
-
-Lot 3 (import calibré, tablette, édition stylet, `DECISIONS.md §D-006`, `PLAN_tablette_edition.md`) : **T1-T6 faits** (code), **T7 en cours** (contexte/README).
+**Restant** : mise à jour contexte Lot 4 (DECISIONS.md D-007, STATUS.md, SPEC.md § export PNG / calque d'essai) — en cours dans cette session.
 
 ## Ce qui fonctionne
 

@@ -77,27 +77,40 @@ rectangles** (`+ Zone interdite`) qu'il pose sur les cavités/boutons (le plan c
 de référence gris). Ces zones : (1) sont **soustraites** à l'export (rien gravé dedans), (2) sont
 **évitées** par le packing. Éditables comme les motifs (déplacer/redim/tourner). Stockées dans le projet.
 
-## Mode édition stylet (Lot 3, T6)
+## Mode édition stylet (Lot 3 T6, Lot 4 T5-T8)
 
 Permet de **retoucher manuellement la surface gravée** d'un motif après import (pinceau/gomme au stylet ou
-à la souris), en restant verrouillé sur ce motif pendant l'édition. Chaque coup **mute `motif.surface`**
-et propage le changement à toutes les instances + la vignette.
+à la souris), en restant verrouillé sur ce motif pendant l'édition. Édition est **non destructive** (Lot 4) :
+chaque coup mute un **brouillon temporaire**, rendu en **vert** sur l'instance, sans modifier `motif.surface`
+(la surface réelle) tant qu'on ne clique pas « Appliquer ».
 
 - **Entrée en mode édition** : sélectionner un motif → bouton « Entrer » → verrouillage (sélection bloquée,
   `stage.draggable(false)`, poignées Transformer masquées), aucune interaction avec autres motifs.
 - **Outils** : radio pinceau / gomme + slider taille (mm) → `radiusPx = sizeMm * PX_PER_MM / 2`.
+  - **Pinceau/Gomme** : union/différence de trait (offset ClipperOffset) au brouillon.
+  - **Ligne / Rectangle / Ellipse** (T7) : pointerdown = ancrage, move = aperçu, up = polygone final appliqué.
+    Maj = carré/cercle contraint.
+  - **Lasso** (T8) : polyligne fermée pour sélectionner une portion, puis Déplacer/Dupliquer/Effacer.
 - **Tracé** (un doigt/stylet seul ; deux doigts = pan) :
   - Pointer down/move/up → accumuler points en **coordonnées locales du motif** (via `node.getRelativePointerPosition()` inversé).
-  - À `pointerup` : `poly = ML.strokeToPolygon(localPts, radiusPx)` (offset ClipperOffset, closed polygon).
-  - Appliquer l'outil : `motif.surface[motif.color] = (tool==="brush")
-    ? ML.surfaceUnion(motif.surface[motif.color]||[], poly)
-    : ML.surfaceDifference(motif.surface[motif.color]||[], poly)`.
-  - Recalculer silhouette : `motif.silhouette = ML.silhouetteFromSurface(toutes contours surface)`.
-  - Re-rendre : `rerenderMotif(motif)` (toutes instances + vignette).
-- **Sortie de mode édition** : bouton « Sortir » → restaure `stage.draggable(true)`, ré-affiche poignées.
+  - À `pointerup` : appliquer l'outil sur le **brouillon** (`edit.draft`, pas `motif.surface` directement).
+  - Chaque coup : `edit.draft = surfaceUnion/surfaceDifference(edit.draft, poly)`, `edit.dirty=true`.
+  - Redessiner uniquement `editLayer` (pas de `rerenderMotif` à chaque coup — gain perf majeur).
+- **Appliquer/Jeter/Tout appliquer** (T5, non destructif) :
+  - **Appliquer** au motif : `motif.surface = edit.draft`, recalcul silhouette, `rerenderMotif` une fois.
+    Range l'essai depuis `editDrafts` si on revient dessus.
+  - **Jeter** : abandonne le brouillon sans modifier le motif.
+  - **Tout appliquer** : applique tous les essais en attente en une seule étape d'historique.
+  - **Brouillon en attente** : affiché en **vert** sur toutes les instances du motif (display-only, silhouette/export
+    restent réels) tant que non appliqué. Permet de quitter l'édition sans forcer Appliquer/Jeter — le brouillon
+    est restauré au retour.
+- **Sortie de mode édition** : bouton « Sortir » → si brouillon modifié, le range en attente (vert) ; restaure
+  `stage.draggable(true)`, ré-affiche poignées.
 - **Portée** : édition **par motif** (pas par instance) — toutes les copies du motif reflètent les changements.
   Couleur opérée = `motif.color` (couleur focale), pas de multi-couleur sous édition.
 - **Persistance** : `motif.surface` est sérialisée dans le JSON projet et reflétée à l'export SVG (via `exportFill`).
+  Les brouillons en attente (`editDrafts`) ne sont **pas sérialisés** (session uniquement) — recharger l'app
+  les perd, d'où l'avertissement « N essais non appliqués » à l'export.
 
 Points clés :
 
@@ -144,6 +157,24 @@ Aucune build, aucun serveur Node requis — l'app tourne en `file://` ou HTTP st
 - **Tablette/Mobile portrait** (< 900px) : bouton **☰** (toggle) dans le header ; clic → sidebar se replie
   (transitionne vers largeur 0) ; canevas s'agrandit au-dessus. Clic ☰ à nouveau → déplie.
 - Cibles tactiles agrandies : boutons ≥40px de haut, ancres Transformer ≥16px, moveHandle ≥20px.
+
+## Export PNG/JPEG haute définition (T9)
+
+Complément de l'export SVG (qui reste en miroir vertical pour la machine laser) : **PNG/JPEG en sens
+écran** pour aperçu/partage. Orientation diverge volontairement (D-007).
+
+- **Format** : PNG par défaut, JPEG en option (qualité 0.92).
+- **Définition** : DPI réglable (défaut 300) ; plafonné automatiquement si la sortie dépasserait ~40 Mpx
+  (garde anti-mémoire pour éviter les gels navigateur).
+- **Géométrie** : réutilise `instancesBottomToTop` + `ML.occludeSurfaces` (même occlusion que SVG),
+  mais **sans** passer par `pxPathsToMm` (qui applique le flip `-y`). Le PNG reste en repère écran px,
+  rendu direct via `canvas.getContext("2d")`.
+- **Essais en attente** : même garde-fou que l'export SVG — avertir/confirmer si des brouillons non
+  appliqués (via `guardPendingDrafts`).
+
+Divergence intentionnelle avec le SVG :
+- **SVG** (laser) : miroir vertical (convention gravure), calibré en mm.
+- **PNG/JPEG** (écran) : sens écran, haute déf pour affichage/partage.
 
 ## Guides de gravure (visuels uniquement, sans effet sur l'export)
 - **Marge de sécurité** : offset intérieur du contour (`ML.insetPolygon`, ClipperOffset arrondi), distance réglable en mm, dessiné en tirets ambre dans `boundaryLayer`. Sert à garder une marge par rapport au bord réel, en cas d'incertitude sur le calage physique de la pièce sous le laser. Recalculé à chaque changement de contour/valeur ; ignoré si le contour disparaît ou si l'offset fait disparaître le polygone (mm trop grand).

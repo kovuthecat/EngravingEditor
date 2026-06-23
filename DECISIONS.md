@@ -249,3 +249,99 @@ Retours de Thibault : (1) motifs importés « toujours beaucoup trop grands et s
 Plan d'exécution : `PLAN_tablette_edition.md` (Lot 3). Géométrie (`strokeToPolygon`, union/différence,
 silhouette) validée par `node test/run.js` + contrôle visuel ; le mode édition validé manuellement au
 stylet/tactile. Le `file://` doit continuer de fonctionner en dev (pas d'ES modules introduits).
+
+## 2026-06-23 — D-007 : Calques d'essai non destructifs (Appliquer/Jeter) + PNG orientation écran/SVG miroir
+
+### Décision
+
+Introduire **édition non destructive au stylet** et **dual-orientation export** : (1) **calque d'essai
+(brouillon)** : chaque trait/forme pinceau/gomme mute un **brouillon temporaire**, rendu en **vert** sur
+les instances du motif édité, sans modifier `motif.surface` (la surface réelle). Boutons **Appliquer**
+(valide le brouillon = `motif.surface`) / **Jeter** (abandonne) / **Tout appliquer** (un coup). Un
+brouillon peut rester **en attente** (session uniquement, non sérialisé) et être **restauré** au retour sur
+ce motif. (2) **Divergence orientation export** : le **SVG garde son miroir vertical** (`pxPathsToMm`
+inchangé, output pour laser), le **PNG sort en sens écran** (repère px direct, sans `-y`, pour aperçu/partage).
+
+### Contexte
+
+Thibault souhaitait tracer/retoucher librement sans peur de "casser" le motif au premier mauvais coup.
+Lot 4 (`PLAN_edition_reactivite.md`, 2026-06-22) réorganise la pipeline édition autour de ce modèle
+(T1 silhouette multi-contours, T2-T3 perf, T5 brouillons, T6-T8 outils, T9 PNG sens écran).
+
+### Alternatives envisagées
+
+- **Undo/redo par trait** : coûteux (recalcul silhouette/occlusion à chaque coup) + compliqué
+  (backstack explosif). Rejeté.
+- **Brouillons sérialisés** : persistance projet complexe (divergence load/save). Rejeté — session
+  uniquement suffit avec le compteur « N essais » + avertissement export.
+- **PNG = SVG à l'écran** : ignorerait le choix de Thibault (SVG pour machine, PNG pour partage).
+  Rejeté — orientation diverge volontairement.
+
+### Raison du choix
+
+Le brouillon vert donne un **feedback immédiat** (retouche visible à l'écran) tout en **préservant la
+version réelle**, et coûte 0 perf par frame (un seul re-render à la transition, vert baked au cache).
+Dual-orientation export reflète deux usages distincts : laser (miroir) vs aperçu (écran).
+
+### Conséquences
+
+- **Édition** : `edit.draft` = brouillon local, `editDrafts` = map de brouillons en attente (session,
+  non sérialisée) ; vert affiché via `fillGroupContent`/`drawThumb` si essai en attente.
+- **Export** : SVG inchangé (miroir `pxPathsToMm` conservé) ; PNG nouveau repère écran (`canvas` direct),
+  DPI réglable.
+- **UI** : boutons Appliquer/Jeter (motif courant) + Tout appliquer (globaux) ; compteur « N essais
+  en attente » ; avertissement/confirm à l'export si des essais non appliqués.
+- **Outils** : pinceau/gomme + profils rond/plat (T6) ; ligne/rect/ellipse (T7) ; lasso
+  déplacer/dupliquer/effacer (T8).
+- **Perf** : silhouette **multi-contours** (chaque morceau d'un motif occulte séparément, T1),
+  **hitFunc** sur surfaces (clic toute partie visible, T2), **cache Konva** des groupes (drag fluide,
+  T3), **fusion calques** (5 au lieu de 6, T4) — tout le Lot 4.
+
+### Impact IA
+
+Plan `PLAN_edition_reactivite.md` (Lot 4). Toute modif géométrique (silhouette multi-contours, occlusion,
+export) validée via `node test/run.js`. Édition au stylet et PNG validés manuellement en navigateur réel
+ou tablette (validation visuelle explicitement sautée dans les tâches, report à Thibault).
+Introduire **édition non destructive au stylet** et **dual-orientation export** : (1) **calque d'essai
+(brouillon)** : chaque trait/forme pinceau/gomme mute un **brouillon temporaire**, rendu en **vert** sur
+les instances du motif édité, sans modifier `motif.surface` (la surface réelle). Boutons **Appliquer**
+(valide le brouillon = `motif.surface`) / **Jeter** (abandonne) / **Tout appliquer** (un coup). Un
+brouillon peut rester **en attente** (session uniquement, non sérialisé) et être **restauré** au retour sur
+ce motif. (2) **Divergence orientation export** : le **SVG garde son miroir vertical** (`pxPathsToMm`
+inchangé, output pour laser), le **PNG sort en sens écran** (repère px direct, sans `-y`, pour aperçu/partage).
+
+### Contexte
+Thibault souhaitait tracer/retoucher librement sans peur de "casser" le motif au premier mauvais coup.
+Lot 4 (`PLAN_edition_reactivite.md`, 2026-06-22) réorganise la pipeline édition autour de ce modèle
+(T1 silhouette multi-contours, T2-T3 perf, T5 brouillons, T6-T8 outils, T9 PNG sens écran).
+
+### Alternatives envisagées
+- **Undo/redo par trait** : coûteux (recalcul silhouette/occlusion à chaque coup) + compliqué
+  (backstack explosif). Rejeté.
+- **Brouillons sérialisés** : persistance projet complexe (divergence load/save). Rejeté — session
+  uniquement suffit avec le compteur « N essais » + avertissement export.
+- **PNG = SVG à l'écran** : ignorerait le choix de Thibault (SVG pour machine, PNG pour partage).
+  Rejeté — orientation diverge volontairement.
+
+### Raison du choix
+Le brouillon vert donne un **feedback immédiat** (retouche visible à l'écran) tout en **préservant la
+version réelle**, et coûte 0 perf par frame (un seul re-render à la transition, vert baked au cache).
+Dual-orientation export reflète deux usages distincts : laser (miroir) vs aperçu (écran).
+
+### Conséquences
+- **Édition** : `edit.draft` = brouillon local, `editDrafts` = map de brouillons en attente (session,
+  non sérialisée) ; vert affiché via `fillGroupContent`/`drawThumb` si essai en attente.
+- **Export** : SVG inchangé (miroir `pxPathsToMm` conservé) ; PNG nouveau repère écran (`canvas` direct),
+  DPI réglable.
+- **UI** : boutons Appliquer/Jeter (motif courant) + Tout appliquer (globaux) ; compteur « N essais
+  en attente » ; avertissement/confirm à l'export si des essais non appliqués.
+- **Outils** : pinceau/gomme + profils rond/plat (T6) ; ligne/rect/ellipse (T7) ; lasso
+  déplacer/dupliquer/effacer (T8).
+- **Perf** : silhouette **multi-contours** (chaque morceau d'un motif occulte séparément, T1),
+  **hitFunc** sur surfaces (clic toute partie visible, T2), **cache Konva** des groupes (drag fluide,
+  T3), **fusion calques** (5 au lieu de 6, T4) — tout le Lot 4.
+
+### Impact IA
+Plan `PLAN_edition_reactivite.md` (Lot 4). Toute modif géométrique (silhouette multi-contours, occlusion,
+export) validée via `node test/run.js`. Édition au stylet et PNG validés manuellement en navigateur réel
+ou tablette (validation visuelle explicitement sautée dans les tâches, report à Thibault).
