@@ -76,8 +76,19 @@ header h1 { font-size: 16px; margin: 0; color: #fff; }
 .draft-summary #btn-draft-apply-all { width: auto; min-height: 30px; flex: none; }
 .draft-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #22c55e; vertical-align: middle; }
 
-#library { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.library-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+
+#sidebar details.lib-group { margin: 8px 0; }
+#sidebar details.lib-group summary { list-style: none; cursor: pointer; font-size: 12px;
+  color: #b6bdca; padding: 4px 0; display: flex; align-items: center; gap: 6px; }
+#sidebar details.lib-group summary::-webkit-details-marker { display: none; }
+#sidebar details.lib-group summary::before { content: "▸"; width: 14px; color: #6b7280; }
+#sidebar details.lib-group[open] summary::before { content: "▾"; }
+.lib-count { font-size: 10px; color: #6b7280; }
 .lib-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border: 1px solid #2a3040; border-radius: 6px; background: #0f1218; cursor: pointer; }
 .lib-item:hover { border-color: #3b82f6; }
 .lib-item canvas { background: #fff; border-radius: 4px; }
 .lib-item span { font-size: 10px; color: #b6bdca; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#busy-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15,17,21,.7); color: #e5e7eb; font-size: 14px; z-index: 50; }
+#busy-overlay[hidden] { display: none; }

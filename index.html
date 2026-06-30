@@ -28,7 +28,14 @@
         <label class="btn">Importer symboles (SVG)…
           <input id="import-symbole" type="file" accept=".svg" multiple hidden />
         </label>
-        <div id="library"></div>
+        <details class="lib-group" open>
+          <summary>Personnages <span class="lib-count" id="count-perso">0</span></summary>
+          <div id="library-perso" class="library-grid"></div>
+        </details>
+        <details class="lib-group" open>
+          <summary>Symboles <span class="lib-count" id="count-symbole">0</span></summary>
+          <div id="library-symbole" class="library-grid"></div>
+        </details>
       </section>
 
       <section>
@@ -36,6 +43,7 @@
         <label class="btn">Importer décor (SVG)…
           <input id="import-decor" type="file" accept=".svg" hidden />
         </label>
+        <div id="library-decor" class="library-grid"></div>
       </section>
 
       <section>
@@ -173,6 +181,8 @@
 
     <main id="stage"></main>
   </div>
+
+  <div id="busy-overlay" hidden><span>Import en cours…</span></div>
 
   <script src="vendor/konva.min.js"></script>
   <script src="vendor/clipper.js"></script>
