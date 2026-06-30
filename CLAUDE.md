@@ -13,6 +13,8 @@ python -m http.server          # puis http://localhost:8000
 
 # Test headless du cœur (parse SVG -> zones -> occlusion par surfaces -> écriture SVG)
 node test/run.js
+
+node tools/build-builtin-motifs.js  # régénère le bundle de motifs de base
 ```
 
 - Pas de gestionnaire de paquets, pas de `.env`, pas de secret. Tout est vendored (`vendor/`).

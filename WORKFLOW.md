@@ -154,6 +154,13 @@ Pour que l'exécutant (Sonnet, Haiku ou Codex) fasse correctement sa tâche, ell
 
 Pour **Codex**, ces points doivent être **encore plus serrés** : il n'investigue pas et n'arbitre pas, donc un prompt flou produit un mauvais résultat. Il lit sa tâche du `PLAN.md` et la fait, point.
 
+## 6bis. Workflow bibliothèque de base de motifs
+
+Pour ajouter/retirer un motif de base : déposer/supprimer le `.svg` dans `exemple motif/Personnages`
+ou `exemple motif/Symboles`, puis `git commit` (le hook pre-commit régénère
+`src/builtin-motifs.js` automatiquement) et `git push`. Installer le hook une fois :
+`sh tools/install-hook.sh` (ou `tools\install-hook.bat`).
+
 ## 7. Anti-patterns à éviter
 
 - Lancer Opus sur une tâche bien cadrée (gaspillage de tokens) ; le lui signaler à la place.

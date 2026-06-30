@@ -1,0 +1,3 @@
+#!/bin/sh
+node tools/build-builtin-motifs.js || { echo "build-builtin-motifs a échoué"; exit 1; }
+git add src/builtin-motifs.js

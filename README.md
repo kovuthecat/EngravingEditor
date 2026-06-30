@@ -68,3 +68,12 @@ Chaque motif porte un rôle (détermine sa couleur de rendu / export) :
 - **Décor** (bleu, `#0000FF`) : arrière-plan avec vides « see-through » (pas de fond blanc) — les motifs au-dessus s'y détachent.
 
 Voir `SPEC.md` (§Flux) pour les détails techniques complets.
+
+## Bibliothèque de base
+
+L'app embarque une bibliothèque de motifs de base (personnages/symboles) inlinée dans
+`src/builtin-motifs.js`, générée depuis les dossiers `exemple motif/Personnages` et
+`exemple motif/Symboles`. Pour ajouter/retirer un motif de base : déposer/supprimer le `.svg`
+dans le dossier concerné, puis `git commit` (le hook régénère `src/builtin-motifs.js`
+automatiquement) et `git push`. Installer le hook une fois : `sh tools/install-hook.sh`
+(ou `tools\install-hook.bat` sous Windows).
