@@ -13,6 +13,8 @@
     contourRef: null, // polylignes du contour (px) pour le fond de référence (inutilisé depuis le retrait du DXF)
     margin: { show: true, mm: 5 }, // marge de sécurité (offset intérieur du contour), guide visuel uniquement
     seq: 0,
+    builtins: window.ML_BUILTIN_MOTIFS || [], // catalogue brut du bundle {id,name,role,svg}
+    hiddenBuiltins: new Set(), // ids de built-ins masqués localement (persisté)
   };
 
   // ─── Konva ───────────────────────────────────────────────────────────────
@@ -241,6 +243,8 @@
   }
   function deleteMotifFromLibrary(motifId) {
     const motif = state.motifs.find((m) => m.id === motifId);
+    if ((motif && motif.builtin) || state.builtins.some((b) => b.id === motifId))
+      return hideBuiltin(motifId);
     if (!motif) return false;
     const insts = mainLayer.getChildren(
       (n) => n.getClassName() === "Group" && n.getAttr("motifId") === motifId);
@@ -266,6 +270,108 @@
       document.getElementById("library-perso").childElementCount;
     document.getElementById("count-symbole").textContent =
       document.getElementById("library-symbole").childElementCount;
+  }
+
+  // ─── bibliothèque de base (built-ins, D-008) ───────────────────────────────
+  // (T3) première mutation persistée d'un built-in -> promotion en motif local : il sera désormais
+  // inclus par projectData().motifs, et registerBuiltins() le sautera (id déjà présent en local).
+  // L'original du dépôt (bundle) reste intact ; l'id stable b:... est conservé, aucun remappage requis.
+  function promoteIfBuiltin(motif) {
+    if (motif && motif.builtin) motif.builtin = false;
+  }
+  function materializeBuiltin(entry) {
+    const existing = state.motifs.find((m) => m.id === entry.id);
+    if (existing) return existing;
+    const motif = buildMotifFromSVG(entry.name, ML.parseSVG(entry.svg), entry.role);
+    motif.id = entry.id;
+    motif.builtin = true;
+    state.motifs.push(motif);
+    return motif;
+  }
+
+  let builtinObserver = null;
+  function getBuiltinObserver() {
+    if (builtinObserver || typeof IntersectionObserver === "undefined") return builtinObserver;
+    builtinObserver = new IntersectionObserver((entries, obs) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const cv = e.target;
+        obs.unobserve(cv);
+        const entry = cv._builtinEntry;
+        if (!entry) continue;
+        const m = materializeBuiltin(entry);
+        drawThumb(cv, m);
+        motifThumbs[m.id] = cv;
+      }
+    }, { root: document.getElementById("sidebar") });
+    return builtinObserver;
+  }
+
+  function renderBuiltinItem(entry) {
+    const item = document.createElement("div");
+    item.className = "lib-item builtin";
+    item.dataset.builtinId = entry.id;
+    const cv = document.createElement("canvas");
+    cv.width = 64; cv.height = 64;
+    cv._builtinEntry = entry;
+    const label = document.createElement("span");
+    label.textContent = entry.name;
+    const del = document.createElement("button");
+    del.className = "lib-del"; del.type = "button"; del.textContent = "×";
+    del.title = "Masquer ce motif de base";
+    del.onclick = (e) => { e.stopPropagation(); hideBuiltin(entry.id); };
+    item.append(cv, label, del);
+    item.title = "Cliquer pour ajouter au plan";
+    item.onclick = () => addInstance(materializeBuiltin(entry));
+    const gridId = entry.role === "SYMBOLE" ? "library-symbole" : "library-perso";
+    document.getElementById(gridId).appendChild(item);
+    const obs = getBuiltinObserver();
+    if (obs) obs.observe(cv);
+    else { const m = materializeBuiltin(entry); drawThumb(cv, m); motifThumbs[m.id] = cv; }
+    updateLibCounts();
+  }
+
+  function registerBuiltins() {
+    for (const entry of state.builtins) {
+      if (state.hiddenBuiltins.has(entry.id)) continue;
+      if (state.motifs.some((m) => m.id === entry.id && !m.builtin)) continue; // promu en local (T3)
+      if (document.querySelector(`.lib-item[data-builtin-id="${entry.id}"]`)) continue; // déjà rendu
+      renderBuiltinItem(entry);
+    }
+  }
+
+  function hideBuiltin(id) {
+    const motif = state.motifs.find((m) => m.id === id);
+    const insts = motif ? mainLayer.getChildren(
+      (n) => n.getClassName() === "Group" && n.getAttr("motifId") === id) : [];
+    if (motif && insts.length && !confirm(
+        `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Masquer le motif de base et ses exemplaires ?`))
+      return false;
+    state.hiddenBuiltins.add(id);
+    if (motif) {
+      recordHistory();
+      if (edit.active && edit.motifId === id) exitEdit();
+      const sel = selected();
+      if (sel && sel.getAttr("motifId") === id) select(null);
+      insts.forEach((n) => n.destroy());
+      mainLayer.batchDraw();
+      editDrafts.delete(id); refreshDraftCounter();
+      delete motifThumbs[id];
+      state.motifs = state.motifs.filter((m) => m.id !== id);
+    }
+    const item = document.querySelector(`.lib-item[data-builtin-id="${id}"]`);
+    if (item) item.remove();
+    markProjectChanged();
+    updateLibCounts();
+    return true;
+  }
+
+  function restoreBuiltins() {
+    state.hiddenBuiltins.clear();
+    document.querySelectorAll(".lib-item.builtin").forEach((el) => el.remove());
+    registerBuiltins();
+    markProjectChanged();
+    updateLibCounts();
   }
 
   // surfaces REMPLI du motif, fusionnées sous sa couleur focale (rendu écran + export) ; sans
@@ -690,6 +796,7 @@
   }
   document.getElementById("insp-role").onchange = (e) => {
     const motif = selectedMotif(); if (!motif) return;
+    promoteIfBuiltin(motif);
     motif.role = e.target.value;
     const d = ROLE_DEFAULTS[motif.role];
     motif.color = d.color; motif.margin = d.margin;
@@ -699,12 +806,14 @@
   };
   document.getElementById("insp-color").oninput = (e) => {
     const motif = selectedMotif(); if (!motif) return;
+    promoteIfBuiltin(motif);
     motif.color = e.target.value;
     rerenderMotif(motif);
     scheduleLocalSave();
   };
   document.getElementById("insp-margin").oninput = (e) => {
     const motif = selectedMotif(); if (!motif) return;
+    promoteIfBuiltin(motif);
     motif.margin = parseFloat(e.target.value) || 0;
     scheduleLocalSave();
   };
@@ -741,6 +850,7 @@
       toggle.textContent = z.role;
       toggle.onclick = () => {
         recordHistory();
+        promoteIfBuiltin(motif);
         z.role = z.role === "REMPLI" ? "VIDE" : "REMPLI";
         rerenderMotif(motif);
         populateZoneEditor(motif);
@@ -963,6 +1073,7 @@
     if (draft == null) return;
     clearLassoSelection(); // une sélection lasso en attente porte sur edit.draft tel qu'avant l'Appliquer
     recordHistory();
+    promoteIfBuiltin(motif);
     motif.surface = { [motif.color]: draft };
     motif.silhouette = ML.silhouetteFromSurface(Object.values(motif.surface).flat());
     editDrafts.delete(motif.id);
@@ -1004,6 +1115,7 @@
     for (const [motifId, entry] of editDrafts) {
       const motif = state.motifs.find((m) => m.id === motifId);
       if (!motif) continue;
+      promoteIfBuiltin(motif);
       motif.surface = entry.surfaceByColor;
       motif.silhouette = ML.silhouetteFromSurface(Object.values(motif.surface).flat());
       rerenderMotif(motif);
@@ -1560,7 +1672,8 @@
   function projectData() {
     return {
       version: 1, pxPerMm: PX_PER_MM,
-      motifs: state.motifs,
+      motifs: state.motifs.filter((m) => !m.builtin),
+      hiddenBuiltins: [...state.hiddenBuiltins],
       boundary: state.boundary,
       holes: state.holes,
       contourRef: state.contourRef,
@@ -1600,6 +1713,8 @@
       }
       addMotifToLibrary(m); state.seq = Math.max(state.seq, parseInt(m.id.slice(1)) || 0);
     }
+    state.hiddenBuiltins = new Set(data.hiddenBuiltins || []);
+    registerBuiltins();
     updateLibCounts();
     drawBoundary();
     for (const z of (data.zones || [])) makeZone(z);
@@ -1613,7 +1728,11 @@
     document.getElementById("chk-frame").checked = !!(frameNode && frameNode.visible());
     guideLayer.batchDraw();
     for (const it of (data.instances || [])) {
-      const m = state.motifs.find((x) => x.id === it.motifId);
+      let m = state.motifs.find((x) => x.id === it.motifId);
+      if (!m && it.motifId && it.motifId.startsWith("b:")) {
+        const entry = state.builtins.find((b) => b.id === it.motifId);
+        if (entry) m = materializeBuiltin(entry);
+      }
       if (m) addInstance(m, { x: it.x, y: it.y, rotation: it.rotation, scale: it.scale, silent: true, history: false });
     }
     mainLayer.batchDraw();
@@ -1706,6 +1825,7 @@
         loadProject(saved.data);
         setLocalStatus("Projet local restauré");
       } else {
+        registerBuiltins();
         setLocalStatus("Nouveau projet local");
       }
     } catch (err) {
@@ -1788,6 +1908,7 @@
       setBoundaryFromSVG(ML.parseSVG(text).subpaths, long, short);
       e.target.value = "";
     });
+  document.getElementById("btn-restore-builtins").onclick = restoreBuiltins;
   document.getElementById("btn-zone").onclick = addZone;
   document.getElementById("chk-margin").onchange = (e) => { state.margin.show = e.target.checked; drawBoundary(); };
   document.getElementById("margin-mm").oninput = (e) => { state.margin.mm = parseFloat(e.target.value) || 0; drawBoundary(); };
