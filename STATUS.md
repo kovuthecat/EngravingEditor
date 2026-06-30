@@ -4,7 +4,7 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 
 > **Frontières** — **STATUS** : état actuel + backlog futur · **PLAN.md** : tâches actives en cours d'exécution.
 
-> **Dernière mise à jour :** 2026-06-23
+> **Dernière mise à jour :** 2026-06-30
 
 ## Phase actuelle
 
@@ -38,6 +38,7 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 - **Lot 3 — helpers géométrie (T4, `PLAN_tablette_edition.md`)** : `ML.strokeToPolygon(pts, radiusPx)` (offset open-round ClipperOffset), `ML.surfaceUnion(contours, addContours)`, `ML.surfaceDifference(contours, cutContours)`, `ML.silhouetteFromSurface(contours)` pour l'édition stylet. Validés en isolation (helpers implémentés, pas de régression `node test/run.js`).
 - **Lot 3 — surface override (T5, `PLAN_tablette_edition.md`)** : `motif.surface` = `{[color]:[{pts,closed}]}` (px local) **prime** sur surface dérivée des zones partout (rendu/export/silhouette) ; persisté en save/load. Point d'entrée unique via `exportFill`. Validé en navigateur (console : surface injectée puis `rerenderMotif` → vignette + instances mises à jour, save/load préservé).
 - **Lot 3 — mode édition stylet (T6, `PLAN_tablette_edition.md`)** : bouton bascule « Entrer/Sortir » édition ; outils pinceau/gomme + slider taille (mm) ; verrouillage motif (sélection bloquée, `stage.draggable(false)`, poignées masquées) ; tracé en coordonnées locales motif via `getRelativePointerPosition()` ; fin de trait = `strokeToPolygon` → `surfaceUnion`/`surfaceDifference` sur `motif.surface[motif.color]`, recalcul `silhouette`, `rerenderMotif`. Validé en navigateur (Playwright, souris) : traits pinceau ajoutent matière, traits gomme retirent matière, « Sortir » restaure état, `motif.surface` persisté/exporté SVG correct, toutes copies du motif suivent l'édition.
+- **Bibliothèque : listes repliables perso/symbole + suppression motif** (`PLAN_ui-listes-suppression.md`, T1-T2, 2026-06-30) : la grille unique `#library` est remplacée par trois grilles (`library-perso`/`library-symbole` dans des `<details>` repliables avec compteur, `library-decor` séparée), routées sur `motif.role`. Bouton « × » par vignette : supprime le motif de la bibliothèque + cascade ses instances posées sur le plan (confirmation si ≥1 exemplaire), annulable via `recordHistory()`/Ctrl+Z. Tests headless (`node test/run.js`) OK ; validation visuelle manuelle restant à faire par Thibault.
 
 ## Ce qui casse / n'est pas testé
 

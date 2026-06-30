@@ -178,7 +178,7 @@ Deux améliorations UI de la bibliothèque de motifs :
 - **Si bloqué :** si `selected()`, `exitEdit`, `editDrafts` ou `refreshDraftCounter` n'ont pas exactement
   ces noms/signatures dans `app.js`, STOP et signaler — ne pas inventer de variante.
 - **Commit :** `feat(ui): suppression d'un motif depuis la bibliotheque (cascade instances)`
-- **Statut :** [ ] à faire · exécuté par : — · le : — · commit : —
+- **Statut :** [x] fait (code + tests auto OK ; validation visuelle Thibault restante) · exécuté par : Sonnet · le : 2026-06-30 · commit : —
 
 ## Dépendances / ordre
 

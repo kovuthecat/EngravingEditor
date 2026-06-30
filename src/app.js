@@ -202,7 +202,11 @@
     motifThumbs[motif.id] = cv;
     const label = document.createElement("span");
     label.textContent = motif.name;
-    item.append(cv, label);
+    const del = document.createElement("button");
+    del.className = "lib-del"; del.type = "button"; del.textContent = "×";
+    del.title = "Supprimer ce motif de la bibliothèque";
+    del.onclick = (e) => { e.stopPropagation(); if (deleteMotifFromLibrary(motif.id)) item.remove(); };
+    item.append(cv, label, del);
     item.title = "Cliquer pour ajouter au plan";
     item.onclick = () => addInstance(motif);
     const gridId = motif.role === "SYMBOLE" ? "library-symbole"
@@ -210,6 +214,27 @@
                  :                            "library-perso";
     document.getElementById(gridId).appendChild(item);
     updateLibCounts();
+  }
+  function deleteMotifFromLibrary(motifId) {
+    const motif = state.motifs.find((m) => m.id === motifId);
+    if (!motif) return false;
+    const insts = mainLayer.getChildren(
+      (n) => n.getClassName() === "Group" && n.getAttr("motifId") === motifId);
+    if (insts.length && !confirm(
+        `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Supprimer le motif et ses exemplaires ?`))
+      return false;
+    recordHistory();
+    if (edit.active && edit.motifId === motifId) exitEdit();
+    const sel = selected();
+    if (sel && sel.getAttr("motifId") === motifId) select(null);
+    insts.forEach((n) => n.destroy());
+    mainLayer.batchDraw();
+    editDrafts.delete(motifId); refreshDraftCounter();
+    delete motifThumbs[motifId];
+    state.motifs = state.motifs.filter((m) => m.id !== motifId);
+    markProjectChanged();
+    updateLibCounts();
+    return true;
   }
 
   function updateLibCounts() {
