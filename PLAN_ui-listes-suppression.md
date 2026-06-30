@@ -106,7 +106,7 @@ Deux améliorations UI de la bibliothèque de motifs :
 - **Si bloqué :** si un id (`library-perso`/`library-symbole`/`library-decor`) n'existe pas au moment
   d'appeler `getElementById` (ordre de chargement), STOP et signaler — ne pas créer les divs en JS.
 - **Commit :** `feat(ui): listes repliables personnages/symboles + grille decor`
-- **Statut :** [x] fait · exécuté par : Sonnet · le : 2026-06-30 · commit : —
+- **Statut :** [x] fait · exécuté par : Sonnet · le : 2026-06-30 · commit : cf03a2c
 
 ### T2 — Bouton de suppression d'un motif depuis la bibliothèque (cascade) · Modèle : Sonnet
 - **Pourquoi ce modèle :** jugement requis (état Konva, édition active, sélection, undo, instances liées).
