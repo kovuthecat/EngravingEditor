@@ -27,7 +27,7 @@ Objectif : remplir le contour de la table en compo dense, **sans répétition**,
 
 ---
 
-## Inventaire actuel (36 dessins) — `Dessins individuels/`
+## Inventaire actuel (47 dessins) — `Dessins individuels/` + `exemple motif/Personnages/`
 
 | Univers | Motifs existants |
 |---|---|
@@ -37,6 +37,7 @@ Objectif : remplir le contour de la table en compo dense, **sans répétition**,
 | **Star Wars** | Dark Vador, Grogu |
 | **Sci-fi / ciné** | BTTF, Stargate, Star Trek, Ring (LotR) |
 | **Anime / cartoon** | Astro Boy, Stitch, Casper, Crocmou, Tortues Ninja |
+| **Anime shonen** | Dragon Ball (7 boules), One Piece (fruit), Tails (Sonic) |
 | **Tech / maker** | Raspberry Pi, Lego, Ampoule, Éclair |
 | **À confirmer** | Main, Charlie, Babyss, Cool, CDLM |
 
@@ -372,6 +373,7 @@ Légende priorité : **A** = excellent candidat · **B** = bon complément · **
 
 ## Journal
 
+- 2026-06-30 : ajout de 9 motifs anime shonen (Dragon Ball : 7 boules DB Ball1–7, One Piece : fruit OP fruit, Sonic : tails remis à jour). Inventaire passé à 47 dessins.
 - 2026-06-21 : ajout d'une liste dédiée de 50 motifs de bande dessinée franco-belge et européenne, incluant personnages, objets iconiques et signes graphiques de BD.
 - 2026-06-21 : seconde sélection doublée, de 76 à 152 motifs suggérés, sans répétition directe et en conservant les priorités de gravure.
 - 2026-06-21 : première sélection considérée incluse ; ajout d'une seconde sélection de références Ghibli, Nintendo, jeux vidéo, cinéma culte 80–90, steampunk et science/labo, avec priorités de gravure et motifs de liaison.
