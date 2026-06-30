@@ -1,55 +1,64 @@
-<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
- "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
- width="279.807693pt" height="311.834139pt" viewBox="0 0 279.807693 311.834139"
- preserveAspectRatio="xMidYMid meet">
-<metadata>
-Created by potrace 1.16, written by Peter Selinger 2001-2019
-</metadata>
-<g transform="translate(-60.088051,355.841988) scale(0.100000,-0.100000)"
-fill="#000000" stroke="none">
-<path d="M1206 3548 c-85 -23 -136 -109 -136 -230 0 -70 25 -120 136 -268 110
--148 144 -210 200 -361 85 -232 163 -368 273 -479 89 -89 146 -125 236 -147
-175 -43 353 55 500 277 70 104 109 184 161 327 51 140 114 257 207 383 111
-149 131 188 134 270 8 168 -102 267 -253 229 -38 -10 -61 -25 -101 -66 -29
--29 -60 -53 -70 -53 -10 0 -72 9 -137 20 -66 11 -123 17 -126 13 -4 -5 30 -70
-76 -147 l83 -138 -16 -42 c-9 -22 -19 -44 -22 -48 -3 -4 -67 -12 -141 -19 -74
--7 -139 -15 -143 -19 -7 -6 58 -97 140 -194 18 -22 33 -44 33 -49 0 -6 -27
--66 -60 -134 -68 -140 -130 -213 -179 -213 -66 0 -137 87 -216 264 l-37 84 91
-117 c51 65 89 121 84 125 -4 4 -68 12 -142 19 -74 7 -138 14 -142 17 -4 2 -14
-25 -23 50 l-15 45 47 77 c27 42 65 108 86 146 l38 69 -33 -6 c-19 -3 -85 -14
--147 -23 l-114 -18 -46 52 c-69 77 -129 95 -226 70z"/>
-<path d="M1068 3053 c-63 -69 -134 -199 -172 -315 -74 -230 -56 -465 53 -693
-101 -212 267 -374 499 -489 48 -25 112 -52 142 -61 30 -9 64 -20 76 -25 12 -4
-57 -14 100 -20 43 -7 84 -14 90 -15 19 -6 -8 -219 -63 -500 -25 -127 -36 -210
--37 -282 l-1 -102 34 -35 c71 -73 213 -97 325 -56 59 22 111 72 122 116 11 42
--4 174 -41 364 -41 213 -78 481 -68 490 5 4 43 12 87 18 144 22 337 99 471
-188 75 49 204 171 261 247 62 81 138 242 166 348 17 65 22 114 22 219 0 157
--15 238 -70 368 -40 93 -148 262 -168 262 -18 0 -147 -181 -189 -265 -20 -38
--50 -110 -68 -160 -74 -212 -178 -387 -298 -505 -84 -83 -147 -121 -236 -145
--306 -79 -569 152 -762 670 -25 66 -61 147 -81 180 -39 66 -154 224 -163 225
--3 0 -17 -12 -31 -27z m1956 -426 c43 -31 42 -262 -1 -410 -21 -75 -74 -187
--88 -187 -23 0 -108 64 -136 104 -82 113 -75 297 15 404 41 48 114 88 187 101
-3 1 13 -5 23 -12z m-1942 -151 c98 -23 168 -89 210 -197 25 -68 21 -177 -11
--260 -22 -57 -93 -149 -114 -149 -33 1 -149 197 -190 320 -26 78 -54 258 -44
-285 8 19 71 20 149 1z m1468 -353 c56 -39 89 -98 97 -176 6 -59 -18 -131 -60
--175 -73 -78 -213 -100 -320 -50 l-59 28 7 52 c11 78 44 159 79 193 18 17 62
-56 100 88 74 62 110 72 156 40z m-815 -352 c67 -30 115 -106 140 -219 l7 -34
--49 7 c-133 18 -251 53 -356 106 l-48 25 31 43 c59 81 184 114 275 72z"/>
-<path d="M1275 1242 c-33 -8 -127 -50 -210 -92 -82 -42 -178 -87 -213 -98 -67
--24 -155 -28 -211 -12 -19 5 -37 8 -39 5 -3 -3 2 -41 11 -86 47 -238 212 -405
-449 -453 89 -18 243 -21 338 -5 71 11 240 64 265 83 12 8 19 40 25 111 5 55
-15 122 21 148 14 60 4 74 -90 120 -48 23 -82 33 -130 35 -70 4 -104 -5 -247
--66 -78 -33 -173 -57 -195 -50 -17 6 192 109 281 138 130 43 251 36 345 -22
-50 -30 61 -24 73 37 6 30 9 61 6 68 -7 18 -87 78 -138 105 -100 52 -225 65
--341 34z"/>
-<path d="M2485 1247 c-84 -22 -213 -100 -243 -148 -9 -13 3 -114 14 -128 2 -2
-41 13 86 35 105 49 171 55 289 25 82 -21 337 -137 325 -148 -12 -12 -133 21
--234 64 -99 43 -114 47 -192 47 -78 1 -92 -2 -152 -33 -96 -48 -109 -65 -97
--121 6 -25 14 -87 18 -139 10 -115 12 -117 148 -159 129 -41 196 -52 314 -52
-340 0 565 168 627 468 9 45 13 84 10 88 -4 3 -21 1 -39 -5 -51 -18 -143 -13
--211 10 -35 12 -117 50 -183 85 -172 90 -243 115 -345 120 -51 2 -105 -2 -135
--9z"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="14.3551mm" height="16mm" viewBox="69.7825 62.3975 13.4579 15" version="1.2" baseProfile="tiny">
+<title>SVG Generator</title>
+<desc>Generated with Qt</desc>
+<defs>
+</defs>
+<g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel">
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(0.00481006,0,0,-0.00481006,66.8911,79.5142)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="nonzero" d="M1206,3548 C1121,3525 1070,3439 1070,3318 C1070,3248 1095,3198 1206,3050 C1316,2902 1350,2840 1406,2689 C1491,2457 1569,2321 1679,2210 C1768,2121 1825,2085 1915,2063 C2090,2020 2268,2118 2415,2340 C2485,2444 2524,2524 2576,2667 C2627,2807 2690,2924 2783,3050 C2894,3199 2914,3238 2917,3320 C2925,3488 2815,3587 2664,3549 C2626,3539 2603,3524 2563,3483 C2534,3454 2503,3430 2493,3430 C2483,3430 2421,3439 2356,3450 C2290,3461 2233,3467 2230,3463 C2226,3458 2260,3393 2306,3316 L2389,3178 L2373,3136 C2364,3114 2354,3092 2351,3088 C2348,3084 2284,3076 2210,3069 C2136,3062 2071,3054 2067,3050 C2060,3044 2125,2953 2207,2856 C2225,2834 2240,2812 2240,2807 C2240,2801 2213,2741 2180,2673 C2112,2533 2050,2460 2001,2460 C1935,2460 1864,2547 1785,2724 L1748,2808 L1839,2925 C1890,2990 1928,3046 1923,3050 C1919,3054 1855,3062 1781,3069 C1707,3076 1643,3083 1639,3086 C1635,3088 1625,3111 1616,3136 L1601,3181 L1648,3258 C1675,3300 1713,3366 1734,3404 L1772,3473 L1739,3467 C1720,3464 1654,3453 1592,3444 L1478,3426 L1432,3478 C1363,3555 1303,3573 1206,3548 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(0.00481006,0,0,-0.00481006,66.8911,79.5142)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="nonzero" d="M1068,3053 C1005,2984 934,2854 896,2738 C822,2508 840,2273 949,2045 C1050,1833 1216,1671 1448,1556 C1496,1531 1560,1504 1590,1495 C1620,1486 1654,1475 1666,1470 C1678,1466 1723,1456 1766,1450 C1809,1443 1850,1436 1856,1435 C1875,1429 1848,1216 1793,935 C1768,808 1757,725 1756,653 L1755,551 L1789,516 C1860,443 2002,419 2114,460 C2173,482 2225,532 2236,576 C2247,618 2232,750 2195,940 C2154,1153 2117,1421 2127,1430 C2132,1434 2170,1442 2214,1448 C2358,1470 2551,1547 2685,1636 C2760,1685 2889,1807 2946,1883 C3008,1964 3084,2125 3112,2231 C3129,2296 3134,2345 3134,2450 C3134,2607 3119,2688 3064,2818 C3024,2911 2916,3080 2896,3080 C2878,3080 2749,2899 2707,2815 C2687,2777 2657,2705 2639,2655 C2565,2443 2461,2268 2341,2150 C2257,2067 2194,2029 2105,2005 C1799,1926 1536,2157 1343,2675 C1318,2741 1282,2822 1262,2855 C1223,2921 1108,3079 1099,3080 C1096,3080 1082,3068 1068,3053 M3024,2627 C3067,2596 3066,2365 3023,2217 C3002,2142 2949,2030 2935,2030 C2912,2030 2827,2094 2799,2134 C2717,2247 2724,2431 2814,2538 C2855,2586 2928,2626 3001,2639 C3004,2640 3014,2634 3024,2627 M1082,2476 C1180,2453 1250,2387 1292,2279 C1317,2211 1313,2102 1281,2019 C1259,1962 1188,1870 1167,1870 C1134,1871 1018,2067 977,2190 C951,2268 923,2448 933,2475 C941,2494 1004,2495 1082,2476 M2550,2123 C2606,2084 2639,2025 2647,1947 C2653,1888 2629,1816 2587,1772 C2514,1694 2374,1672 2267,1722 L2208,1750 L2215,1802 C2226,1880 2259,1961 2294,1995 C2312,2012 2356,2051 2394,2083 C2468,2145 2504,2155 2550,2123 M1735,1771 C1802,1741 1850,1665 1875,1552 L1882,1518 L1833,1525 C1700,1543 1582,1578 1477,1631 L1429,1656 L1460,1699 C1519,1780 1644,1813 1735,1771 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(0.00481006,0,0,-0.00481006,66.8911,79.5142)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="nonzero" d="M1275,1242 C1242,1234 1148,1192 1065,1150 C983,1108 887,1063 852,1052 C785,1028 697,1024 641,1040 C622,1045 604,1048 602,1045 C599,1042 604,1004 613,959 C660,721 825,554 1062,506 C1151,488 1305,485 1400,501 C1471,512 1640,565 1665,584 C1677,592 1684,624 1690,695 C1695,750 1705,817 1711,843 C1725,903 1715,917 1621,963 C1573,986 1539,996 1491,998 C1421,1002 1387,993 1244,932 C1166,899 1071,875 1049,882 C1032,888 1241,991 1330,1020 C1460,1063 1581,1056 1675,998 C1725,968 1736,974 1748,1035 C1754,1065 1757,1096 1754,1103 C1747,1121 1667,1181 1616,1208 C1516,1260 1391,1273 1275,1242 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(0.00481006,0,0,-0.00481006,66.8911,79.5142)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="nonzero" d="M2485,1247 C2401,1225 2272,1147 2242,1099 C2233,1086 2245,985 2256,971 C2258,969 2297,984 2342,1006 C2447,1055 2513,1061 2631,1031 C2713,1010 2968,894 2956,883 C2944,871 2823,904 2722,947 C2623,990 2608,994 2530,994 C2452,995 2438,992 2378,961 C2282,913 2269,896 2281,840 C2287,815 2295,753 2299,701 C2309,586 2311,584 2447,542 C2576,501 2643,490 2761,490 C3101,490 3326,658 3388,958 C3397,1003 3401,1042 3398,1046 C3394,1049 3377,1047 3359,1041 C3308,1023 3216,1028 3148,1051 C3113,1063 3031,1101 2965,1136 C2793,1226 2722,1251 2620,1256 C2569,1258 2515,1254 2485,1247 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,49.4536,28.7886)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M23.3652,34.1445 C22.7036,34.6335 23.3846,35.4388 23.7422,35.9006 C24.8527,37.2374 24.8663,39.3664 26.5371,40.2422 C27.7457,40.6963 28.6166,39.3654 29.0665,38.4381 C29.4808,37.2544 30.0755,36.152 30.8361,35.1551 C31.1716,34.7573 30.8876,33.8508 30.2813,34.1855 C29.962,34.5064 29.5451,34.8798 29.0547,34.6777 C29.3995,35.0645 29.5708,35.5845 29.2221,36.0309 C29.0888,36.4311 28.5947,36.3967 28.2578,36.4453 C28.6147,36.7808 28.8937,37.2912 28.5377,37.737 C28.2052,38.4251 27.7218,39.6226 26.7539,39.3359 C25.959,38.9418 25.6011,37.9948 25.3457,37.2051 C25.3095,36.8197 26.1824,36.3716 25.4609,36.4082 C24.7629,36.4314 24.3877,35.3833 24.867,34.9078 C25.2372,34.4409 24.3494,34.9739 24.1738,34.5781 C23.9597,34.3432 23.737,33.9963 23.3652,34.1445 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,49.4536,28.7886)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M22.5605,36.9434 C21.3269,38.9721 22.4079,41.7753 24.5084,42.7299 C25.1581,43.1723 25.9745,43.17 26.6758,43.4316 C27.1492,43.9955 26.7258,44.8242 26.7085,45.4753 C26.5806,46.2717 26.3538,47.0697 26.3867,47.8789 C26.7921,48.297 27.961,48.1675 27.6836,47.3945 C27.5612,46.148 27.1012,44.8986 27.2109,43.6465 C27.5788,43.0829 28.4377,43.3458 28.9628,42.9984 C30.9845,42.3325 32.45,40.1284 31.9261,38.0008 C31.7969,37.6666 31.5114,36.4067 31.1834,36.9535 C30.4345,38.1982 30.16,39.7438 29.0332,40.7539 C28.0184,41.9248 26.0559,41.9392 25.0352,40.7679 C23.8367,39.674 23.6175,37.9747 22.707,36.6992 C22.6582,36.7806 22.6094,36.862 22.5605,36.9434 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,49.4536,28.7886)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M24.0273,45.1777 C22.9402,45.3461 22.0752,46.2581 20.9453,46.2656 C21.345,47.8025 23.2347,48.1366 24.5574,47.7063 C25.1938,47.7607 25.1753,46.9189 25.0798,46.5779 C24.1097,45.9952 23.1378,47.3635 22.168,46.8711 C21.6669,46.4297 22.2983,45.8518 22.7578,45.7383 C23.2918,45.4881 23.8419,45.2223 24.4414,45.1934 C24.305,45.1677 24.1652,45.1749 24.0273,45.1777 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
+
+<g fill="none" stroke="#2196f3" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,49.4536,28.7886)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+<path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M29.7148,45.1895 C30.5016,45.3379 31.452,45.6377 32.0781,46.2129 C32.4059,46.739 31.6827,47.1894 31.2209,46.9288 C30.4636,46.7791 29.6572,46.0973 28.9102,46.6543 C28.9491,47.1855 28.9495,47.7384 29.6355,47.7233 C30.941,48.1278 32.7936,47.7775 33.1797,46.2676 C31.9197,46.2852 30.9875,45.0765 29.7148,45.1895 "/>
+</g>
+
+<g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,0,0)" font-family="Microsoft YaHei, Helvetica, Tahoma, Arial, PingFang SC, Hiragino Sans GB, Heiti SC, STXihei, SimHei, WenQuanYi Micro Hei" font-size="9" font-weight="400" font-style="normal">
+</g>
 </g>
 </svg>
