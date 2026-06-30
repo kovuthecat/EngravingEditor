@@ -226,10 +226,46 @@
     motifThumbs[motif.id] = cv;
     const label = document.createElement("span");
     label.textContent = motif.name;
-    item.append(cv, label);
+    const del = document.createElement("button");
+    del.className = "lib-del"; del.type = "button"; del.textContent = "×";
+    del.title = "Supprimer ce motif de la bibliothèque";
+    del.onclick = (e) => { e.stopPropagation(); if (deleteMotifFromLibrary(motif.id)) item.remove(); };
+    item.append(cv, label, del);
     item.title = "Cliquer pour ajouter au plan";
     item.onclick = () => addInstance(motif);
-    document.getElementById("library").appendChild(item);
+    const gridId = motif.role === "SYMBOLE" ? "library-symbole"
+                 : motif.role === "DECOR"   ? "library-decor"
+                 :                            "library-perso";
+    document.getElementById(gridId).appendChild(item);
+    updateLibCounts();
+  }
+  function deleteMotifFromLibrary(motifId) {
+    const motif = state.motifs.find((m) => m.id === motifId);
+    if (!motif) return false;
+    const insts = mainLayer.getChildren(
+      (n) => n.getClassName() === "Group" && n.getAttr("motifId") === motifId);
+    if (insts.length && !confirm(
+        `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Supprimer le motif et ses exemplaires ?`))
+      return false;
+    recordHistory();
+    if (edit.active && edit.motifId === motifId) exitEdit();
+    const sel = selected();
+    if (sel && sel.getAttr("motifId") === motifId) select(null);
+    insts.forEach((n) => n.destroy());
+    mainLayer.batchDraw();
+    editDrafts.delete(motifId); refreshDraftCounter();
+    delete motifThumbs[motifId];
+    state.motifs = state.motifs.filter((m) => m.id !== motifId);
+    markProjectChanged();
+    updateLibCounts();
+    return true;
+  }
+
+  function updateLibCounts() {
+    document.getElementById("count-perso").textContent =
+      document.getElementById("library-perso").childElementCount;
+    document.getElementById("count-symbole").textContent =
+      document.getElementById("library-symbole").childElementCount;
   }
 
   // surfaces REMPLI du motif, fusionnées sous sa couleur focale (rendu écran + export) ; sans
@@ -1548,7 +1584,8 @@
     exitEdit();
     select(null);
     mainLayer.destroyChildren(); boundaryLayer.destroyChildren(); zonesLayer.destroyChildren(); guideLayer.destroyChildren();
-    document.getElementById("library").innerHTML = "";
+    ["library-perso", "library-symbole", "library-decor"].forEach(
+      (id) => { document.getElementById(id).innerHTML = ""; });
     for (const k in motifThumbs) delete motifThumbs[k];
     state.motifs = []; state.boundary = data.boundary || null; state.holes = data.holes || null; state.contourRef = data.contourRef || null; state.seq = 0;
     editDrafts.clear(); refreshDraftCounter(); // D-007 : essais en attente non sérialisés, purgés au chargement (ids périmés)
@@ -1563,6 +1600,7 @@
       }
       addMotifToLibrary(m); state.seq = Math.max(state.seq, parseInt(m.id.slice(1)) || 0);
     }
+    updateLibCounts();
     drawBoundary();
     for (const z of (data.zones || [])) makeZone(z);
     zonesLayer.batchDraw();
