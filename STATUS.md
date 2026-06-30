@@ -10,9 +10,11 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 
 **Lot 4 terminé** (`PLAN_edition_reactivite.md`, `DECISIONS.md §D-007`, 2026-06-23) : édition **non destructive** (calques d'essai), **perf** (silhouette multi-contours, hitFunc clic, cache Konva, fusion calques), **outils** (pinceau/gomme/ligne/rect/ellipse/lasso), **export PNG** (sens écran, divergent du SVG miroir), **guide offset** des vides internes, **UI épurée** (sidebar « Avancé »).
 
-**Tâches faites** : **Lot 1** (D-004, T1-T7, pipeline SVG) ; **Lot 2** (D-005, T8-T12, rôles décor/perso/symbole) ; **Lot 3** (D-006, `PLAN_tablette_edition.md`, import calibré/tablette/édition stylet) ; **Lot 4** (D-007, `PLAN_edition_reactivite.md`, T1-T11, réactivité+édition non destructive).
+**Lot 5 en cours** (`PLAN_bibliotheque-base-motifs.md`, 2026-06-30) : **bibliothèque de base inlinée** (motifs embarqués depuis `exemple motif/Personnages` + `exemple motif/Symboles`) avec **matérialisation paresseuse** (IntersectionObserver), **masquage local persistant** (`state.hiddenBuiltins`), **promotion locale d'édition** (built-in → motif local à la 1ère mutation), **hook pre-commit** de régénération (`src/builtin-motifs.js`). T1-T4 faits, validation visuelle à faire par Thibault.
 
-**Restant** : mise à jour contexte Lot 4 (DECISIONS.md D-007, STATUS.md, SPEC.md § export PNG / calque d'essai) — en cours dans cette session.
+**Tâches faites** : **Lot 1** (D-004, T1-T7, pipeline SVG) ; **Lot 2** (D-005, T8-T12, rôles décor/perso/symbole) ; **Lot 3** (D-006, `PLAN_tablette_edition.md`, import calibré/tablette/édition stylet) ; **Lot 4** (D-007, `PLAN_edition_reactivite.md`, T1-T11, réactivité+édition non destructive) ; **Lot 5 T1-T4** (D-008, T1-T4, bundle+intégration+édition+hook).
+
+**Restant** : validation visuelle Lot 5 T2-T3 par Thibault + mise à jour contexte Lot 4-5 (DECISIONS.md D-007/D-008 confirmées, STATUS.md, PROJECT_MAP.md Feature 3, SPEC.md si nécessaire).
 
 **Correctif (2026-06-23)** : **fond invisible sur iPad** hors mode édition (régression du cache Konva T3). Cause : Safari iOS plafonne la taille d'un `<canvas>` (aire ≈ 16,7 M px ≈ 4096², côté max) ; `cache({pixelRatio:2})` sur un grand décor dépassait la limite → bitmap vide. Fix : helper `safeCache(node, pr)` qui borne `pixelRatio` selon la bounding box (tous les `cache()` y passent). À **valider visuellement sur iPad**.
 

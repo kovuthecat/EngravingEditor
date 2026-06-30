@@ -303,6 +303,88 @@ Plan `PLAN_edition_reactivite.md` (Lot 4). Toute modif géométrique (silhouette
 export) validée via `node test/run.js`. Édition au stylet et PNG validés manuellement en navigateur réel
 ou tablette (validation visuelle explicitement sautée dans les tâches, report à Thibault).
 
+## 2026-06-30 — D-008 : Bibliothèque de base inlinée + régénération auto par hook
+
+### Décision
+
+Embarquer une **bibliothèque de base** de motifs directement dans l'app (bundle JS inliné `src/builtin-motifs.js`,
+chargé en `<script>`), source de motifs des dossiers `exemple motif/Personnages` (rôle PERSONNAGE) et
+`exemple motif/Symboles` (rôle SYMBOLE). Tout motif de base peut être **masqué localement** (set persisté,
+`state.hiddenBuiltins`) sans toucher au dépôt. Un motif de base édité est **promu en local** (passe
+`builtin:false`) à la première mutation, alors sérialisé comme motif ordinaire (id stable `b:…` conservé).
+La régénération du bundle est **automatisée** : hook pre-commit `tools/hooks/pre-commit` appelle
+`node tools/build-builtin-motifs.js` et stage le résultat.
+
+### Contexte
+
+Lot 5 (`PLAN_bibliotheque-base-motifs.md`, 2026-06-30). Thibault voulait : (1) pouvoir proposer un lot
+de motifs de base aux utilisateurs de l'app (sans import manuel) ; (2) les garder éditables localement
+sans modifier le dépôt ; (3) rendre l'ajout/suppression des motifs de base transparent (commit/push
+suffit, hook auto-régénère).
+
+### Alternatives envisagées
+
+- **Manifeste + fetch** (bundle trop gros pour bundler classique) : rejeté. `fetch` de fichiers locaux est
+  bloqué en `file://`, mode visé pour le double-clic ; bundle JS inliné fonctionne partout (file://, http.server, Netlify).
+- **Motifs versionnés dans le JSON projet** : rejeté. Complexe à maintenir ; les motifs de base sont des
+  templates réutilisables, pas des instances. Matérialisation paresseuse (IntersectionObserver) rend
+  l'inlining viable même avec ~132 motifs (~11,9 Mo compressés).
+- **Édition promotionnée ↔ édition de copie** : édition qui mute le motif de bibliothèque partagé par toutes
+  les instances (retenu) vs édition de la copie seule (inutile pour le besoin, trop d'état). Retenu :
+  l'édition d'un motif de base crée une version locale privée.
+
+### Raison du choix
+
+L'inlining simplifie le déploiement (aucun fetch à l'init) et colle à l'usage « sans serveur ». L'automatisation
+par hook élimine les sources d'erreur manuel (oubli de régénération avant commit). Le masquage local persistant
+permet une expérience utilisateur lisse (bibliothèque complète au démarrage, chacun adapte à ses besoins).
+La promotion locale à l'édition garde la géométrie du dépôt intacte tout en offrant les bénéfices d'une
+édition locale.
+
+### Conséquences
+
+- **Génération du bundle** : `tools/build-builtin-motifs.js` (script Node, `fs` natif, zéro dépendance)
+  scanne `exemple motif/Personnages` (93 motifs) et `exemple motif/Symboles` (39 motifs) → écrit
+  `src/builtin-motifs.js = "window.ML_BUILTIN_MOTIFS = " + JSON..stringify([{id,name,role,svg},...])`.
+- **Chargement** : `index.html` charge `<script src="src/builtin-motifs.js"></script>` avant `app.js`.
+  `app.js` initialise `state.builtins = (window.ML_BUILTIN_MOTIFS || [])` et `state.hiddenBuiltins = new Set()`.
+- **Affichage** : grilles bibliothèque (Personnages/Symboles) listent d'abord les motifs locaux, puis les
+  built-ins non masqués. Vignettes dessinées paresseusement (IntersectionObserver) à la première visibilité.
+- **Persistance** : `state.hiddenBuiltins` sérialisé dans le JSON projet (`projectData().hiddenBuiltins`).
+  Motifs locaux filtrés (`state.motifs.filter(m => !m.builtin)`) à la sérialisation, les built-ins ne sont
+  jamais persistés (rechargés du bundle à chaque session).
+- **Édition** : à la première mutation (trait stylet, changement de rôle/couleur/marge) d'un built-in,
+  `promoteIfBuiltin(motif)` passe `builtin=false` → le motif est dès lors sérialisé comme local.
+  Son id `b:…` est conservé (stable). Au chargement, un motif local de cet id prime sur le built-in
+  correspondant du bundle (pas de re-registration du built-in masqué).
+- **Bouton « Restaurer la bibliothèque de base »** : efface `state.hiddenBuiltins` et re-rend les
+  built-ins masqués. Utile pour recommencer.
+- **Hook pre-commit** : `tools/hooks/pre-commit` (shell, +x) appelle `node tools/build-builtin-motifs.js`
+  puis `git add src/builtin-motifs.js`. Script install : `tools/install-hook.sh` (Linux/macOS) et
+  `tools/install-hook.bat` (Windows) configurent `git config core.hooksPath tools/hooks`.
+- **Taille du bundle** : ~11,9 Mo (accepté). Diffs git lourds sur `src/builtin-motifs.js` (artefact
+  généré) — attendu.
+
+### Points de vigilance
+
+- **`file://` + IntersectionObserver** : fallback acceptable si l'IO n'était pas supporté (matérialiser
+  au clic seulement, vignette à l'affichage du `<details>`), mais tous les navigateurs le supportent en `file://`.
+- **Collision d'ids** built-in vs local : préfixe `b:` + règle « local prime sur built-in » évitent les
+  collisions implicites.
+- **Édition multiples copie** : motifs de base partagés par toutes les instances ; une édition au stylet
+  mute `motif.surface` de la version locale (sortie du built-in).
+
+### Impact IA
+
+Plan `PLAN_bibliotheque-base-motifs.md` (Lot 5). Validation geometry (T1 : nombre d'entrées) passée.
+Validation visuelle (T2-T3 : affichage grille, masquage, édition/promotion) restant à faire par Thibault
+(voir `PLAN §Validation`).
+
+### Dépendances
+
+T1 (générateur bundle) → T2 (intégration app) → T3 (édition/promotion) ; T1 → T4 (hook).
+T2-T3-T4 → T5 (contexte).
+
 ## 2026-06-23 — D-008 : UX tablette édition (palette flottante, vert=delta, pression+plume)
 
 ### Décision

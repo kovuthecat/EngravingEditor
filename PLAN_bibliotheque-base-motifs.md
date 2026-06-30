@@ -110,7 +110,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel (Thibault, à consigner dans STATUS) : au lancement, les grilles Personnages/Symboles listent les motifs des dossiers ; faire défiler → les vignettes se dessinent ; cliquer un built-in → instance posée ; `×` sur un built-in → masqué, et **toujours masqué après rechargement de la page** ; « Restaurer la bibliothèque de base » → tout revient ; importer un SVG local → s'ajoute et persiste comme avant.
 - **Si bloqué :** si `state` n'est pas extensible (objet figé) ou si `addInstance`/`buildMotifFromSVG` ont une signature différente de celle décrite, **STOP** et signaler — ne pas réécrire ces fonctions. Si l'IntersectionObserver est indisponible en `file://` sur le navigateur cible, fallback acceptable : matérialiser au clic seulement et dessiner la vignette à la première ouverture de la section `<details>`.
 - **Commit :** `feat(motifs): bibliothèque de base lazy depuis le bundle + masquage local persistant`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
 
 ### T3 — Édition d'un built-in → promotion en motif local · Modèle : Sonnet
 - **Pourquoi ce modèle :** jugement sur les points de mutation ; touche l'édition (stylet/rôle/couleur) — vérification sérialisation requise.
@@ -131,7 +131,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel (Thibault, STATUS) : éditer au stylet un motif de base → recharger la page → l'édition est conservée ; le fichier SVG du dépôt est inchangé (`git status` propre côté `exemple motif/`).
 - **Si bloqué :** si les points de mutation ne sont pas identifiables sans ambiguïté, **STOP** et signaler les lignes candidates — ne pas saupoudrer `promoteIfBuiltin` partout. Fallback acceptable si la promotion s'avère risquée : désactiver l'entrée en édition (`enterEdit`) pour un motif `builtin` avec un message « Dupliquez ce motif de base pour l'éditer » — signaler ce choix.
 - **Commit :** `feat(motifs): promotion locale d'un motif de base à la première édition`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
 
 ### T4 — Hook pre-commit de régénération + installation + docs · Modèle : Haiku
 - **Pourquoi ce modèle :** mécanique (scripts shell + doc), pas de logique applicative.
@@ -159,7 +159,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel : —
 - **Si bloqué :** si `core.hooksPath` n'est pas supporté par la version git locale, **STOP** et signaler (fallback : copier le hook dans `.git/hooks/pre-commit`). Ne pas committer dans `.git/`.
 - **Commit :** `chore(motifs): hook pre-commit régénérant le bundle + doc workflow`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
 
 ### T5 — Mise à jour du contexte · Modèle : Sonnet
 - **But :** consigner la fonctionnalité et la décision d'architecture.
@@ -170,7 +170,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
 - **Validation :** auto : `node test/run.js` → vert. visuel : —
 - **Si bloqué :** —
 - **Commit :** `docs(motifs): STATUS + D-008 + PROJECT_MAP pour la bibliothèque de base`
-- **Statut :** [ ] à faire   ·   exécuté par : —   ·   le : —   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
 
 ## Dépendances / ordre
 
