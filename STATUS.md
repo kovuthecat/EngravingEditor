@@ -12,6 +12,16 @@ Photo à l'instant T : ce qui marche, ce qui casse. Mis à jour en fin de sessio
 
 **Lot 5 en cours** (`PLAN_bibliotheque-base-motifs.md`, 2026-06-30) : **bibliothèque de base inlinée** (motifs embarqués depuis `exemple motif/Personnages` + `exemple motif/Symboles`) avec **matérialisation paresseuse** (IntersectionObserver), **masquage local persistant** (`state.hiddenBuiltins`), **promotion locale d'édition** (built-in → motif local à la 1ère mutation), **hook pre-commit** de régénération (`src/builtin-motifs.js`). T1-T4 faits, validation visuelle à faire par Thibault.
 
+**Incident (2026-06-30)** : T2/T3 (l'intégration app.js du catalogue : `state.builtins`, `registerBuiltins`,
+`restoreBuiltins`, `materializeBuiltin`, `promoteIfBuiltin`) avaient été codés mais **jamais commités ni
+pushés** malgré le `[x] fait` du PLAN — le bouton « Restaurer la bibliothèque de base » existait dans
+`index.html` (déjà commité) mais sans handler câblé côté JS déployé. Conséquence : sur le site Vercel,
+aucun motif de `Personnages`/`Symboles` ne s'affichait, restaurer ne faisait rien, sans erreur console liée
+(l'erreur visible — `module is not defined` dans `vendor/clipper.js:6986` — est un bug préexistant et sans
+rapport, un export CommonJS non gardé en fin de fichier vendor ; inoffensif mais à nettoyer un jour).
+Rattrapé dans le commit `8d52090` (push immédiat). **Leçon** : un `[x] fait` dans le PLAN ne garantit pas
+qu'un commit existe — vérifier `git status`/`git push` avant de clore une tâche.
+
 **Tâches faites** : **Lot 1** (D-004, T1-T7, pipeline SVG) ; **Lot 2** (D-005, T8-T12, rôles décor/perso/symbole) ; **Lot 3** (D-006, `PLAN_tablette_edition.md`, import calibré/tablette/édition stylet) ; **Lot 4** (D-007, `PLAN_edition_reactivite.md`, T1-T11, réactivité+édition non destructive) ; **Lot 5 T1-T4** (D-008, T1-T4, bundle+intégration+édition+hook).
 
 **Restant** : validation visuelle Lot 5 T2-T3 par Thibault + mise à jour contexte Lot 4-5 (DECISIONS.md D-007/D-008 confirmées, STATUS.md, PROJECT_MAP.md Feature 3, SPEC.md si nécessaire).

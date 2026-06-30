@@ -83,7 +83,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel : —
 - **Si bloqué :** si un dossier source est absent ou vide, **STOP**, signaler (ne pas inventer de chemin). Si `JSON.stringify` produit un fichier > 10 Mo, **STOP** et signaler (taille anormale = mauvais dossier scanné).
 - **Commit :** `feat(motifs): générateur de bundle built-in + inline des dossiers Personnages/Symboles`
-- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : d4d4c01
 
 ### T2 — Intégration du catalogue dans l'app (registre, vignettes paresseuses, masquage, persistance) · Modèle : Sonnet
 - **Pourquoi ce modèle :** tâche centrale, jugement sur l'état/persistance et l'intégration UI ; aucune géométrie nouvelle (réutilise `buildMotifFromSVG`/`addInstance`/`drawThumb`).
@@ -110,7 +110,12 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel (Thibault, à consigner dans STATUS) : au lancement, les grilles Personnages/Symboles listent les motifs des dossiers ; faire défiler → les vignettes se dessinent ; cliquer un built-in → instance posée ; `×` sur un built-in → masqué, et **toujours masqué après rechargement de la page** ; « Restaurer la bibliothèque de base » → tout revient ; importer un SVG local → s'ajoute et persiste comme avant.
 - **Si bloqué :** si `state` n'est pas extensible (objet figé) ou si `addInstance`/`buildMotifFromSVG` ont une signature différente de celle décrite, **STOP** et signaler — ne pas réécrire ces fonctions. Si l'IntersectionObserver est indisponible en `file://` sur le navigateur cible, fallback acceptable : matérialiser au clic seulement et dessiner la vignette à la première ouverture de la section `<details>`.
 - **Commit :** `feat(motifs): bibliothèque de base lazy depuis le bundle + masquage local persistant`
-- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
+- **Statut :** [x] fait (codé) · **jamais commité ni pushé avant le 2026-06-30** — le code est resté en working tree
+  seul, le site déployé n'avait donc ni `state.builtins` ni `registerBuiltins`/`restoreBuiltins` : le catalogue
+  ne s'affichait jamais en prod malgré le bouton « Restaurer » présent dans `index.html`. Rattrapé et committé
+  (avec T3) dans `8d52090` le 2026-06-30, en même temps qu'une curation manuelle des dossiers source — commit
+  non atomique par tâche, dérogation à la règle habituelle pour corriger l'oubli au plus vite.
+  · exécuté par : Sonnet · le : 2026-06-30 · commit : 8d52090
 
 ### T3 — Édition d'un built-in → promotion en motif local · Modèle : Sonnet
 - **Pourquoi ce modèle :** jugement sur les points de mutation ; touche l'édition (stylet/rôle/couleur) — vérification sérialisation requise.
@@ -131,7 +136,8 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel (Thibault, STATUS) : éditer au stylet un motif de base → recharger la page → l'édition est conservée ; le fichier SVG du dépôt est inchangé (`git status` propre côté `exemple motif/`).
 - **Si bloqué :** si les points de mutation ne sont pas identifiables sans ambiguïté, **STOP** et signaler les lignes candidates — ne pas saupoudrer `promoteIfBuiltin` partout. Fallback acceptable si la promotion s'avère risquée : désactiver l'entrée en édition (`enterEdit`) pour un motif `builtin` avec un message « Dupliquez ce motif de base pour l'éditer » — signaler ce choix.
 - **Commit :** `feat(motifs): promotion locale d'un motif de base à la première édition`
-- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
+- **Statut :** [x] fait (codé) · même oubli que T2 (jamais commité avant ce jour), rattrapé dans le même commit
+  `8d52090` · exécuté par : Sonnet · le : 2026-06-30 · commit : 8d52090
 
 ### T4 — Hook pre-commit de régénération + installation + docs · Modèle : Haiku
 - **Pourquoi ce modèle :** mécanique (scripts shell + doc), pas de logique applicative.
@@ -159,7 +165,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
   - visuel : —
 - **Si bloqué :** si `core.hooksPath` n'est pas supporté par la version git locale, **STOP** et signaler (fallback : copier le hook dans `.git/hooks/pre-commit`). Ne pas committer dans `.git/`.
 - **Commit :** `chore(motifs): hook pre-commit régénérant le bundle + doc workflow`
-- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : 110b2b2
 
 ### T5 — Mise à jour du contexte · Modèle : Sonnet
 - **But :** consigner la fonctionnalité et la décision d'architecture.
@@ -170,7 +176,7 @@ règles de filtrage à la (dé)sérialisation. Voir PROJECT_MAP §Feature 3 et D
 - **Validation :** auto : `node test/run.js` → vert. visuel : —
 - **Si bloqué :** —
 - **Commit :** `docs(motifs): STATUS + D-008 + PROJECT_MAP pour la bibliothèque de base`
-- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : —
+- **Statut :** [x] fait   ·   exécuté par : Sonnet   ·   le : 2026-06-30   ·   commit : afe8467
 
 ## Dépendances / ordre
 
