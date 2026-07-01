@@ -1,20 +1,15 @@
 # CLAUDE.md
 
-Instructions permanentes pour Claude Code dans ce projet.
-Seul fichier chargé automatiquement : il pointe vers le reste, sans le recopier.
+Instructions permanentes pour Claude Code. Seul fichier chargé automatiquement : il pointe vers le reste.
 
 ## Commandes
 
 ```bash
-# Lancer l'app (aucun build)
-#   - double-clic index.html  (ou Lancer.bat)
-#   - si file:// bloqué par le navigateur :
-python -m http.server          # puis http://localhost:8000
+# Lancer l'app (aucun build) : double-clic index.html (ou Lancer.bat)
+python -m http.server          # si file:// bloqué → http://localhost:8000
 
-# Test headless du cœur (parse SVG -> zones -> occlusion par surfaces -> écriture SVG)
-node test/run.js
-
-node tools/build-builtin-motifs.js  # régénère le bundle de motifs de base
+node test/run.js                     # test headless du cœur géométrique
+node tools/build-builtin-motifs.js   # régénère le bundle de motifs de base
 ```
 
 - Pas de gestionnaire de paquets, pas de `.env`, pas de secret. Tout est vendored (`vendor/`).
@@ -22,27 +17,30 @@ node tools/build-builtin-motifs.js  # régénère le bundle de motifs de base
 
 ## Règles générales
 
-- Lire `PROJECT_BRIEF.md` avant une tâche importante.
-- Lire `DECISIONS.md` avant une proposition d'architecture (décisions déjà arrêtées : stack web pure, occlusion par contour extérieur).
-- Lire `PROJECT_MAP.md` pour localiser les zones ; `SPEC.md` pour le détail technique.
-- App **sans build, sans framework** : garder du JS « classic script » (pas d'ES modules — doit tourner en `file://`). Les libs s'attachent en global (`Konva`, `ClipperLib`, `window.ML`).
-- Modifier le minimum de fichiers, conserver le style existant. Pas de dépendance lourde sans validation.
-- Conventions d'architecture et git : voir `CONVENTIONS.md`.
+- Avant une tâche : `PROJECT_BRIEF.md` (produit), `DECISIONS.md` (archi — stack web pure, occlusion par contour), `PROJECT_MAP.md` (localisation), `SPEC.md` (détail technique).
+- App **sans build, sans framework** : JS « classic script » (pas d'ES modules — doit tourner en `file://`). Libs en global (`Konva`, `ClipperLib`, `window.ML`).
+- Modifier le minimum de fichiers, garder le style. Pas de dépendance lourde sans validation. Conventions : `CONVENTIONS.md`.
 
 ## Avant de coder
 
-Produire un plan court (max 5 lignes) : objectif, fichiers concernés, plan 3-5 étapes, risques.
-Si une modif touche la géométrie (zones/occlusion/export SVG), **valider via `node test/run.js`** et, si pertinent, un rendu visuel (voir SPEC.md §Tests).
+Plan court (max 5 lignes) : objectif, fichiers, 3-5 étapes, risques. Toute modif de géométrie (zones/occlusion/export SVG) → **valider via `node test/run.js`** (+ rendu visuel si pertinent, cf. `SPEC.md`).
 
-## Modèles & PLAN
+## Validation
 
-Opus rédige les plans au format `PLAN Template.md` ; Sonnet/Haiku/Codex exécutent les tâches taguées en ne lisant que les fichiers listés. Grille complète : `WORKFLOW.md`. Instructions Codex : `AGENTS.md`.
+- **Auto (bloque le commit)** : `node test/run.js` vert sur toute modif géométrique.
+- **Visuel (humain, non bloquant)** : consigner la checklist dans `VALIDATION.md` ; ne pas la vérifier soi-même (pas de navigateur/Playwright).
+
+## Modèles, tâches & plans
+
+- **Opus** conçoit et rédige les plans ; Sonnet/Haiku/Codex exécutent. Grille + barème effort : `WORKFLOW.md`. Codex : `AGENTS.md`.
+- Backlog et tâches : `TASKS.md`. Plan d'une tâche active : `plans/PLAN_<id>.md` (format `WORKFLOW.md §4`). L'exécutant ne lit que les fichiers listés dans sa tâche.
+- **Motifs de base** : déposer/retirer le `.svg` dans `exemple motif/Personnages|Symboles` → commit (le hook régénère le bundle) → push.
 
 ## Après modification
 
-1. Mettre à jour `STATUS.md`. Les autres fichiers de contexte (`DECISIONS`, `PROJECT_MAP`, `PROJECT_BRIEF`, `SPEC`) seulement si leur contenu change réellement.
-2. En fin de session : `git status`, commit atomique, push (le repo n'a pas encore de git — voir STATUS §Backlog).
+1. Mettre à jour `STATUS.md` ; les autres fichiers de contexte seulement si leur contenu change. Passer la tâche à `[x]` dans `TASKS.md`.
+2. Fin de session : `git status`, commit atomique, push (remote GitHub `EngravingEditor`).
 
 ## Rapport de fin de tâche
 
-1. Fichiers modifiés  2. Résumé  3. Tests lancés  4. À vérifier manuellement  5. Prochaine action recommandée.
+Fichiers modifiés · Résumé · Tests lancés · À valider visuellement (→ `VALIDATION.md`) · Prochaine action.
