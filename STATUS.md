@@ -4,14 +4,16 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-06-30
+> **Dernière mise à jour :** 2026-07-02
 
 ## Phase actuelle
 
-Lot 5 (bibliothèque de base inlinée) codé et déployé. Reste : validation visuelle par Thibault (cf. `VALIDATION.md`).
+Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
 ## Ce qui fonctionne
 
+- **Verrou global du décor** (bouton 🔒/🔓) : décor inerte au pointeur (sélection/déplacement/édition bloqués), clic traversant vers les motifs posés au-dessus, état persisté dans le projet JSON.
+- **Import décor PNG vectorisé in-app** (`vendor/imagetracer.js` vendored, seuillage sur l'alpha) et **« Rafraîchir le décor »** (remplacement de la géométrie sur place, position/échelle/rotation/z-order des exemplaires préservées).
 - **Import SVG** (perso / symbole / décor via 3 boutons) → bibliothèque à vignettes ; clic = pose une instance. Grilles repliables par rôle + suppression motif (× avec cascade des instances, annulable Ctrl+Z).
 - **Bibliothèque de base inlinée** (`src/builtin-motifs.js`, ~132 motifs) : matérialisation paresseuse (IntersectionObserver), masquage local persistant (`hiddenBuiltins`), promotion en motif local à la 1ʳᵉ édition. Régénérée par hook pre-commit (`tools/build-builtin-motifs.js`).
 - **Détection de zones** (`ML.buildZones`) + éditeur de rôles REMPLI/VIDE par motif.
