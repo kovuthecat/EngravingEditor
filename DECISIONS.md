@@ -483,3 +483,197 @@ Mise à jour contexte (STATUS/DECISIONS/SPEC/PROJECT_MAP) + commit/push vers `ma
 Plan `PLAN_edition_reactivite.md` (Lot 4). Toute modif géométrique (silhouette multi-contours, occlusion,
 export) validée via `node test/run.js`. Édition au stylet et PNG validés manuellement en navigateur réel
 ou tablette (validation visuelle explicitement sautée dans les tâches, report à Thibault).
+
+## 2026-07-02 — D-009 : Verrou du décor + rafraîchir depuis PNG Procreate (vectorisation in-app)
+
+### Décision
+Deux fonctions décor (plan `plans/P6/`) :
+
+1. **Verrou global du décor** : bascule `state.decorLocked` (booléen unique, pas par exemplaire). Quand
+   actif, tous les exemplaires de rôle `DECOR` passent `node.listening(false)` (inertes au pointeur ; le
+   clic **traverse** vers les motifs posés au-dessus). Gardes doublées dans `select()` et `enterEdit()`.
+   Persisté dans le JSON projet, ré-appliqué au chargement et à chaque création d'exemplaire décor.
+   **Aucun effet sur l'export** (verrou = UI/édition seulement).
+
+2. **Rafraîchir le décor depuis un PNG** : import PNG (dessin Procreate) **vectorisé dans l'app** via
+   `ImageTracer.js` (vendored), seuillage **sur l'alpha** → sortie bilevel mono-couleur (couleur focale
+   décor) → `ML.parseSVG` → `buildMotifFromSVG(DECOR)`. Bouton **« Rafraîchir le décor »** qui **remplace
+   la géométrie du décor existant sur place** (mute `zones`/`silhouette`, supprime `surface`, même
+   `motif.id`, `rerenderMotif`) → tous les exemplaires **gardent** position/échelle/rotation/z-order (la
+   transformation vit sur l'exemplaire). Re-sélection du fichier **à chaque** rafraîchissement.
+
+### Contexte
+Thibault : (1) déplace le décor par erreur pendant qu'il travaille les motifs → veut le figer ; (2)
+retravaille souvent le décor sur iPad/Procreate (raster) et veut réinjecter la nouvelle version sans tout
+replacer.
+
+### Alternatives envisagées
+- **Rafraîchir sans re-sélection (mémoriser le fichier)** : la seule voie « sans re-pick » côté web est la
+  File System Access API (handle en IndexedDB) — **non supportée sur Safari iPad**, appareil principal de
+  Thibault. Le `fetch` d'une URL fixe marcherait sur iPad mais impose une infra d'export/URL. **Écartés** au
+  profit d'une **re-sélection à chaque fois** (universelle, un tap), choisie par Thibault.
+- **Vectorisation hors app (Inkscape « Trace Bitmap ») + réimport SVG** : plus léger (aucune lib) mais casse
+  le flux 100 % iPad. **Écarté** au profit de la **vectorisation in-app** (ImageTracer vendored), choisie par
+  Thibault.
+- **Décor raster gravé directement (niveaux de gris)** : incompatible avec le modèle d'occlusion vectoriel
+  (posé sur / caché derrière / marge Clipper, cf. D-005). **Écarté** — le décor doit rester vectoriel.
+- **Verrou par exemplaire** : le décor est en général unique ; un booléen global suffit et est plus simple.
+
+### Raison du choix
+`listening(false)` est le levier natif Konva exact pour « inerte mais laisse passer le clic ». La
+vectorisation in-app garde toute la boucle sur l'iPad ; ImageTracer.js (fichier unique, zéro dépendance)
+respecte la contrainte « sans build / vendored / `file://` » (D-002). Le remplacement sur place exploite
+le fait que la transformation est portée par l'exemplaire, pas par la géométrie du motif → réinjection
+sans replacement.
+
+### Conséquences
+- `src/app.js` : `state.decorLocked`, `applyDecorLock()`, gardes `select`/`enterEdit`, `listening` dans
+  `makeGroup` ; `pngFileToParsedSVG(file, cb)`, imports décor PNG, `refreshDecor()` ; `projectData()`/
+  `loadProject()` sérialisent `decorLocked`.
+- `vendor/imagetracer.js` **ajouté** (tiers, ne pas éditer) ; `index.html` : `<script>` + boutons décor.
+- **Limitation v1 assumée** : le recalage repose sur un **cadrage de canvas Procreate constant** (recentrage
+  bbox). Un changement de cadrage entre deux dessins décale l'overlay — recalage auto non traité (piste v2).
+- Rafraîchir **écrase** les retouches stylet du décor (`motif.surface` supprimé) — attendu (dessin refait).
+
+### Impact IA
+Plan d'exécution : `plans/P6/` (T1 verrou · T2 vectoriseur+import PNG · T3 rafraîchir). Aucune modif de la
+géométrie de cœur → `node test/run.js` doit rester **vert/inchangé** (garde-fou de non-régression). Rendu
+du décor vectorisé et comportement verrou/rafraîchir : **validation visuelle par Thibault** (report
+`VALIDATION.md`, pas de navigateur/Playwright côté IA).
+
+## 2026-07-02 — D-011 : Impression 1:1 multi-feuilles A4 (PDF) pour décalque/pyrogravure
+
+### Décision
+Ajouter un **export PDF A4 multi-pages à l'échelle réelle** du pattern complet (motifs + décor +
+contour guitare), destiné à être imprimé, assemblé, décalqué sur la table puis pyrogravé (plan
+`plans/P8/`). Choix arrêtés avec Thibault (2026-07-02) :
+
+1. **Sortie = PDF multi-pages** généré dans l'app via **jsPDF vendored** (`vendor/jspdf.umd.min.js`,
+   UMD classic script, global `window.jspdf`) — échelle mm garantie (imprimer à 100 %), fichier
+   archivable, imprimable depuis iPad ou PC.
+2. **Rendu décalque** : **contours** des surfaces visibles (trait 0,3 mm, couleur du calque
+   noir/rouge/bleu) **+ remplissage gris très clair** (~RGB 230, `evenodd`) pour lire ce qui sera
+   brûlé. Le **contour guitare + cavités** est tracé en **pointillés gris** (repère de pose, à ne
+   pas décalquer).
+3. **Assemblage par recouvrement 10 mm** : fenêtre utile par feuille = A4 − marges 10 mm, pas de
+   grille = fenêtre − 10 mm ; **croix de recalage** aux coins de fenêtre + croix « fantômes » à
+   10 mm des bords partagés (positions des coins de la feuille voisine) ; **libellé L·C** par
+   feuille ; **règle de contrôle 100 mm** graduée sur chaque feuille (vérif d'échelle) ; **page de
+   garde** = plan d'assemblage réduit + consignes (« imprimer 100 %, sans ajustement »).
+4. **Orientation = sens écran** (comme l'export PNG, D-007) : le calque est posé face imprimée sur
+   la guitare, pas de miroir laser.
+5. **Géométrie = pipeline existant** : `instancesBottomToTop()` → `ML.occludeSurfaces` (occlusion,
+   zones interdites déjà soustraites) → px→mm par division `PX_PER_MM` (sans flip). Le **tuilage**
+   (`ML.computeTiling`, pur, testé headless) choisit portrait/paysage pour minimiser le nombre de
+   feuilles et centre la grille sur le bbox.
+
+### Contexte
+Le dôme de la table de guitare complique trop la gravure laser (mise au point variable). Nouveau
+procédé : impression papier 1:1 → décalque → pyrogravure. Le pattern dépasse largement un A4
+(~500 mm), d'où le tuilage multi-feuilles avec repères.
+
+### Alternatives envisagées
+- **Impression navigateur** (`window.print()` + CSS `@page` mm) : zéro dépendance mais l'échelle
+  exacte dépend du réglage « 100 % » de chaque dialogue d'impression — trop fragile pour un calque
+  qui doit s'assembler au mm. Écarté par Thibault.
+- **Un SVG par feuille** à imprimer soi-même : N téléchargements + N impressions, laborieux. Écarté.
+- **Contours seuls** (sans gris) ou **surfaces pleines** (comme le SVG laser) : Thibault a choisi
+  l'intermédiaire contours + gris clair (lisibilité brûlé/laissé, encre raisonnable).
+- **Bord à bord + traits de coupe** : exige une coupe précise par feuille ; le recouvrement scotché
+  est plus tolérant. Écarté.
+- **Découpe des chemins par tuile via Clipper** : inutilement coûteux (gros décor × N pages) ; le
+  **clip rectangulaire natif PDF** par page + un pré-filtrage bbox des sous-chemins suffisent.
+
+### Raison du choix
+Le PDF est le seul vecteur d'impression dont l'échelle ne dépend pas du navigateur. jsPDF (fichier
+UMD unique, zéro dépendance) respecte la contrainte sans build/`file://` (D-002), même précédent
+qu'ImageTracer (D-009). Tout le calcul géométrique lourd existe déjà (occlusion D-004/D-005) ; la
+fonction n'ajoute que du tuilage pur + du dessin PDF.
+
+### Conséquences
+- `vendor/jspdf.umd.min.js` **ajouté** (tiers, ne pas éditer, ~360 Ko).
+- `src/geometry.js` : `ML.computeTiling(bboxMm, opts)` (pur, cas de test dans `test/run.js`).
+- `src/print.js` **nouveau** (classic script) : rendu du PDF (pages, clip, gris/contours,
+  pointillés, croix, libellés, règle, page de garde) via `window.jspdf`.
+- `src/app.js` : `collectPrintScene()` (réutilise le flux PNG, mm sens écran) + bouton
+  « PDF A4 1:1 » (garde `guardPendingDrafts` comme les autres exports) → `pattern-A4.pdf`.
+- `index.html` : 2 `<script>` (jspdf, print.js) + bouton export.
+- Le rendu imprimé (échelle réelle, recalage des croix) se valide **sur papier** par Thibault
+  (règle 100 mm) — hors de portée des tests headless.
+
+### Impact IA
+Plan d'exécution : `plans/P8/` (T1 tuilage · T2 rendu PDF · T3 repères+page de garde · T4 UI).
+Seul `computeTiling` touche `geometry.js` → `node test/run.js` doit rester vert (cas ajoutés en T1).
+Validation visuelle/papier : report `VALIDATION.md`.
+
+## 2026-07-02 — D-010 : Édition iPad/Pencil — entrées pointer natives, stylet/doigt séparés, perf localisée
+
+### Décision
+Fusion de deux audits (Claude + Codex, `AUDIT_UI_IPAD_APPLE_PENCIL.md`) → plan `plans/P7/` en trois volets :
+
+1. **Entrées** : en mode édition stylet, le tracé quitte les événements Konva `mouse*/touch*` pour des
+   **Pointer Events natifs** attachés au conteneur du stage (`enterEdit` attache, `exitEdit` détache),
+   mappés vers les coordonnées locales via `stage.setPointersPositions(e)` + `getRelativePointerPosition()`.
+   Konva reste maître de tout le reste (sélection, Transformer, pinch deux doigts en touch events).
+   Par défaut **le stylet dessine, le doigt navigue** (1 doigt = pan manuel en édition, 2 doigts = pinch
+   existant) ; bascule « dessin au doigt » dans la palette pour l'usage sans Pencil. Un 2ᵉ contact
+   **annule** le trait en cours (jamais d'application partielle). S'y ajoutent : points coalescés/prédits
+   (`getCoalescedEvents`/`getPredictedEvents`, avec repli si absents), décimation des points, curseur
+   d'outil (taille réelle mm, survol Pencil), courbes de pression (gamma) + largeur minimale,
+   stabilisation EMA réglable (défaut : désactivée).
+2. **Performance** (condition de fluidité sur décor) : cache bitmap de `editDraftGroup` entre les traits
+   (le pointermove ne redessine plus tout le brouillon) ; **opérations Clipper localisées par îlots**
+   (regroupement contour extérieur + trous, participation au calcul limitée aux îlots dont la bbox
+   intersecte celle du trait — garantit qu'un trou n'est jamais séparé de son extérieur) ; surcharge
+   verte (`addedRegions`) maintenue **incrémentalement** ; undo d'édition **par commandes + keyframes**
+   (fin des copies profondes ×30 du draft, mémoire Safari iPad) + bouton **Rétablir** ; autosave différé
+   en période creuse (`requestIdleCallback`, jamais pendant un trait).
+3. **Exception vendored (unique)** : garder la dernière ligne de `vendor/clipper.js` (l. 6986,
+   `module.exports` non gardé → `ReferenceError` console en navigateur) derrière la même garde
+   `typeof module` que sa l. 81. Une ligne, aucune autre édition de `vendor/` autorisée.
+
+Une **page de sonde** (`test/pencil-probe.html`, autonome) mesure sur l'iPad réel les capacités Safari
+(pression, coalescés/prédits, `twist`, survol) **avant** d'exploiter les API incertaines.
+
+### Contexte
+Usage principal : iPad + Apple Pencil Pro. Constats croisés des deux audits : un doigt posé dessine
+(pas de distinction stylet/doigt), un 2ᵉ contact applique un bout de trait fantôme, le repli de la
+sidebar est inopérant en paysage iPad (règle CSS enfermée dans `max-width: 900px`), et sur un décor
+chargé chaque mouvement redessine tout le brouillon tandis que chaque fin de trait paie un Clipper
+plein cadre — l'outil saccade là où il doit être fluide.
+
+### Alternatives envisagées
+- **Konva `pointerdown/move/up`** au lieu de listeners natifs : n'expose ni `getCoalescedEvents` ni la
+  capture de pointeur ni les événements de survol de manière fiable. **Écarté** — natif sur le conteneur,
+  portée limitée au mode édition.
+- **Web Worker Clipper** (géométrie hors thread UI) : compatibilité `file://` incertaine sur Safari
+  (worker Blob à valider), complexité de synchronisation. **Reporté** — la localité par îlots + le cache
+  du brouillon doivent suffire ; à réévaluer sur mesure réelle après P7.
+- **Refonte spatiale** (barre d'outils basse, plein écran, lasso contextuel, renommage du cycle brouillon,
+  appui long bibliothèque — audit Codex §2/7/8/9) : pertinente mais découplée. **Reportée à un plan P8**
+  pour garder P7 livrable et mesurable.
+- **Barrel roll / tilt Pencil Pro** (angle de plume au poignet) : support Safari de `twist` non confirmé.
+  **Reporté** — conditionné aux résultats de la sonde T4.
+
+### Raison du choix
+Les pointer events sont la seule API qui distingue stylet/doigt et porte pression/coalescés/prédits —
+prérequis de toute l'ergonomie Pencil. La localité par îlots rend le coût d'un trait proportionnel à la
+zone touchée et non à la taille du décor, sans changer le modèle de données (`edit.draft` inchangé). Les
+deux volets sont indépendants et parallélisables ; chacun se valide séparément.
+
+### Conséquences
+- `src/app.js` : listeners pointer attachés/détachés par `enterEdit`/`exitEdit` ; `cancelActiveStroke()` ;
+  pan un doigt manuel en édition ; curseur d'outil ; courbes de pression ; stabilisation ; branchement des
+  ops localisées ; undo par commandes + Rétablir ; autosave différé.
+- `src/geometry.js` : `ML.groupIslands`, `ML.surfaceUnionLocal`, `ML.surfaceDifferenceLocal` (+ cas de
+  test dédiés dans `test/run.js`).
+- `src/style.css` / `index.html` : repli sidebar hors media query, `.lib-del` visible sans survol,
+  `100dvh`, `touch-action`, boutons palette (doigt, pression, lissage, Rétablir).
+- `vendor/clipper.js` : **une ligne** gardée (exception D-010, ne pas généraliser).
+- `test/pencil-probe.html` **ajouté** (page de sonde autonome, hors app).
+
+### Impact IA
+Plan d'exécution : `plans/P7/` (16 tâches, cf. `index.md`). Toute tâche touchant `geometry.js` doit garder
+`node test/run.js` **vert** (T12 en ajoute des cas). Fluidité, latence, palm rejection, survol, pression :
+**validation par Thibault sur iPad réel uniquement** (report `VALIDATION.md`) — l'émulation ne reproduit ni
+la pression ni la latence perçue (limite explicite de l'audit Codex).

@@ -10,6 +10,19 @@
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
+**Plan P7 cadré (2026-07-02), non démarré** : édition iPad/Pencil — corrections tactiles, tracé en
+pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
+localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
+décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
+(Claude + Codex, `AUDIT_UI_IPAD_APPLE_PENCIL.md`).
+
+**Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
+vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu
+contours 0,3 mm couleur calque + surfaces gris clair, contour guitare pointillé, recouvrement
+10 mm avec croix de recalage, règle de contrôle 100 mm, page de garde plan d'assemblage, sens
+écran (pas de miroir). 4 tâches : `plans/P8/index.md` ; décisions : `DECISIONS.md §D-011` ;
+backlog : T-125.
+
 ## Ce qui fonctionne
 
 - **Verrou global du décor** (bouton 🔒/🔓) : décor inerte au pointeur (sélection/déplacement/édition bloqués), clic traversant vers les motifs posés au-dessus, état persisté dans le projet JSON.
