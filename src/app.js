@@ -2000,6 +2000,47 @@
       busy.hidden = true;
     });
   };
+
+  // Rafraîchit un décor existant SUR PLACE depuis un nouveau PNG (dessin retravaillé) : la
+  // géométrie (zones/silhouette) est remplacée, mais les exemplaires déjà posés conservent leur
+  // position/échelle/rotation/z-order (la transformation vit sur l'exemplaire, pas sur le motif).
+  // motif.surface (retouches stylet du décor) est supprimé : écrasé par le nouveau tracé (D-009).
+  let refreshDecorTarget = null;
+  document.getElementById("btn-refresh-decor").onclick = () => {
+    const sel = selectedMotif();
+    let target = sel && sel.role === "DECOR" ? sel : null;
+    if (!target) {
+      const decors = state.motifs.filter((m) => m.role === "DECOR");
+      if (decors.length === 1) target = decors[0];
+    }
+    if (!target) { alert("Sélectionne d'abord le décor à rafraîchir."); return; }
+    refreshDecorTarget = target;
+    document.getElementById("refresh-decor-file").click();
+  };
+  document.getElementById("refresh-decor-file").onchange = (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    const target = refreshDecorTarget;
+    refreshDecorTarget = null;
+    if (!file || !target) return;
+    refreshDecor(target, file);
+  };
+  function refreshDecor(target, file) {
+    const busy = document.getElementById("busy-overlay");
+    busy.hidden = false;
+    recordHistory();
+    pngFileToParsedSVG(file, (parsed) => {
+      if (!parsed) { busy.hidden = true; return; } // erreur/tracé vide : déjà signalé par pngFileToParsedSVG, pas de mutation
+      const fresh = buildMotifFromSVG(target.name, parsed, "DECOR");
+      target.zones = fresh.zones;
+      target.silhouette = fresh.silhouette;
+      delete target.surface;
+      rerenderMotif(target); // re-rend les exemplaires + la vignette bibliothèque (motifThumbs)
+      markProjectChanged();
+      busy.hidden = true;
+    });
+  }
+
   document.getElementById("import-svg").onchange = (e) =>
     readFiles(e.target.files, (_n, text) => {
       const long = parseFloat(document.getElementById("dim-long").value) || 440;

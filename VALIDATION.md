@@ -39,3 +39,14 @@
   chargé en `<script>` vendored, pas de dépendance réseau).
 - [ ] PNG de grande résolution (> 2000 px de côté) : le tracé reste raisonnablement rapide (pas de gel
   du navigateur), l'image est mise à l'échelle proportionnellement avant vectorisation.
+
+## P6 · T3 — Bouton « Rafraîchir le décor » (remplacement sur place depuis PNG)
+
+- [ ] Poser un décor, le déplacer/redimensionner ; « Rafraîchir le décor… » avec un PNG modifié →
+  le trait change **sans** que l'exemplaire bouge (position/échelle/rotation/z-order conservés).
+- [ ] Deux décors différents sur le plan → le rafraîchissement vise bien le décor sélectionné (et,
+  s'il n'y en a qu'un seul posé, aucune sélection nécessaire).
+- [ ] Aucun décor dans la bibliothèque → message clair (« Sélectionne d'abord le décor à
+  rafraîchir. »), pas de crash.
+- [ ] Un décor avait des retouches stylet (`motif.surface`) → après rafraîchissement, elles sont
+  écrasées par le nouveau tracé (attendu, cf. `DECISIONS.md` §D-009).
