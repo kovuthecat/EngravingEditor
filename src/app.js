@@ -15,6 +15,7 @@
     seq: 0,
     builtins: window.ML_BUILTIN_MOTIFS || [], // catalogue brut du bundle {id,name,role,svg}
     hiddenBuiltins: new Set(), // ids de built-ins masqués localement (persisté)
+    decorLocked: false, // D-009 : verrou global décor (inerte au pointeur), persisté
   };
 
   // ─── Konva ───────────────────────────────────────────────────────────────
@@ -78,8 +79,15 @@
     uiLayer.batchDraw();
   }
 
+  // D-009 : détecte un groupe-instance dont le motif est de rôle DECOR (pour le verrou global).
+  function isDecorGroup(node) {
+    if (!node || node.getClassName() !== "Group") return false;
+    const motif = state.motifs.find((m) => m.id === node.getAttr("motifId"));
+    return !!motif && motif.role === "DECOR";
+  }
   function selected() { return tr.nodes()[0] || null; }
   function select(node) {
+    if (state.decorLocked && isDecorGroup(node)) return;
     if (node && node.getAttr("isZone")) {
       tr.resizeEnabled(true);
       tr.keepRatio(false);
@@ -93,6 +101,27 @@
     }
     tr.nodes(node ? [node] : []);
     uiLayer.batchDraw(); updateInspector(); positionMoveHandle();
+  }
+
+  // D-009 : (dé)verrouille tous les groupes-instance de décor. Levier = listening(false) : le
+  // groupe devient inerte au pointeur, le clic passe au travers vers un motif posé au-dessus.
+  function applyDecorLock() {
+    mainLayer.getChildren((n) => isDecorGroup(n)).forEach((g) => g.listening(!state.decorLocked));
+    if (state.decorLocked) {
+      if (isDecorGroup(selected())) select(null);
+      if (edit.active) {
+        const editedMotif = state.motifs.find((m) => m.id === edit.motifId);
+        if (editedMotif && editedMotif.role === "DECOR") exitEdit();
+      }
+    }
+    mainLayer.batchDraw();
+  }
+  // D-009 : resynchronise le libellé/aria-pressed du bouton verrou décor sur state.decorLocked.
+  function updateDecorLockButton() {
+    const btn = document.getElementById("btn-lock-decor");
+    if (!btn) return;
+    btn.setAttribute("aria-pressed", String(state.decorLocked));
+    btn.textContent = state.decorLocked ? "🔒 Décor verrouillé" : "🔓 Décor déverrouillé";
   }
 
   // clic vide -> désélection (mais pas pendant un pan)
@@ -559,6 +588,7 @@
     g.on("dragstart", () => { recordHistory(); select(g); });
     g.on("dragend", markProjectChanged);
     mainLayer.add(g);
+    if (motif.role === "DECOR" && state.decorLocked) g.listening(false); // D-009 : couvre ajout/duplication/chargement
     return g;
   }
 
@@ -1000,6 +1030,7 @@
     const g = selected();
     const motif = selectedMotif();
     if (!g || !motif) return;
+    if (state.decorLocked && motif.role === "DECOR") return; // D-009 : décor verrouillé, pas d'édition
     edit.active = true; edit.motifId = motif.id; edit.node = g;
     // repli auto des sections sidebar à l'entrée (T9) : mémorise les <details> ouverts pour les
     // rouvrir tels quels à la sortie (un <details> resté fermé reste fermé).
@@ -1674,6 +1705,7 @@
       version: 1, pxPerMm: PX_PER_MM,
       motifs: state.motifs.filter((m) => !m.builtin),
       hiddenBuiltins: [...state.hiddenBuiltins],
+      decorLocked: state.decorLocked,
       boundary: state.boundary,
       holes: state.holes,
       contourRef: state.contourRef,
@@ -1735,6 +1767,9 @@
       }
       if (m) addInstance(m, { x: it.x, y: it.y, rotation: it.rotation, scale: it.scale, silent: true, history: false });
     }
+    state.decorLocked = !!data.decorLocked; // D-009
+    updateDecorLockButton();
+    applyDecorLock();
     mainLayer.batchDraw();
   }
 
@@ -1909,6 +1944,12 @@
       e.target.value = "";
     });
   document.getElementById("btn-restore-builtins").onclick = restoreBuiltins;
+  document.getElementById("btn-lock-decor").onclick = () => { // D-009
+    state.decorLocked = !state.decorLocked;
+    updateDecorLockButton();
+    applyDecorLock();
+    markProjectChanged();
+  };
   document.getElementById("btn-zone").onclick = addZone;
   document.getElementById("chk-margin").onchange = (e) => { state.margin.show = e.target.checked; drawBoundary(); };
   document.getElementById("margin-mm").oninput = (e) => { state.margin.mm = parseFloat(e.target.value) || 0; drawBoundary(); };

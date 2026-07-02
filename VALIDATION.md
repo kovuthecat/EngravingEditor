@@ -17,3 +17,13 @@
 ## Correctifs à confirmer
 - [ ] iPad : fond visible hors mode édition (régression cache Konva corrigée via `safeCache`).
 - [ ] Décor : tient dans le contour, cliquable/déplaçable (poignées du Transformer visibles).
+
+## P6 · T1 — Verrou global du décor (bascule 🔒)
+
+- [ ] Verrou ON : impossible de sélectionner/déplacer/éditer le décor ; un motif posé au-dessus du
+  décor reste sélectionnable (le clic traverse le décor verrouillé).
+- [ ] Verrou OFF : le décor redevient sélectionnable/déplaçable/éditable normalement.
+- [ ] Verrouiller pendant que le décor est sélectionné → il se désélectionne. Verrouiller pendant
+  l'édition (stylet) d'un décor → on sort de l'édition.
+- [ ] Enregistrer le projet avec verrou ON → recharger : l'état verrou est restauré (libellé du
+  bouton 🔒/🔓, `aria-pressed`, et comportement effectif inchangés après rechargement).

@@ -14,3 +14,6 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [ ] T-104 — Points d'ancrage : faire dialoguer un motif avec un bouton (œil / centre de vinyle) · modèle: Opus→Sonnet, effort: high · plan: —
 - [ ] T-105 — Magnétisme/alignement ; marge « sticker » optionnelle ; densité de packing réglable · modèle: Sonnet, effort: medium · plan: —
 - [ ] T-106 — Nettoyer l'export CommonJS non gardé de `vendor/clipper.js:6986` (sans casser l'UMD) · modèle: Haiku, effort: low · plan: —
+- [x] T-107 — Verrou global du décor (non sélectionnable/déplaçable/éditable) · modèle: Sonnet, effort: medium · plan: `plans/P6/` (T1)
+- [ ] T-108 — Vectoriseur PNG→SVG (ImageTracer vendored) + import décor PNG · modèle: Sonnet, effort: medium · plan: `plans/P6/` (T2)
+- [ ] T-109 — Bouton « Rafraîchir le décor » (remplacement sur place depuis PNG) · modèle: Sonnet, effort: medium · plan: `plans/P6/` (T3, dépend T2)
