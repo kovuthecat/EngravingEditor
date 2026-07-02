@@ -27,3 +27,15 @@
   l'édition (stylet) d'un décor → on sort de l'édition.
 - [ ] Enregistrer le projet avec verrou ON → recharger : l'état verrou est restauré (libellé du
   bouton 🔒/🔓, `aria-pressed`, et comportement effectif inchangés après rechargement).
+
+## P6 · T2 — Import décor PNG vectorisé en interne (ImageTracer vendored)
+
+- [ ] Importer un PNG de décor Procreate (« Importer décor (PNG)… ») → une vignette apparaît dans la
+  bibliothèque Décor ; l'ajouter au plan → le trait vectorisé ressemble au dessin d'origine, en une
+  seule couleur (couleur focale décor).
+- [ ] Fichier illisible / image vide / tracé sans encre détectée → message d'erreur propre (`alert`),
+  pas de crash, overlay « Import en cours… » ne reste pas bloqué affiché.
+- [ ] `file://` (double-clic sur `index.html`, sans serveur) : l'import PNG fonctionne (ImageTracer
+  chargé en `<script>` vendored, pas de dépendance réseau).
+- [ ] PNG de grande résolution (> 2000 px de côté) : le tracé reste raisonnablement rapide (pas de gel
+  du navigateur), l'image est mise à l'échelle proportionnellement avant vectorisation.

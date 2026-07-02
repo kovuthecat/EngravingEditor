@@ -1905,6 +1905,54 @@
     requestAnimationFrame(() => setTimeout(() => { try { fn(); } finally { o.hidden = true; } }, 0));
   }
 
+  // Vectorise un PNG (dessin Procreate) en interne via ImageTracer.js (vendored) et renvoie
+  // un objet au format ML.parseSVG() : { paths:[{color,subpaths}], subpaths }. Seuillage sur
+  // l'alpha (encre = alpha > 128) -> sortie bilevel -> ne garde que le tracé sombre (D-009).
+  // Générique/réutilisable (pas couplée à l'UI d'import) : consommée aussi par T3 (Rafraîchir le décor).
+  const PNG_TRACE_MAX_DIM = 2000; // plafond de dimension pour borner le coût de tracé
+  function pngFileToParsedSVG(file, cb) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const nw = img.naturalWidth, nh = img.naturalHeight;
+        if (!nw || !nh) throw new Error("image vide");
+        const scale = Math.min(1, PNG_TRACE_MAX_DIM / Math.max(nw, nh));
+        const w = Math.max(1, Math.round(nw * scale));
+        const h = Math.max(1, Math.round(nh * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        const imagedata = ctx.getImageData(0, 0, w, h);
+        const data = imagedata.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const opaque = data[i + 3] > 128;
+          data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
+          data[i + 3] = opaque ? 255 : 0;
+        }
+        const svgString = ImageTracer.imagedataToSVG(imagedata, {
+          pal: [{ r: 0, g: 0, b: 0, a: 255 }, { r: 255, g: 255, b: 255, a: 0 }],
+        });
+        const parsed = ML.parseSVG(svgString);
+        const darkPaths = parsed.paths.filter((p) => p.color === "rgb(0,0,0)");
+        URL.revokeObjectURL(url);
+        if (!darkPaths.length) { alert("Le tracé de ce PNG est vide (aucun trait détecté)."); cb(null); return; }
+        cb({ paths: darkPaths, subpaths: darkPaths.flatMap((p) => p.subpaths) });
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        alert("Impossible de vectoriser ce PNG : " + (err && err.message ? err.message : err));
+        cb(null);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      alert("Impossible de lire ce fichier image.");
+      cb(null);
+    };
+    img.src = url;
+  }
+
   // ─── câblage UI ──────────────────────────────────────────────────────────────
   document.getElementById("import-perso").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
@@ -1936,6 +1984,22 @@
       });
       e.target.value = "";
     });
+  document.getElementById("import-decor-png").onchange = (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const busy = document.getElementById("busy-overlay");
+    busy.hidden = false;
+    const base = file.name.replace(/\.[^.]+$/, "");
+    pngFileToParsedSVG(file, (parsed) => {
+      if (parsed) {
+        recordHistory();
+        addMotifToLibrary(buildMotifFromSVG(base, parsed, "DECOR"));
+        markProjectChanged();
+      }
+      busy.hidden = true;
+    });
+  };
   document.getElementById("import-svg").onchange = (e) =>
     readFiles(e.target.files, (_n, text) => {
       const long = parseFloat(document.getElementById("dim-long").value) || 440;

@@ -46,6 +46,9 @@
           <label class="btn">Importer décor (SVG)…
             <input id="import-decor" type="file" accept=".svg" hidden />
           </label>
+          <label class="btn">Importer décor (PNG)…
+            <input id="import-decor-png" type="file" accept="image/png,image/jpeg" hidden />
+          </label>
           <div id="library-decor" class="library-grid"></div>
           <button id="btn-lock-decor" class="btn sm" type="button" aria-pressed="false">🔓 Décor déverrouillé</button>
         </section>
@@ -205,6 +208,7 @@
 
   <script src="vendor/konva.min.js"></script>
   <script src="vendor/clipper.js"></script>
+  <script src="vendor/imagetracer.js"></script>
   <script src="src/svg.js"></script>
   <script src="src/geometry.js"></script>
   <script src="src/builtin-motifs.js"></script>
