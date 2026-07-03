@@ -176,6 +176,7 @@
   }
   stage.on("touchstart", (e) => {
     if (e.evt.touches.length === 2) {
+      cancelActiveStroke();
       e.evt.preventDefault();
       stage.draggable(false);
       pinchDist = pinchInfo(e.evt.touches).dist;
@@ -1322,6 +1323,19 @@
     edit.pts = [];
     edit.pressures = [];
   }
+  // (D-010 volet 1) annule le geste en cours (trait/forme/tracé ou glissé de lasso) quand un 2e
+  // contact arrive : rien n'est appliqué au brouillon. Ne touche pas edit.lasso ni edit.draft.
+  function cancelActiveStroke() {
+    if (!edit.active) return;
+    edit.drawing = false;
+    edit.pts = [];
+    edit.pressures = [];
+    edit.shapeAnchor = null;
+    edit.shapeCurrent = null;
+    edit.lassoDragAnchor = null;
+    if (editPreview) { editPreview.destroy(); editPreview = null; }
+    uiLayer.batchDraw();
+  }
 
   // outil lasso (T8) : entoure une portion existante du brouillon (polyligne fermée au up) pour
   // la sélectionner. edit.lasso = {inside, rest, offset} ne mute PAS edit.draft — c'est un aperçu
@@ -1451,7 +1465,7 @@
   // autres outils) — même dispatch stage, le tool actif décide de la branche.
   stage.on("mousedown touchstart", (e) => {
     if (!edit.active) return;
-    if (e.evt.touches && e.evt.touches.length !== 1) return;
+    if (e.evt.touches && e.evt.touches.length > 1) { cancelActiveStroke(); return; }
     e.evt.preventDefault();
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
