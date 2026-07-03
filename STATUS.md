@@ -4,7 +4,7 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-03 (soir 3)
+> **Dernière mise à jour :** 2026-07-03 (soir 5)
 
 ## Phase actuelle
 
@@ -120,6 +120,50 @@ bbox inclut le contour. `exportPdfA4()` enchaîne `ML.computeTiling` (T1) → `M
 → `doc.save("pattern-A4.pdf")`. `node test/run.js` vert (aucune géométrie de cœur touchée). Rendu
 réel (papier/règle 100 mm/raccord des feuilles) à valider par Thibault (`VALIDATION.md`, section
 « P8 · impression A4 »). Plan P8 complet (T1-T4 codés).
+
+**Plan P9 en cours (2026-07-03)** : refonte spatiale UI iPad/Pencil (couche présentation
+seule, aucune géométrie). Reprend la refonte reportée par D-010 + le second audit du 2026-07-03
+(`AUDIT_CODE_UI_IPAD_2026-07-03.md` + audit Playwright Codex). 12 sessions / 15 tâches (T-126…T-140) :
+cibles tactiles 44 px, palette d'édition en barre d'outils + tiroir contextuel, actions lasso/brouillon
+flottantes, gestes tap 2/3 doigts (Annuler/Rétablir), priorité stylet, zoom-to-fit + indicateur de mode,
+dialogue custom (remplace les confirm imbriqués) + badge essais, Projet sticky, PWA, et volet Pencil Pro
+**conditionnel** (twist→angle plume, mode ombrage) gaté par une validation de sonde sur iPad réel (T-138).
+Plan : `plans/P9/index.md` ; décisions : `DECISIONS.md §D-012`. Garde-fou : `node test/run.js` reste vert
+partout (rien ne touche `geometry.js`/`vendor/`) ; validation visuelle par Thibault (`VALIDATION.md`).
+S6 (T-131, 2026-07-03) : `#lasso-actions`/`#stylet-draft-actions` sortis d'`#edit-palette` vers des
+mini-barres flottantes (`#lasso-toolbar` positionnée en JS près du bbox de `edit.lasso.inside`,
+figée à l'ouverture — `positionLassoToolbar()` ; bandeau vert fixe haut de canevas pour Appliquer/
+Jeter). Notes permanentes du tiroir remplacées par un bouton « ? » → overlay `#edit-help` (fermeture
+au tap). `node test/run.js` vert. Reste : validation visuelle iPad (`VALIDATION.md`, P9 · S6).
+S7 (T-132, 2026-07-03) : priorité stylet (`edit.drawingPointerType`, posé dans `startStroke`/
+`startShape`/`startLassoTrace`) — un contact touch isolé pendant un trait pen actif est ignoré dans
+`editPointerDown` (ni pan, ni dessin doigt), le 2ᵉ-contact-annulation reste inchangé. Zoom-to-fit
+animé (`Konva.Tween` sur `stage`, 200 ms) à l'entrée d'édition sur le bbox de `edit.node` (marge 10 %,
+calculé relatif à `mainLayer`) ; `exitEdit` restaure `edit.prevView`. Indicateur de mode : classe
+`#app.editing` (liseré bleu non-inset autour de `#stage`, un inset serait masqué par le canevas Konva)
++ bandeau `#edit-mode-banner` (« ✏️ {motif.name} »). `node test/run.js` vert. Reste : validation
+visuelle iPad (`VALIDATION.md`, P9 · S7). S7 débloque S8 (T-133).
+S8 (T-133, 2026-07-03) : tap 2/3 doigts = Annuler/Rétablir en édition. `edit.tapGesture =
+{ maxFingers, startT, moved, starts }` posé/mis à jour dans `editPointerDown` sur chaque contact
+touch (`starts` = Map pointerId→position de contact, pour détecter un déplacement par doigt) ;
+`editPointerMove` marque `moved` si un contact dépasse ~10 px de son point de départ (vérifié même
+au-delà de 2 contacts actifs, avant le early-return existant du pinch) ; `editPointerUp` évalue le
+geste quand `activeTouchPointers` retombe à 0 : si `!moved` et durée `< 250 ms`, `maxFingers === 2`
+→ `undoStroke()`, `=== 3` → `redoStroke()`. Un pinch avéré (`stage.on("touchstart")`, 2 doigts)
+marque `moved = true` pour désolidariser le tap du zoom. `tapGesture` réinitialisé à
+`enterEdit`/`exitEdit`. `node test/run.js` vert (aucune géométrie touchée). Reste : validation
+visuelle iPad (`VALIDATION.md`, P9 · S8).
+S9 (T-134, 2026-07-03) : dialogue custom `showDialog({title,message,buttons})` (Promise résolue par
+le bouton tapé ou par la valeur d'annulation au tap backdrop, `#modal-backdrop`/`#modal` dans
+`index.html`) remplace les `confirm()`. `guardPendingDrafts` réécrit `async` en 3 choix explicites
+(« Appliquer et exporter » / « Exporter sans les essais » / « Annuler », D-012 pt 6) ; `exportSVG`/
+`exportPNG`/`collectPrintScene`/`exportPdfA4` passés `async`/`await` (tous appelés depuis des
+`onclick`, aucune valeur de retour consommée ailleurs → conversion directe). `deleteMotifFromLibrary`/
+`hideBuiltin` passés `async`, `confirm()` de suppression remplacé par `showDialog` (bouton danger).
+Les `alert()` d'export/erreur restent natifs (pas de choix à faire, coût async non justifié). Badge
+`#draft-badge` dans le header (`refreshDraftCounter`), tap = déplie la sidebar et scrolle vers
+`#section-projet`. `node test/run.js` vert (aucune géométrie touchée). Reste : validation visuelle
+iPad (`VALIDATION.md`, P9 · S9). S9 débloque S10 (T-135/T-136).
 
 ## Ce qui fonctionne
 

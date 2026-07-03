@@ -677,3 +677,102 @@ Plan d'exécution : `plans/P7/` (16 tâches, cf. `index.md`). Toute tâche touch
 `node test/run.js` **vert** (T12 en ajoute des cas). Fluidité, latence, palm rejection, survol, pression :
 **validation par Thibault sur iPad réel uniquement** (report `VALIDATION.md`) — l'émulation ne reproduit ni
 la pression ni la latence perçue (limite explicite de l'audit Codex).
+
+## 2026-07-03 — D-012 : Refonte spatiale UI iPad/Pencil (couche présentation, plan P9)
+
+### Décision
+Exécuter la **refonte spatiale** de l'UI reportée par D-010 (« reportée à un plan P8 » → prend le
+numéro libre **P9**), enrichie du second audit iPad/Pencil du 2026-07-03 (audit de code Claude +
+audit Playwright Codex, cf. `AUDIT_CODE_UI_IPAD_2026-07-03.md` et
+`output/playwright/AUDIT_UI_IPAD_APPLE_PENCIL_2026-07-03.md`). Périmètre **présentation et entrées
+uniquement** : aucune modification de la géométrie de cœur (`geometry.js`/occlusion/export). Les
+constats fonctionnels de D-010 (pointer events, pression, coalescés, perf localisée) sont **acquis** ;
+P9 ne touche qu'à la lisibilité, l'atteignabilité tactile et l'ergonomie du mode édition.
+
+Choix figés (l'exécutant ne reconçoit pas) :
+
+1. **Cibles tactiles = 44 px minimum** (HIG). Variable CSS `--tap: 44px` sur boutons/toggles ;
+   zones de hit élargies par pseudo-élément `::after` transparent 44×44 quand le visuel doit rester
+   dense (`×` des vignettes, `.zone-toggle`) ; sliders à pouce ~28 px + piste de hit 44 px ; ancres
+   Konva (`Transformer.anchorSize`) et pastille de déplacement **compensées de l'échelle du stage**
+   (taille constante à l'écran) sous `matchMedia("(pointer: coarse)")`.
+2. **Palette d'édition = barre d'outils + tiroirs**, pas un panneau de réglages. Niveau 1 (toujours
+   visible, non scrollable) : les 6 outils en icônes ≥48 px + taille courante + Annuler/Rétablir +
+   Sortir. Niveau 2 (tiroir contextuel à l'outil actif) : mode de trait, angle plume, dureté/largeur
+   min, stabilisation, bascule doigt. Actions **lasso** et **Appliquer/Jeter** en mini-barres
+   flottantes **près de l'action** (pas dans la palette). Notes d'aide permanentes remplacées par un
+   bouton « ? ». La logique JS existante (`setEditTool`/`setStrokeMode`/…) est déjà découplée du
+   layout : chantier HTML/CSS + recâblage, **pas** de refonte d'état.
+3. **Gestes iPadOS** en édition : **tap 2 doigts = Annuler, tap 3 doigts = Rétablir** (convention
+   Procreate/Notes), substituts tactiles des raccourcis clavier inaccessibles sans Magic Keyboard.
+   Le **squeeze et le double-tap du Pencil Pro ne sont pas exposés au web** (PencilKit natif seul) →
+   ne rien en promettre.
+4. **Priorité stylet** : un contact `touch` reçu **pendant** un trait `pen` en cours est **ignoré**
+   (ne démarre plus de pan) — la vue ne bouge plus sous le trait. Le rejet de paume iPadOS reste le
+   premier filtre ; ceci couvre le doigt franc de l'autre main.
+5. **Cadrage à l'entrée d'édition** : `enterEdit()` fait un **zoom-to-fit animé** sur le motif édité,
+   `exitEdit()` **restaure** la vue précédente ; un **indicateur de mode** (liseré/bandeau) rend le
+   mode édition et le motif ciblé explicites.
+6. **Dialogues** : remplacer les `confirm()`/`alert()` natifs enchaînés (notamment les **deux
+   confirm imbriqués** de `guardPendingDrafts`, à sémantique OK/Annuler inversée) par un **dialogue
+   HTML custom** à boutons explicites. **Badge « essais en attente »** dans le header (visibilité de
+   l'état vert non appliqué avant export).
+7. **Structure globale** : la section **Projet** (exports, finalité de l'app) épinglée accessible
+   (`position: sticky; bottom: 0` de la sidebar) plutôt que sous ~6 500 px de scroll ; `.hint` du
+   header conditionné à `(pointer: coarse)` (les mentions molette/Ctrl+D/Suppr sont du desktop pur) ;
+   `inputmode="decimal"` sur les `input[type=number]` (pavé numérique iPadOS). **PWA** : manifest +
+   `apple-mobile-web-app-capable` + `viewport-fit=cover`/`safe-area-inset-*` (plein écran, ~70 px
+   récupérés, pas de swipe-back accidentel).
+8. **Pencil Pro (conditionnel)** : d'abord **étendre `test/pencil-probe.html`** pour logger `twist`,
+   `altitudeAngle`, `azimuthAngle`, `tangentialPressure`, puis **validation humaine sur iPad réel**
+   (go/no-go). Si `twist` est exposé : piloter l'**angle de la plume calligraphique** par la rotation
+   du fût (fallback = slider `calli-angle` existant). Mode **ombrage** par inclinaison (4ᵉ mode de
+   trait, réutilise `ML.variableStroke`, aucune géométrie nouvelle). Hover atténué (`buttons===0`).
+   **Rien de tout cela n'est codé avant la validation de la sonde** (D-010 avait déjà conditionné
+   `twist` aux résultats de la sonde).
+
+### Contexte
+Second passage d'audit iPad/Pencil (2026-07-03) : l'architecture d'entrée livrée par D-010 (pointer
+events, pression, coalescés/prédits, hover, annulation au 2ᵉ contact) est saine ; le défaut résiduel
+est **entièrement dans la couche présentation** — cibles < 44 px partout (boutons 40, Annuler header
+34, `×` 24, sliders 16-26, ancres Konva 16, pastille qui rétrécit au dézoom), palette d'édition en
+colonne unique dense et scrollable (Annuler/Sortir potentiellement hors écran), sidebar ~6 500 px
+reléguant les exports, deux `confirm()` imbriqués illisibles, aucun geste tactile de substitution aux
+raccourcis clavier, et un conflit doigt/Pencil pendant le trait.
+
+### Alternatives envisagées
+- **Sidebar en 3 onglets** (Bibliothèque / Réglages / Projet) au lieu d'épingler Projet en sticky :
+  meilleure structure à terme mais refonte de layout plus lourde et arbitrage produit ouvert.
+  **Reporté** — P9 retient le sticky (risque minimal, gain immédiat) ; onglets réévaluables plus tard.
+- **Déplacer les exports dans le header** : la place existe (`.hint` libéré) mais concentre trop
+  d'actions critiques dans une barre déjà étroite sur iPad. **Écarté** au profit du sticky sidebar.
+- **Squeeze/double-tap Pencil Pro** comme undo/redo : **impossible** au web (non exposé) → gestes
+  2/3 doigts retenus.
+- **Refonte d'état de la palette** (composant/état dédié) : inutile, la logique est déjà découplée du
+  DOM ; P9 reste un chantier de présentation + recâblage.
+
+### Raison du choix
+Le socle fonctionnel étant acquis, l'ergonomie perçue se joue désormais uniquement sur la
+présentation ; ces changements sont à **faible risque** (aucune géométrie touchée sauf, marginalement,
+le mapping du mode ombrage vers `variableStroke` déjà testé) et **indépendants** les uns des autres,
+donc découpables en sessions courtes et validables séparément.
+
+### Conséquences
+- `src/style.css` : `--tap`, hit `::after`, sliders, media `(pointer: coarse)`, liseré/bandeau mode,
+  barre d'outils + tiroir, mini-barres flottantes, sticky Projet, safe-area.
+- `index.html` : DOM de la palette réorganisé, dialogue custom, badge header, `inputmode`, boutons
+  Dupliquer/`?`, balises PWA + `viewport-fit=cover`.
+- `src/app.js` : compensation écran des ancres/pastille, recâblage palette/tiroir/mini-barres, gestes
+  2/3 doigts, priorité stylet, zoom-to-fit + indicateur, dialogue custom (remplace `confirm`/`alert`),
+  badge, (conditionnel) `twist`→angle, mode ombrage, hover atténué.
+- `test/pencil-probe.html` : sonde étendue (twist/tilt).
+- **Nouveau** : `manifest.webmanifest` (PWA) + éventuelles icônes data-URI.
+- **Aucune modification de `geometry.js` ni de `vendor/`** ; `node test/run.js` reste un garde-fou de
+  non-régression (doit rester vert/inchangé partout).
+
+### Impact IA
+Plan d'exécution : `plans/P9/` (index + sessions `S<k>.md`, format `WORKFLOW.md §4`). Backlog :
+`TASKS.md` T-126…T-140. Validation **visuelle/tactile par Thibault sur iPad + Pencil Pro** (report
+`VALIDATION.md`) — jamais de Playwright/navigateur côté IA (les audits visuels restent le rôle de
+Codex, cf. `AGENTS.md`). Le volet Pencil Pro (T-139/T-140) est **bloqué** tant que la sonde étendue
+(T-137) n'a pas été validée sur matériel (gate humain T-138).

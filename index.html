@@ -14,6 +14,7 @@
     <div class="project-history" aria-label="Historique et sauvegarde locale">
       <button id="btn-undo" class="btn sm" type="button" disabled title="Annuler la dernière modification (Ctrl+Z)">Annuler</button>
       <span id="local-save-status" class="save-status" role="status" aria-live="polite">Projet local prêt</span>
+      <button id="draft-badge" class="draft-badge" type="button" hidden title="Essais en attente — aller à la section Projet"></button>
     </div>
     <span class="hint">molette = zoom · glisser le fond = déplacer la vue · pincer = zoom · deux doigts = déplacer la vue · pastille bleue = déplacer la sélection · Suppr = supprimer · Ctrl+D = dupliquer · [ ] = ordre</span>
   </header>
@@ -119,7 +120,7 @@
         </details>
       </section>
 
-      <section>
+      <section id="section-projet">
         <h2>Projet</h2>
         <div id="draft-summary" class="draft-summary" style="display:none">
           <span id="draft-count-label" class="note">0 essai en attente</span>
@@ -143,6 +144,7 @@
 
     <div id="stage-wrap">
       <main id="stage"></main>
+      <div id="edit-mode-banner" hidden>✏️ <span id="edit-mode-banner-name"></span></div>
       <div id="selection-palette" hidden>
         <button id="btn-edit" class="btn sm">Entrer en édition</button>
         <div class="row" id="selection-role-row"><label>Rôle</label>
@@ -160,72 +162,105 @@
         <button id="btn-del" class="btn sm danger">Supprimer</button>
       </div>
       <div id="edit-palette" hidden>
-        <div id="stylet-tools">
-          <div class="grid2">
-            <button id="tool-brush" class="btn sm tool-btn on">Pinceau</button>
-            <button id="tool-eraser" class="btn sm tool-btn">Gomme</button>
+        <!-- P9·S4 : niveau 1 toujours visible, non scrollable (T-129) -->
+        <div id="edit-toolbar">
+          <div id="edit-tools-row">
+            <button id="tool-brush" class="btn tool-btn icon-btn on" title="Pinceau" aria-label="Pinceau">🖌️</button>
+            <button id="tool-eraser" class="btn tool-btn icon-btn" title="Gomme" aria-label="Gomme">🧽</button>
+            <button id="tool-line" class="btn tool-btn icon-btn" title="Ligne" aria-label="Ligne">／</button>
+            <button id="tool-rect" class="btn tool-btn icon-btn" title="Rectangle" aria-label="Rectangle">▭</button>
+            <button id="tool-ellipse" class="btn tool-btn icon-btn" title="Ellipse" aria-label="Ellipse">◯</button>
+            <button id="tool-lasso" class="btn tool-btn icon-btn" title="Lasso" aria-label="Lasso">➰</button>
           </div>
-          <div style="display:flex;gap:6px;margin:6px 0">
-            <button id="tool-line" class="btn sm tool-btn">Ligne</button>
-            <button id="tool-rect" class="btn sm tool-btn">Rectangle</button>
-            <button id="tool-ellipse" class="btn sm tool-btn">Ellipse</button>
-            <button id="tool-lasso" class="btn sm tool-btn">Lasso</button>
-          </div>
-          <p class="note">Ligne/Rectangle/Ellipse utilisent le mode Pinceau (ajoute) ou Gomme (retire) actif. Maj = carré/cercle contraint.</p>
-          <p class="note">Lasso : entoure une portion existante du brouillon, glisse-la si besoin (clic-glisser sur la zone surlignée), puis choisis une action. Échap annule la sélection.</p>
-          <div id="lasso-actions" style="display:none;gap:6px;margin:6px 0">
-            <button id="btn-lasso-move" class="btn sm">Déplacer</button>
-            <button id="btn-lasso-duplicate" class="btn sm">Dupliquer</button>
-            <button id="btn-lasso-erase" class="btn sm danger">Effacer</button>
-          </div>
-          <div class="row"><label>Taille (mm)</label><span id="brush-size-val">3 mm</span></div>
-          <input id="brush-size" type="range" min="0.5" max="20" step="0.5" value="3" />
-          <div style="display:flex;gap:6px;margin:6px 0">
-            <button class="btn sm tool-btn size-btn" data-size-mm="1">1 mm</button>
-            <button class="btn sm tool-btn size-btn on" data-size-mm="3">3 mm</button>
-            <button class="btn sm tool-btn size-btn" data-size-mm="8">8 mm</button>
-          </div>
-          <div style="display:flex;gap:6px;margin:6px 0">
-            <button id="mode-round" class="btn sm tool-btn on">Rond</button>
-            <button id="mode-pressure" class="btn sm tool-btn">Pression</button>
-            <button id="mode-calli" class="btn sm tool-btn">Plume</button>
-          </div>
-          <div style="display:flex;gap:6px;margin:6px 0">
-            <button id="smoothing-off" class="btn sm tool-btn on" data-smoothing="0">Off</button>
-            <button id="smoothing-light" class="btn sm tool-btn" data-smoothing="0.3">Léger</button>
-            <button id="smoothing-medium" class="btn sm tool-btn" data-smoothing="0.55">Moyen</button>
-            <button id="smoothing-strong" class="btn sm tool-btn" data-smoothing="0.75">Fort</button>
-          </div>
-          <button id="finger-draws" class="btn sm tool-btn">✍️ Doigt : navigue</button>
-          <div class="row" id="calli-angle-row" hidden>
-            <label for="calli-angle">Angle plume</label>
-            <input type="range" id="calli-angle" min="0" max="180" step="5" value="45">
-          </div>
-          <div id="pressure-row" hidden>
-            <div style="display:flex;gap:6px;margin:6px 0">
-              <button id="pressure-soft" class="btn sm tool-btn">Douce</button>
-              <button id="pressure-normal" class="btn sm tool-btn on">Normale</button>
-              <button id="pressure-firm" class="btn sm tool-btn">Ferme</button>
+          <details id="brush-size-popover" class="size-popover">
+            <summary class="size-summary" title="Taille du trait" aria-label="Taille du trait">
+              <span class="size-dot"></span><span id="brush-size-val">3 mm</span>
+            </summary>
+            <div class="size-popover-body">
+              <input id="brush-size" type="range" min="0.5" max="20" step="0.5" value="3" />
+              <div style="display:flex;gap:6px;margin:6px 0">
+                <button class="btn sm tool-btn size-btn" data-size-mm="1">1 mm</button>
+                <button class="btn sm tool-btn size-btn on" data-size-mm="3">3 mm</button>
+                <button class="btn sm tool-btn size-btn" data-size-mm="8">8 mm</button>
+              </div>
             </div>
-            <div class="row"><label>Largeur min</label><span id="pressure-min-width-val">25 %</span></div>
-            <input id="pressure-min-width" type="range" min="0" max="60" step="5" value="25" />
+          </details>
+          <button id="btn-edit-help" class="btn icon-btn" title="Aide" aria-label="Aide">?</button>
+          <button id="btn-edit-drawer-toggle" class="btn icon-btn" title="Réglages" aria-label="Réglages">⚙</button>
+          <div class="edit-toolbar-actions">
+            <button id="btn-edit-undo" class="btn sm">Annuler</button>
+            <button id="btn-edit-redo" class="btn sm">Rétablir</button>
+            <button id="btn-edit-exit" class="btn sm">Sortir</button>
           </div>
-          <p class="note">Pencil = trait · un doigt = déplacer la vue (sauf si « Doigt : dessine ») · deux doigts = zoom. La sélection reste verrouillée sur ce motif tant que l'édition est active.</p>
         </div>
-        <div id="stylet-draft-actions" class="grid2" style="display:none">
-          <button id="btn-draft-apply" class="btn sm primary">Appliquer</button>
-          <button id="btn-draft-discard" class="btn sm danger">Jeter l'essai</button>
+        <!-- P9·S5 (T-130) : tiroir de réglages contextuel, ouvert via ⚙, contenu filtré par outil actif -->
+        <div id="edit-drawer" hidden>
+          <div id="stylet-tools">
+            <div id="stroke-mode-settings">
+              <div style="display:flex;gap:6px;margin:6px 0">
+                <button id="mode-round" class="btn sm tool-btn on">Rond</button>
+                <button id="mode-pressure" class="btn sm tool-btn">Pression</button>
+                <button id="mode-calli" class="btn sm tool-btn">Plume</button>
+              </div>
+              <div class="row" id="calli-angle-row" hidden>
+                <label for="calli-angle">Angle plume</label>
+                <input type="range" id="calli-angle" min="0" max="180" step="5" value="45">
+              </div>
+              <div id="pressure-row" hidden>
+                <div style="display:flex;gap:6px;margin:6px 0">
+                  <button id="pressure-soft" class="btn sm tool-btn">Douce</button>
+                  <button id="pressure-normal" class="btn sm tool-btn on">Normale</button>
+                  <button id="pressure-firm" class="btn sm tool-btn">Ferme</button>
+                </div>
+                <div class="row"><label>Largeur min</label><span id="pressure-min-width-val">25 %</span></div>
+                <input id="pressure-min-width" type="range" min="0" max="60" step="5" value="25" />
+              </div>
+            </div>
+            <div id="smoothing-settings">
+              <div style="display:flex;gap:6px;margin:6px 0">
+                <button id="smoothing-off" class="btn sm tool-btn on" data-smoothing="0">Off</button>
+                <button id="smoothing-light" class="btn sm tool-btn" data-smoothing="0.3">Léger</button>
+                <button id="smoothing-medium" class="btn sm tool-btn" data-smoothing="0.55">Moyen</button>
+                <button id="smoothing-strong" class="btn sm tool-btn" data-smoothing="0.75">Fort</button>
+              </div>
+            </div>
+            <button id="finger-draws" class="btn sm tool-btn">✍️ Doigt : navigue</button>
+          </div>
         </div>
-        <div class="grid2" style="grid-template-columns:repeat(3,1fr)">
-          <button id="btn-edit-undo" class="btn sm">Annuler</button>
-          <button id="btn-edit-redo" class="btn sm">Rétablir</button>
-          <button id="btn-edit-exit" class="btn sm">Sortir</button>
+      </div>
+      <!-- P9·S6 (T-131) : mini-barre flottante positionnée près du bbox de la sélection lasso (cf.
+           positionLassoToolbar) ; position figée à l'ouverture, ne suit pas le glissé (§Étapes 1). -->
+      <div id="lasso-toolbar" style="display:none;gap:6px">
+        <button id="btn-lasso-move" class="btn sm">Déplacer</button>
+        <button id="btn-lasso-duplicate" class="btn sm">Dupliquer</button>
+        <button id="btn-lasso-erase" class="btn sm danger">Effacer</button>
+        <button id="btn-lasso-cancel" class="btn sm icon-btn" title="Annuler la sélection" aria-label="Annuler la sélection">✕</button>
+      </div>
+      <!-- bandeau fixe haut du canevas, affiché tant qu'un brouillon est en attente (motifHasPendingWork) -->
+      <div id="stylet-draft-actions" style="display:none">
+        <span class="note">Essai en attente</span>
+        <button id="btn-draft-apply" class="btn sm primary">Appliquer</button>
+        <button id="btn-draft-discard" class="btn sm danger">Jeter l'essai</button>
+      </div>
+      <div id="edit-help" hidden>
+        <div id="edit-help-body">
+          <p>Ligne/Rectangle/Ellipse utilisent le mode Pinceau (ajoute) ou Gomme (retire) actif. Maj = carré/cercle contraint.</p>
+          <p>Lasso : entoure une portion existante du brouillon, glisse-la si besoin (clic-glisser sur la zone surlignée), puis choisis une action. Échap annule la sélection.</p>
+          <p>Pencil = trait · un doigt = déplacer la vue (sauf si « Doigt : dessine ») · deux doigts = zoom. La sélection reste verrouillée sur ce motif tant que l'édition est active.</p>
         </div>
       </div>
     </div>
   </div>
 
   <div id="busy-overlay" hidden><span>Import en cours…</span></div>
+
+  <div id="modal-backdrop" class="modal-backdrop" hidden>
+    <div id="modal" class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-message">
+      <p id="modal-title" class="modal-title"></p>
+      <p id="modal-message" class="modal-message"></p>
+      <div id="modal-buttons" class="modal-buttons"></div>
+    </div>
+  </div>
 
   <script src="vendor/konva.min.js"></script>
   <script src="vendor/clipper.js"></script>

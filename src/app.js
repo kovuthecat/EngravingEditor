@@ -181,6 +181,8 @@
   stage.on("touchstart", (e) => {
     if (e.evt.touches.length === 2) {
       cancelActiveStroke();
+      // (D-012 pt 3, T-133) un pinch avéré disqualifie le tap 2/3 doigts en cours (edit mode).
+      if (edit.tapGesture) edit.tapGesture.moved = true;
       e.evt.preventDefault();
       stage.draggable(false);
       pinchDist = pinchInfo(e.evt.touches).dist;
@@ -265,7 +267,7 @@
     const del = document.createElement("button");
     del.className = "lib-del"; del.type = "button"; del.textContent = "×";
     del.title = "Supprimer ce motif de la bibliothèque";
-    del.onclick = (e) => { e.stopPropagation(); if (deleteMotifFromLibrary(motif.id)) item.remove(); };
+    del.onclick = async (e) => { e.stopPropagation(); if (await deleteMotifFromLibrary(motif.id)) item.remove(); };
     item.append(cv, label, del);
     item.title = "Cliquer pour ajouter au plan";
     item.onclick = () => addInstance(motif);
@@ -275,16 +277,25 @@
     document.getElementById(gridId).appendChild(item);
     updateLibCounts();
   }
-  function deleteMotifFromLibrary(motifId) {
+  async function deleteMotifFromLibrary(motifId) {
     const motif = state.motifs.find((m) => m.id === motifId);
     if ((motif && motif.builtin) || state.builtins.some((b) => b.id === motifId))
       return hideBuiltin(motifId);
     if (!motif) return false;
     const insts = mainLayer.getChildren(
       (n) => n.getClassName() === "Group" && n.getAttr("motifId") === motifId);
-    if (insts.length && !confirm(
-        `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Supprimer le motif et ses exemplaires ?`))
-      return false;
+    if (insts.length) {
+      const choice = await showDialog({
+        title: "Supprimer le motif ?",
+        message: `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Supprimer le motif et ses exemplaires ?`,
+        buttons: [
+          { label: "Supprimer", value: "delete", kind: "danger" },
+          { label: "Annuler", value: "cancel", kind: "neutral" },
+        ],
+        cancelValue: "cancel",
+      });
+      if (choice !== "delete") return false;
+    }
     recordHistory();
     if (edit.active && edit.motifId === motifId) exitEdit();
     const sel = selected();
@@ -353,7 +364,7 @@
     const del = document.createElement("button");
     del.className = "lib-del"; del.type = "button"; del.textContent = "×";
     del.title = "Masquer ce motif de base";
-    del.onclick = (e) => { e.stopPropagation(); hideBuiltin(entry.id); };
+    del.onclick = (e) => { e.stopPropagation(); hideBuiltin(entry.id); }; // async, résultat non consommé ici
     item.append(cv, label, del);
     item.title = "Cliquer pour ajouter au plan";
     item.onclick = () => addInstance(materializeBuiltin(entry));
@@ -374,13 +385,22 @@
     }
   }
 
-  function hideBuiltin(id) {
+  async function hideBuiltin(id) {
     const motif = state.motifs.find((m) => m.id === id);
     const insts = motif ? mainLayer.getChildren(
       (n) => n.getClassName() === "Group" && n.getAttr("motifId") === id) : [];
-    if (motif && insts.length && !confirm(
-        `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Masquer le motif de base et ses exemplaires ?`))
-      return false;
+    if (motif && insts.length) {
+      const choice = await showDialog({
+        title: "Masquer le motif de base ?",
+        message: `« ${motif.name} » a ${insts.length} exemplaire(s) sur le plan. Masquer le motif de base et ses exemplaires ?`,
+        buttons: [
+          { label: "Masquer", value: "hide", kind: "danger" },
+          { label: "Annuler", value: "cancel", kind: "neutral" },
+        ],
+        cancelValue: "cancel",
+      });
+      if (choice !== "hide") return false;
+    }
     state.hiddenBuiltins.add(id);
     if (motif) {
       recordHistory();
@@ -906,11 +926,13 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
   let editPreview = null;
+  // tween de cadrage stage (D-012 pt 5) : zoom-to-fit à l'entrée, restauration à la sortie.
+  let editViewTween = null;
   // curseur d'outil (T8, D-010 volet 1) : cercle/nib/réticule au diamètre RÉEL du pinceau/de la
   // gomme (edit.sizeMm * PX_PER_MM en local editLayer = exactement la taille du trait, à tout zoom).
   // Recréé au changement d'outil/mode/taille/angle (buildEditCursor), juste repositionné sinon
@@ -1039,7 +1061,7 @@
     document.getElementById("selection-palette").hidden = inEdit;
     document.getElementById("edit-palette").hidden = !inEdit;
     document.getElementById("stylet-tools").style.display = inEdit ? "block" : "none";
-    document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "grid" : "none";
+    document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "flex" : "none";
   }
 
   // (T3) fond silhouette : construit UNE SEULE FOIS par enterEdit (après syncEditLayerTransform),
@@ -1123,12 +1145,42 @@
     editLayer.scale({ x: t.scaleX, y: t.scaleY });
   }
 
+  // (D-012 pt 5) cadrage à l'entrée d'édition : centre + zoome sur le bbox du motif (marge ~10 %
+  // de chaque côté), animé (Tween stage court). bbox pris relatif à mainLayer (non affecté par le
+  // pan/zoom courant du stage) pour calculer directement la nouvelle transform du stage.
+  function zoomToFitEdit(node) {
+    const rect = node.getClientRect({ relativeTo: mainLayer });
+    if (!rect.width || !rect.height) return;
+    const margin = 0.9; // fraction de la fenêtre effectivement utilisée (marge ~10 % de chaque côté)
+    const ns = Math.min(8, Math.max(0.1, Math.min((stage.width() * margin) / rect.width, (stage.height() * margin) / rect.height)));
+    const cx = rect.x + rect.width / 2, cy = rect.y + rect.height / 2;
+    const nx = stage.width() / 2 - cx * ns, ny = stage.height() / 2 - cy * ns;
+    if (editViewTween) editViewTween.destroy();
+    editViewTween = new Konva.Tween({
+      node: stage, duration: 0.2, easing: Konva.Easings.EaseInOut, scaleX: ns, scaleY: ns, x: nx, y: ny,
+      onUpdate: () => positionMoveHandle(),
+      onFinish: () => { editViewTween = null; positionMoveHandle(); },
+    });
+    editViewTween.play();
+  }
+  function restoreViewAfterEdit(prevView) {
+    if (!prevView) return;
+    if (editViewTween) editViewTween.destroy();
+    editViewTween = new Konva.Tween({
+      node: stage, duration: 0.2, easing: Konva.Easings.EaseInOut,
+      scaleX: prevView.scale, scaleY: prevView.scale, x: prevView.x, y: prevView.y,
+      onUpdate: () => positionMoveHandle(),
+      onFinish: () => { editViewTween = null; positionMoveHandle(); },
+    });
+    editViewTween.play();
+  }
   function enterEdit() {
     const g = selected();
     const motif = selectedMotif();
     if (!g || !motif) return;
     if (state.decorLocked && motif.role === "DECOR") return; // D-009 : décor verrouillé, pas d'édition
     edit.active = true; edit.motifId = motif.id; edit.node = g;
+    edit.prevView = { scale: stage.scaleX(), x: stage.x(), y: stage.y() };
     // repli auto des sections sidebar à l'entrée (T9) : mémorise les <details> ouverts pour les
     // rouvrir tels quels à la sortie (un <details> resté fermé reste fermé).
     edit.reopenDetails = [...document.querySelectorAll("#sidebar details[open]")];
@@ -1150,6 +1202,7 @@
     clearLassoSelection(); // pas de sélection lasso résiduelle d'une session d'édition précédente
     activeTouchPointers.clear();
     edit.panAnchor = null;
+    edit.tapGesture = null;
     editContainer.addEventListener("pointerdown", editPointerDown, { passive: false });
     editContainer.addEventListener("pointermove", editPointerMove, { passive: false });
     editContainer.addEventListener("pointerup", editPointerUp, { passive: false });
@@ -1170,16 +1223,22 @@
     mainLayer.batchDraw();
     uiLayer.batchDraw();
     populateStyletEditor(motif);
+    zoomToFitEdit(g);
+    document.getElementById("app").classList.add("editing");
+    document.getElementById("edit-mode-banner-name").textContent = motif.name;
+    document.getElementById("edit-mode-banner").hidden = false;
   }
   function exitEdit() {
     if (!edit.active) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     const editedNode = edit.node;
     const wasDirty = edit.dirty;
+    const prevView = edit.prevView;
+    edit.prevView = null;
     // D-007 : plus de confirm bloquant -- un brouillon modifié est simplement rangé (en attente),
     // restauré si on revient sur ce motif (enterEdit), visible en vert sur ses instances (T5 §5).
     if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
-    edit.active = false; edit.drawing = false; edit.pts = []; edit.pressures = []; edit.draft = []; edit.dirty = false;
+    edit.active = false; edit.drawing = false; edit.drawingPointerType = null; edit.pts = []; edit.pressures = []; edit.draft = []; edit.dirty = false;
     edit.history = [];
     edit.redo = [];
     clearLassoSelection();
@@ -1190,6 +1249,7 @@
     editContainer.removeEventListener("pointerleave", hideEditCursor);
     activeTouchPointers.clear();
     edit.panAnchor = null;
+    edit.tapGesture = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
     editLayer.visible(false);
@@ -1197,6 +1257,8 @@
     editDraftGroup.clearCache();
     editStaticGroup.destroyChildren();
     editDraftGroup.destroyChildren();
+    toggleEditDrawer(false); // referme le tiroir : la prochaine édition démarre fermée
+    document.getElementById("edit-help").hidden = true;
     document.getElementById("edit-palette").hidden = true;
     setCanvasLocked(false);
     stage.draggable(true);
@@ -1207,6 +1269,9 @@
     }
     (edit.reopenDetails || []).forEach((d) => { d.open = true; });
     edit.reopenDetails = null;
+    document.getElementById("app").classList.remove("editing");
+    document.getElementById("edit-mode-banner").hidden = true;
+    restoreViewAfterEdit(prevView);
     uiLayer.batchDraw();
     if (motif && wasDirty) rerenderMotif(motif); // une fois (recache inclus) : passe en vert si en attente
     else if (editedNode) safeCache(editedNode, 2); // rien changé : juste recache (décaché à l'entrée)
@@ -1290,19 +1355,33 @@
     if (sel) populateStyletEditor(sel);
   }
   // garde-fou export (SVG ici, PNG en T9) : prévient si des essais ne seraient pas reflétés
-  // (l'export lit toujours motif.surface réel, jamais le brouillon vert display-only).
-  function guardPendingDrafts() {
+  // (l'export lit toujours motif.surface réel, jamais le brouillon vert display-only). D-012 pt 6 :
+  // dialogue à 3 choix explicites (les deux confirm() imbriqués étaient illisibles en modale iPadOS).
+  async function guardPendingDrafts() {
     if (!editDrafts.size) return true;
     const n = editDrafts.size;
-    const applyNow = confirm(`${n} essai(s) non appliqué(s) — OK pour tout appliquer puis exporter, Annuler pour choisir.`);
-    if (applyNow) { applyAllDrafts(); return true; }
-    return confirm("Exporter quand même ? Les essais en attente n'apparaîtront pas dans l'export.");
+    const choice = await showDialog({
+      title: n === 1 ? "1 essai non appliqué" : `${n} essais non appliqués`,
+      message: "Les essais en attente n'apparaissent jamais dans l'export tant qu'ils ne sont pas appliqués.",
+      buttons: [
+        { label: "Appliquer et exporter", value: "apply", kind: "primary" },
+        { label: "Exporter sans les essais", value: "skip" },
+        { label: "Annuler", value: "cancel", kind: "neutral" },
+      ],
+      cancelValue: "cancel",
+    });
+    if (choice === "apply") { applyAllDrafts(); return true; }
+    if (choice === "skip") return true;
+    return false;
   }
   function refreshDraftCounter() {
     const n = editDrafts.size;
     const box = document.getElementById("draft-summary");
     document.getElementById("draft-count-label").textContent = n === 1 ? "1 essai en attente" : `${n} essais en attente`;
     box.style.display = n > 0 ? "flex" : "none";
+    const badge = document.getElementById("draft-badge");
+    badge.textContent = n === 1 ? "1 essai" : `${n} essais`;
+    badge.hidden = n === 0;
   }
 
   // applique un trait terminé (déjà en coords locales du motif) au BROUILLON (pas motif.surface) :
@@ -1374,6 +1453,7 @@
   }
   function startShape(motif, e) {
     edit.drawing = true;
+    edit.drawingPointerType = e.pointerType;
     edit.shapeAnchor = localPoint();
     edit.shapeCurrent = edit.shapeAnchor;
     edit.shapeConstrain = !!e.shiftKey;
@@ -1407,6 +1487,7 @@
   }
   function endShape() {
     edit.drawing = false;
+    edit.drawingPointerType = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (motif) {
@@ -1435,6 +1516,7 @@
   }
   function startStroke(motif, e) {
     edit.drawing = true;
+    edit.drawingPointerType = e.pointerType;
     edit.pts = [localPoint()];
     edit.pressures = [pointerPressure(e)];
     edit.smoothPrev = edit.pts[0];
@@ -1470,6 +1552,7 @@
   }
   function endStroke(e) {
     edit.drawing = false;
+    edit.drawingPointerType = null;
     // dernier point du up toujours empilé, même sous le seuil de décimation (le trait doit
     // atteindre exactement le lever du stylet).
     if (e) {
@@ -1488,6 +1571,7 @@
   function cancelActiveStroke() {
     if (!edit.active) return;
     edit.drawing = false;
+    edit.drawingPointerType = null;
     edit.pts = [];
     edit.pressures = [];
     edit.shapeAnchor = null;
@@ -1500,7 +1584,7 @@
   // outil lasso (T8) : entoure une portion existante du brouillon (polyligne fermée au up) pour
   // la sélectionner. edit.lasso = {inside, rest, offset} ne mute PAS edit.draft — c'est un aperçu
   // draggable (offset glissé à la main, cf. moveLassoDrag) tant que Déplacer/Dupliquer/Effacer
-  // (#lasso-actions) ou Échap n'a pas tranché. inside/rest sont calculés une fois à la fermeture
+  // (#lasso-toolbar) ou Échap n'a pas tranché. inside/rest sont calculés une fois à la fermeture
   // du lasso ; seul `offset` change pendant le glissé (pas de recalcul Clipper par frame).
   function pointInContours(pt, contours) {
     let count = 0;
@@ -1533,11 +1617,30 @@
     edit.lasso = null;
     edit.lassoDragAnchor = null;
     if (lassoHighlight) { lassoHighlight.destroy(); lassoHighlight = null; }
-    document.getElementById("lasso-actions").style.display = "none";
+    document.getElementById("lasso-toolbar").style.display = "none";
     uiLayer.batchDraw();
   }
-  function startLassoTrace() {
+  // (P9·S6, T-131) positionne la mini-barre lasso près du bbox de la sélection (edit.lasso.inside,
+  // SANS offset : position figée à l'ouverture, ne suit pas le glissé manuel — cf. plans/P9/S6.md
+  // §Étapes 1, choix le plus simple). editLayer est un Group posé à plat sur uiLayer (enfant direct
+  // du stage, comme mainLayer) -> son absoluteTransform convertit direct en px écran du stage, la
+  // même base que #stage-wrap (le canevas le remplit entièrement, cf. style.css #stage-wrap/#stage).
+  function positionLassoToolbar() {
+    const el = document.getElementById("lasso-toolbar");
+    const pts = edit.lasso ? edit.lasso.inside.flatMap((c) => c.pts) : [];
+    if (!pts.length) { el.style.display = "none"; return; }
+    const [minx, maxx] = minMax(pts.map((p) => p[0]));
+    const miny = minMax(pts.map((p) => p[1]))[0];
+    const t = editLayer.getAbsoluteTransform();
+    const topLeft = t.point({ x: minx, y: miny });
+    const topRight = t.point({ x: maxx, y: miny });
+    el.style.left = (topLeft.x + topRight.x) / 2 + "px";
+    el.style.top = Math.max(4, Math.min(topLeft.y, topRight.y) - 8) + "px";
+    el.style.display = "flex";
+  }
+  function startLassoTrace(e) {
     edit.drawing = true;
+    edit.drawingPointerType = e ? e.pointerType : null;
     edit.pts = [localPoint()];
     editPreview = new Konva.Line({
       points: edit.pts.flat(), stroke: "#fbbf24", strokeWidth: 1.5, dash: [8, 6], listening: false,
@@ -1558,6 +1661,7 @@
   }
   function endLassoTrace(e) {
     edit.drawing = false;
+    edit.drawingPointerType = null;
     if (e) {
       stage.setPointersPositions(e);
       edit.pts.push(localPoint());
@@ -1575,18 +1679,18 @@
     const rest = ML.surfaceDifference(edit.draft, lassoPoly);
     edit.lasso = { inside, rest, offset: [0, 0] };
     renderLassoHighlight();
-    document.getElementById("lasso-actions").style.display = "flex";
+    positionLassoToolbar();
   }
   // pointerdown en mode lasso : si une sélection existe déjà et que le clic tombe dedans (en
   // tenant compte de son offset courant), démarre un glissé manuel ; sinon la sélection en cours
   // est abandonnée (clic à côté = on retrace) et un nouveau lasso démarre.
-  function startLassoPointer() {
+  function startLassoPointer(e) {
     if (edit.lasso) {
       const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
       if (pointInContours(localPoint(), moved)) { edit.lassoDragAnchor = localPoint(); return; }
       clearLassoSelection();
     }
-    startLassoTrace();
+    startLassoTrace(e);
   }
   function moveLassoDrag() {
     const p = localPoint();
@@ -1595,7 +1699,7 @@
     edit.lassoDragAnchor = p;
     renderLassoHighlight();
   }
-  // boutons contextuels (#lasso-actions) : tranchent le sort de la sélection avec son offset
+  // boutons contextuels (#lasso-toolbar) : tranchent le sort de la sélection avec son offset
   // courant (translation manuelle si l'utilisateur a glissé, [0,0] sinon).
   function finalizeLassoMove() {
     if (!edit.lasso) return;
@@ -1707,7 +1811,15 @@
     if (e.pointerType === "touch") {
       activeTouchPointers.add(e.pointerId);
       hideEditCursor();
+      // (D-012 pt 3, T-133) substitut tactile Annuler/Rétablir : mémorise le nombre max de doigts
+      // simultanés et l'instant du 1er contact ; évalué à la levée du dernier doigt (editPointerUp).
+      if (!edit.tapGesture) edit.tapGesture = { maxFingers: 0, startT: e.timeStamp, moved: false, starts: new Map() };
+      edit.tapGesture.maxFingers = Math.max(edit.tapGesture.maxFingers, activeTouchPointers.size);
+      edit.tapGesture.starts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (activeTouchPointers.size > 1) { edit.panAnchor = null; cancelActiveStroke(); return; }
+      // (D-012 pt 4) priorité stylet : un trait pen en cours ignore tout contact touch isolé
+      // (pas de pan, pas de dessin doigt) -- seul le 2e contact (ci-dessus) reste une annulation.
+      if (edit.drawing && edit.drawingPointerType === "pen") return;
       if (!edit.fingerDraws) {
         e.preventDefault();
         editContainer.setPointerCapture(e.pointerId);
@@ -1720,11 +1832,15 @@
     editContainer.setPointerCapture(e.pointerId);
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
-    if (edit.tool === "lasso") { startLassoPointer(); return; }
+    if (edit.tool === "lasso") { startLassoPointer(e); return; }
     if (isFreehandTool(edit.tool)) startStroke(motif, e); else startShape(motif, e);
   }
   function editPointerMove(e) {
     if (!edit.active) return;
+    if (e.pointerType === "touch" && edit.tapGesture && !edit.tapGesture.moved) {
+      const start = edit.tapGesture.starts.get(e.pointerId);
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) edit.tapGesture.moved = true;
+    }
     if (e.pointerType === "touch" && activeTouchPointers.size > 1) return;
     if (edit.panAnchor && e.pointerId === edit.panAnchor.pointerId) {
       e.preventDefault();
@@ -1743,7 +1859,20 @@
   }
   function editPointerUp(e) {
     if (!edit.active) return;
-    if (e.pointerType === "touch") activeTouchPointers.delete(e.pointerId);
+    if (e.pointerType === "touch") {
+      activeTouchPointers.delete(e.pointerId);
+      if (edit.tapGesture) {
+        edit.tapGesture.starts.delete(e.pointerId);
+        if (activeTouchPointers.size === 0) {
+          const g = edit.tapGesture;
+          edit.tapGesture = null;
+          if (!g.moved && e.timeStamp - g.startT < 250) {
+            if (g.maxFingers === 2) undoStroke();
+            else if (g.maxFingers === 3) redoStroke();
+          }
+        }
+      }
+    }
     if (edit.panAnchor && e.pointerId === edit.panAnchor.pointerId) { edit.panAnchor = null; return; }
     if (e.type === "pointercancel") { cancelActiveStroke(); return; }
     if (edit.lassoDragAnchor) { edit.lassoDragAnchor = null; return; }
@@ -1759,6 +1888,7 @@
     ["tool-brush", "tool-eraser", "tool-line", "tool-rect", "tool-ellipse", "tool-lasso"].forEach((id) => {
       document.getElementById(id).classList.toggle("on", id === "tool-" + tool);
     });
+    refreshDrawerForTool();
     if (edit.active) buildEditCursor();
   }
   function setStrokeMode(mode) {
@@ -1768,8 +1898,37 @@
     document.getElementById("mode-calli").classList.toggle("on", mode === "calli");
     document.getElementById("calli-angle-row").hidden = mode !== "calli";
     document.getElementById("pressure-row").hidden = mode !== "pressure";
+    refreshDrawerForTool();
     if (edit.active) buildEditCursor();
   }
+  // P9·S5 (T-130) : tiroir contextuel — n'affiche que ce qui concerne l'outil actif (D-012 pt 2).
+  // Pinceau : mode de trait (+ angle/pression selon strokeMode) + stabilisation. Gomme : stabilisation
+  // seule. Formes/lasso : rien (la bascule doigt reste hors de ce filtrage, toujours visible).
+  function refreshDrawerForTool() {
+    const tool = edit.tool;
+    document.getElementById("stroke-mode-settings").hidden = tool !== "brush";
+    document.getElementById("smoothing-settings").hidden = tool !== "brush" && tool !== "eraser";
+  }
+  function toggleEditDrawer(forceOpen) {
+    const drawer = document.getElementById("edit-drawer");
+    const open = typeof forceOpen === "boolean" ? forceOpen : drawer.hidden;
+    drawer.hidden = !open;
+    edit.drawerOpen = open;
+    document.getElementById("btn-edit-drawer-toggle").classList.toggle("on", open);
+  }
+  document.getElementById("btn-edit-drawer-toggle").onclick = () => toggleEditDrawer();
+  // Fermeture au tap hors du tiroir/déclencheur. Écouteur sur `document` (bulle) : le pointerdown
+  // du canvas d'édition est capté directement par `editContainer` (cf. enterEdit) et se déclenche donc
+  // avant de remonter jusqu'ici — fermer le tiroir ne vole jamais le premier point d'un tracé
+  // (cf. plans/P9/S5.md §Si bloqué).
+  document.addEventListener("pointerdown", (e) => {
+    if (!edit.drawerOpen) return;
+    const drawer = document.getElementById("edit-drawer");
+    const toggleBtn = document.getElementById("btn-edit-drawer-toggle");
+    if (drawer.contains(e.target) || toggleBtn.contains(e.target)) return;
+    toggleEditDrawer(false);
+  });
+  refreshDrawerForTool();
   document.getElementById("btn-edit").onclick = () => { if (edit.active) exitEdit(); else enterEdit(); };
   document.getElementById("tool-brush").onclick = () => setEditTool("brush");
   document.getElementById("tool-eraser").onclick = () => setEditTool("eraser");
@@ -1780,6 +1939,9 @@
   document.getElementById("btn-lasso-move").onclick = finalizeLassoMove;
   document.getElementById("btn-lasso-duplicate").onclick = finalizeLassoDuplicate;
   document.getElementById("btn-lasso-erase").onclick = finalizeLassoErase;
+  document.getElementById("btn-lasso-cancel").onclick = clearLassoSelection; // substitut tactile d'Échap (D-012 pt 3)
+  document.getElementById("btn-edit-help").onclick = () => { document.getElementById("edit-help").hidden = false; };
+  document.getElementById("edit-help").addEventListener("click", () => { document.getElementById("edit-help").hidden = true; });
   function setFingerDrawsButton() {
     const btn = document.getElementById("finger-draws");
     btn.textContent = edit.fingerDraws ? "✍️ Doigt : dessine" : "✍️ Doigt : navigue";
@@ -1939,8 +2101,8 @@
       };
     });
   }
-  function exportSVG() {
-    if (!guardPendingDrafts()) return; // D-007/T5 : avertit si des essais en attente ne seraient pas reflétés
+  async function exportSVG() {
+    if (!(await guardPendingDrafts())) return; // D-007/T5 : avertit si des essais en attente ne seraient pas reflétés
     const insts = instancesBottomToTop();
     if (!insts.length) { alert("Rien à exporter."); return; }
     const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
@@ -1961,8 +2123,8 @@
   // SANS passer par pxPathsToMm : le PNG reste en repère écran (pas de -y), divergence volontaire
   // d'orientation avec le SVG, qui lui garde son miroir vertical (décision Thibault, cf. plan T9).
   const RASTER_MAX_PX = 40e6; // garde anti-mémoire (~40 Mpx)
-  function exportPNG(format) {
-    if (!guardPendingDrafts()) return;
+  async function exportPNG(format) {
+    if (!(await guardPendingDrafts())) return;
     const insts = instancesBottomToTop();
     if (!insts.length) { alert("Rien à exporter."); return; }
     const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
@@ -2020,8 +2182,8 @@
 
   // ─── export PDF A4 (T4) : même géométrie sens écran que exportPNG (pas de pxPathsToMm, pas de
   // flip), convertie en mm par simple division PX_PER_MM, puis tuilée/rendue par ML.renderPrintPdf.
-  function collectPrintScene() {
-    if (!guardPendingDrafts()) return null;
+  async function collectPrintScene() {
+    if (!(await guardPendingDrafts())) return null;
     const insts = instancesBottomToTop();
     if (!insts.length) { alert("Rien à imprimer."); return null; }
     const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
@@ -2039,8 +2201,8 @@
     const bbox = { x: minx, y: miny, w: maxx - minx, h: maxy - miny };
     return { surfaces, boundary, holes, bbox };
   }
-  function exportPdfA4() {
-    const scene = collectPrintScene();
+  async function exportPdfA4() {
+    const scene = await collectPrintScene();
     if (!scene) return;
     const tiling = ML.computeTiling(scene.bbox);
     const doc = ML.renderPrintPdf(scene, tiling);
@@ -2277,6 +2439,30 @@
   function readFiles(files, cb) {
     [...files].forEach((f) => { const r = new FileReader(); r.onload = () => cb(f.name, r.result); r.readAsText(f); });
   }
+
+  // ─── dialogue custom (P9/T-134) : remplace confirm()/alert() natifs, illisibles en modale
+  // iPadOS et à sémantique OK/Annuler ambiguë. showDialog résout la `value` du bouton tapé, ou
+  // `cancelValue` si le backdrop est tapé (fermeture = annulation, jamais une action destructive).
+  function showDialog({ title, message, buttons, cancelValue = null }) {
+    const backdrop = document.getElementById("modal-backdrop");
+    const box = document.getElementById("modal-buttons");
+    document.getElementById("modal-title").textContent = title || "";
+    document.getElementById("modal-message").textContent = message || "";
+    box.innerHTML = "";
+    return new Promise((resolve) => {
+      const close = (value) => { backdrop.hidden = true; resolve(value); };
+      for (const { label, value, kind } of buttons) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn" + (kind === "primary" ? " primary" : kind === "danger" ? " danger" : "");
+        btn.textContent = label;
+        btn.onclick = () => close(value);
+        box.appendChild(btn);
+      }
+      backdrop.onclick = (e) => { if (e.target === backdrop) close(cancelValue); };
+      backdrop.hidden = false;
+    });
+  }
   function runWithBusy(fn) {
     const o = document.getElementById("busy-overlay");
     o.hidden = false;
@@ -2466,6 +2652,10 @@
     syncStageSize();
   };
   document.getElementById("sidebar").addEventListener("transitionend", syncStageSize);
+  document.getElementById("draft-badge").onclick = () => {
+    document.getElementById("app").classList.remove("collapsed");
+    document.getElementById("section-projet").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   document.getElementById("load-project").onchange = (e) =>
     readFiles(e.target.files, (_n, text) => {
       recordHistory(); loadProject(JSON.parse(text)); markProjectChanged(); e.target.value = "";

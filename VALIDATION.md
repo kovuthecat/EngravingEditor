@@ -3,6 +3,83 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## P9 · S9 — Dialogue custom + badge « essais en attente » (T-134)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Choix pris pendant l'exécution : `showDialog` implémenté en Promise réutilisable (`#modal-backdrop`/
+`#modal`), fermeture au tap backdrop = valeur d'annulation. `guardPendingDrafts`, `deleteMotifFromLibrary`
+et `hideBuiltin` passés en `async` ; tous leurs appelants sont des `onclick` (aucune valeur de retour
+consommée ailleurs), donc conversion directe sans callback. Les `alert()` d'export/erreur (SVG/PNG/PDF,
+vectorisation, DPI plafonné) sont **conservés tels quels** — pas de confirm/choix à faire, coût de
+l'async non justifié pour un simple message, conformément à l'option laissée par le plan (§Étapes 4).
+Tap sur le badge : ré-ouvre la sidebar si repliée puis scroll animé vers la section Projet (pas de
+« Tout appliquer » direct, pour laisser le choix explicite).
+- [ ] Sur iPad, avec des essais en attente : Exporter SVG/PNG/PDF ouvre le dialogue à 3 choix
+  (« Appliquer et exporter » / « Exporter sans les essais » / « Annuler »), cibles ≥ 44 px, lisible en
+  modale (pas d'empilement confus comme avec les `confirm()`).
+- [ ] « Appliquer et exporter » applique bien tous les essais puis lance l'export normalement.
+- [ ] « Exporter sans les essais » exporte sans appliquer (les essais restent en attente après).
+- [ ] « Annuler » ferme le dialogue sans rien exporter ni appliquer.
+- [ ] Tap sur le fond (backdrop) du dialogue = équivalent Annuler.
+- [ ] Supprimer un motif (ou masquer un motif de base) ayant des exemplaires sur le plan : le dialogue
+  custom (bouton rouge « Supprimer »/« Masquer » + « Annuler ») remplace le `confirm()` natif.
+- [ ] Le badge « N essais » apparaît dans le header dès qu'un essai est en attente, disparaît à 0 ; tap
+  dessus ouvre/déplie la sidebar et scrolle jusqu'à la section Projet.
+
+## P9 · S8 — Gestes tap 2/3 doigts (Annuler/Rétablir) (T-133)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Choix pris pendant l'exécution : disqualification du tap sur mouvement par doigt (`starts` : Map
+pointerId→position au contact, seuil 10 px) ET sur pinch avéré (`stage.on("touchstart")` 2 doigts
+marque `moved = true`) — double garde-fou comme suggéré par le plan (§Étapes 4). Bornes 10 px /
+250 ms reprises telles quelles du plan, à ajuster si le ressenti iPad le demande (cf. §Si bloqué).
+- [ ] Sur iPad, en édition : tracer un trait puis taper rapidement à 2 doigts → le dernier trait est
+  annulé (pas de trait parasite ajouté par le tap lui-même).
+- [ ] Taper à 3 doigts juste après → le trait annulé est rétabli.
+- [ ] Faire un pinch-zoom (2 doigts, avec déplacement net) : aucun Annuler ne se déclenche.
+- [ ] Faire un pan à 2 doigts (translation sans écart significatif de distance) : vérifier qu'aucun
+  Annuler intempestif ne se déclenche (cas limite mentionné en §Si bloqué du plan).
+- [ ] Poser puis lever 2 doigts très lentement (> 250 ms) : aucun Annuler ne se déclenche (hors
+  fenêtre de temps).
+- [ ] Sortir puis rentrer en édition sur un autre motif : les gestes tap fonctionnent toujours (pas
+  d'état résiduel de la session précédente).
+
+## P9 · S7 — Priorité stylet + zoom-to-fit + indicateur de mode (T-132)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Choix pris pendant l'exécution : cadrage animé via `Konva.Tween` sur `stage` (200 ms, `EaseInOut`),
+marge de 10 % de chaque côté (bbox du motif pris relatif à `mainLayer`, insensible au pan/zoom courant).
+Le contact touch pendant un trait pen est totalement ignoré (ni pan, ni dessin doigt), pas seulement
+empêché de paner — cohérent avec l'objectif de priorité et sans effet de bord identifié. Le 2ᵉ contact
+(annulation) reste vérifié avant la règle de priorité, donc toujours actif.
+- [ ] Sur iPad, tracer un trait Pencil puis poser un doigt de l'autre main pendant le trait en cours :
+  la vue ne bouge plus (pan bloqué) et le trait continue normalement sous le stylet.
+- [ ] Poser un 2ᵉ doigt pendant un trait pen (main qui tient la tablette comprise) : le trait est
+  toujours annulé comme avant (pas de régression sur le pinch-annulation).
+- [ ] Entrer en édition sur un petit motif et sur un grand motif : la vue se recentre et zoome à chaque
+  fois sur le motif édité (marge visible autour), avec une petite animation.
+- [ ] Sortir de l'édition : la vue revient exactement à son cadrage d'avant (même zoom/position qu'avant
+  d'entrer).
+- [ ] Le mode édition est visuellement évident (liseré bleu autour du canevas + bandeau « ✏️ {nom du
+  motif} » en haut), et disparaît à la sortie.
+
+## P9 · S6 — Actions lasso/brouillon flottantes + retrait des notes (T-131)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Choix pris pendant l'exécution : mini-barre lasso positionnée **une seule fois à l'ouverture** de la
+sélection (bbox de `edit.lasso.inside`, sans offset), ne suit pas le glissé manuel (option la plus
+simple retenue par §Étapes 1 du plan).
+- [ ] Sur iPad, en édition : tracer un lasso sur une portion du brouillon → une mini-barre (Déplacer/
+  Dupliquer/Effacer/✕) apparaît juste au-dessus de la sélection, cibles ≥ 44 px.
+- [ ] Glisser la sélection lassée : la mini-barre reste à sa position d'ouverture (comportement attendu,
+  pas un bug).
+- [ ] ✕ referme la sélection sans agir (équivalent Échap tactile).
+- [ ] Modifier le brouillon (pinceau) → bandeau vert « Appliquer / Jeter l'essai » apparaît en haut du
+  canevas ; Appliquer/Jeter le fait disparaître.
+- [ ] Bouton « ? » dans la barre d'outils niveau 1 ouvre un overlay avec les 3 textes d'aide (formes,
+  lasso, gestes) ; tap n'importe où dans l'overlay le referme.
+- [ ] La palette d'édition (tiroir ⚙) n'a plus de pavés de texte permanents.
+
 ## P9 · S3 — Sonde Pencil Pro (twist/altitude/azimuth/tangentialPressure)
 
 **Auto-validation :** ✅ HTML valide, aucune erreur console attendue.
