@@ -902,7 +902,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
@@ -933,17 +933,74 @@
   function deepCopyContours(contours) {
     return (contours || []).map((c) => ({ pts: c.pts.map((p) => p.slice()), closed: c.closed }));
   }
-  // pile d'annulation par trait (T8) : un snapshot avant chaque mutation de edit.draft (trait,
-  // forme, lasso), bornée pour ne pas grossir sans fin sur une longue session (décor). Session
-  // uniquement (jamais sérialisée) ; réinitialisée par enterEdit/exitEdit — ne touche pas
-  // l'historique global du projet (recordHistory/undo).
-  function pushStrokeSnapshot() {
-    edit.history.push(deepCopyContours(edit.draft));
-    if (edit.history.length > 30) edit.history.shift();
+  // historique d'édition par commandes + keyframes (T14, D-010 volet 2) : edit.history est une liste
+  // d'entrées { kind:"op", op, poly } (trait/forme, rejouable via les fonctions Local T12) ou
+  // { kind:"snapshot", draft } (copie profonde — état initial, keyframe auto toutes les 8 ops, ou
+  // mutation non rejouable : lasso, Jeter). Bornée à 30 (purge par l'avant), session uniquement
+  // (jamais sérialisée) ; réinitialisée par enterEdit/exitEdit — ne touche pas l'historique global
+  // du projet (recordHistory/undo).
+  // reconstruit un brouillon à partir d'un historique : dernier snapshot (en remontant) + replay des
+  // ops postérieures, dans l'ordre — jamais plus de 8 ops à rejouer grâce aux keyframes auto.
+  function rebuildDraftFrom(history) {
+    let i = history.length - 1;
+    while (i > 0 && history[i].kind !== "snapshot") i--;
+    let draft = deepCopyContours(history[i].draft);
+    for (let j = i + 1; j < history.length; j++) {
+      const entry = history[j];
+      draft = entry.op === "add" ? ML.surfaceUnionLocal(draft, entry.poly) : ML.surfaceDifferenceLocal(draft, entry.poly);
+    }
+    return draft;
   }
+  // purge par l'avant au-delà de 30 entrées ; si l'entrée la plus ancienne restante n'est pas un
+  // snapshot (coupe au milieu d'une séquence d'ops), on la remplace par un snapshot de l'état à ce
+  // point — rebuildDraftFrom a toujours besoin d'un snapshot en tête d'historique.
+  function trimEditHistory() {
+    const excess = edit.history.length - 30;
+    if (excess <= 0) return;
+    if (edit.history[excess].kind !== "snapshot") {
+      edit.history[excess] = { kind: "snapshot", draft: rebuildDraftFrom(edit.history.slice(0, excess + 1)), auto: true };
+    }
+    edit.history.splice(0, excess);
+  }
+  // pousse une nouvelle entrée (mutation utilisateur réelle) : vide edit.redo (toute branche annulée
+  // devient invalide), insère une keyframe auto toutes les 8 entrées "op" consécutives.
+  function pushEditEntry(entry) {
+    edit.history.push(entry);
+    edit.redo = [];
+    if (entry.kind === "op") {
+      let opsSinceSnapshot = 0;
+      for (let i = edit.history.length - 1; i >= 0 && edit.history[i].kind === "op"; i--) opsSinceSnapshot++;
+      if (opsSinceSnapshot >= 8) edit.history.push({ kind: "snapshot", draft: deepCopyContours(edit.draft), auto: true });
+    }
+    trimEditHistory();
+  }
+  // les keyframes auto sont de la pure optimisation de replay (retrouver l'état sans tout rejouer
+  // depuis l'origine) : invisibles pour l'utilisateur, undo/redo les traversent en un seul clic (sinon
+  // chaque keyframe consommerait un clic sans effet visible sur le brouillon).
   function undoStroke() {
-    if (!edit.active || !edit.history.length) return;
-    edit.draft = edit.history.pop();
+    if (!edit.active || edit.history.length <= 1) return;
+    let entry = edit.history.pop();
+    edit.redo.push(entry);
+    while (edit.history.length > 1 && entry.kind === "snapshot" && entry.auto) {
+      entry = edit.history.pop();
+      edit.redo.push(entry);
+    }
+    edit.draft = rebuildDraftFrom(edit.history);
+    edit.added = addedRegions(edit.realFill, edit.draft);
+    edit.dirty = true;
+    clearLassoSelection();
+    redrawEditLayer(state.motifs.find((m) => m.id === edit.motifId));
+  }
+  function redoStroke() {
+    if (!edit.active || !edit.redo.length) return;
+    let entry = edit.redo.pop();
+    edit.history.push(entry);
+    while (edit.redo.length && entry.kind === "snapshot" && entry.auto) {
+      entry = edit.redo.pop();
+      edit.history.push(entry);
+    }
+    edit.draft = rebuildDraftFrom(edit.history);
+    edit.added = addedRegions(edit.realFill, edit.draft);
     edit.dirty = true;
     clearLassoSelection();
     redrawEditLayer(state.motifs.find((m) => m.id === edit.motifId));
@@ -1018,7 +1075,7 @@
           return { x: minx, y: miny, width: maxx - minx, height: maxy - miny };
         },
       }));
-      const added = addedRegions(exportFill(motif)[motif.color], draft);
+      const added = edit.added;
       if (added.length) {
         editDraftGroup.add(new Konva.Shape({
           fill: EDIT_DRAFT_COLOR, fillRule: "evenodd", listening: false,
@@ -1045,6 +1102,11 @@
     // pixelRatio 2 ne vaut pas le coût.
     if (edit.draft.length) safeCache(editDraftGroup, 1);
     uiLayer.batchDraw();
+    updateEditUndoRedoButtons();
+  }
+  function updateEditUndoRedoButtons() {
+    document.getElementById("btn-edit-undo").disabled = edit.history.length <= 1;
+    document.getElementById("btn-edit-redo").disabled = !edit.redo.length;
   }
   // cale editLayer (uiLayer) sur la transform de edit.node (mainLayer) : tous deux enfants directs
   // du même stage sans transform propre -> relative à mainLayer suffit (même convention que
@@ -1076,8 +1138,11 @@
     }
     const stashed = editDrafts.get(motif.id);
     edit.draft = deepCopyContours(stashed ? Object.values(stashed.surfaceByColor)[0] : exportFill(motif)[motif.color]);
+    edit.realFill = exportFill(motif)[motif.color] || [];
+    edit.added = addedRegions(edit.realFill, edit.draft);
     edit.dirty = false;
-    edit.history = [];
+    edit.history = [{ kind: "snapshot", draft: deepCopyContours(edit.draft) }];
+    edit.redo = [];
     clearLassoSelection(); // pas de sélection lasso résiduelle d'une session d'édition précédente
     activeTouchPointers.clear();
     edit.panAnchor = null;
@@ -1112,6 +1177,7 @@
     if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
     edit.active = false; edit.drawing = false; edit.pts = []; edit.pressures = []; edit.draft = []; edit.dirty = false;
     edit.history = [];
+    edit.redo = [];
     clearLassoSelection();
     editContainer.removeEventListener("pointerdown", editPointerDown, { passive: false });
     editContainer.removeEventListener("pointermove", editPointerMove, { passive: false });
@@ -1158,6 +1224,8 @@
     editDrafts.delete(motif.id);
     if (edit.active && edit.motifId === motif.id) {
       edit.draft = deepCopyContours(draft);
+      edit.realFill = exportFill(motif)[motif.color] || [];
+      edit.added = addedRegions(edit.realFill, edit.draft);
       edit.dirty = false;
       redrawEditLayer(motif);
     }
@@ -1172,7 +1240,9 @@
     clearLassoSelection();
     editDrafts.delete(motif.id);
     if (edit.active && edit.motifId === motif.id) {
+      pushEditEntry({ kind: "snapshot", draft: deepCopyContours(edit.draft) });
       edit.draft = deepCopyContours(exportFill(motif)[motif.color]);
+      edit.added = [];
       edit.dirty = false;
       redrawEditLayer(motif);
     }
@@ -1204,6 +1274,8 @@
       const motif = state.motifs.find((m) => m.id === edit.motifId);
       if (motif) {
         edit.draft = deepCopyContours(exportFill(motif)[motif.color]);
+        edit.realFill = exportFill(motif)[motif.color] || [];
+        edit.added = [];
         edit.dirty = false;
         redrawEditLayer(motif);
       }
@@ -1240,8 +1312,14 @@
       : edit.strokeMode === "calli" && edit.tool === "brush"
       ? ML.calligraphicStroke(localPts, edit.sizeMm * PX_PER_MM, edit.calliAngle)
       : ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
-    pushStrokeSnapshot();
-    edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
+    if (edit.op === "add") {
+      edit.draft = ML.surfaceUnionLocal(edit.draft, poly);
+      edit.added = ML.surfaceUnionLocal(edit.added, ML.surfaceDifference(poly, edit.realFill));
+    } else {
+      edit.draft = ML.surfaceDifferenceLocal(edit.draft, poly);
+      edit.added = ML.surfaceDifferenceLocal(edit.added, poly);
+    }
+    pushEditEntry({ kind: "op", op: edit.op, poly });
     edit.dirty = true;
     redrawEditLayer(motif);
   }
@@ -1329,8 +1407,14 @@
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (motif) {
       const poly = shapePolygon(edit.tool, edit.shapeAnchor, edit.shapeCurrent, edit.shapeConstrain);
-      pushStrokeSnapshot();
-      edit.draft = edit.op === "add" ? ML.surfaceUnion(edit.draft, poly) : ML.surfaceDifference(edit.draft, poly);
+      if (edit.op === "add") {
+        edit.draft = ML.surfaceUnionLocal(edit.draft, poly);
+        edit.added = ML.surfaceUnionLocal(edit.added, ML.surfaceDifference(poly, edit.realFill));
+      } else {
+        edit.draft = ML.surfaceDifferenceLocal(edit.draft, poly);
+        edit.added = ML.surfaceDifferenceLocal(edit.added, poly);
+      }
+      pushEditEntry({ kind: "op", op: edit.op, poly });
       edit.dirty = true;
       redrawEditLayer(motif);
     }
@@ -1513,8 +1597,9 @@
     if (!edit.lasso) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
-    pushStrokeSnapshot();
-    edit.draft = ML.surfaceUnion(edit.lasso.rest, moved);
+    pushEditEntry({ kind: "snapshot", draft: deepCopyContours(edit.draft) });
+    edit.draft = ML.surfaceUnionLocal(edit.lasso.rest, moved);
+    edit.added = addedRegions(edit.realFill, edit.draft);
     edit.dirty = true;
     clearLassoSelection();
     if (motif) redrawEditLayer(motif);
@@ -1523,8 +1608,9 @@
     if (!edit.lasso) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     const moved = translateContours(edit.lasso.inside, edit.lasso.offset);
-    pushStrokeSnapshot();
-    edit.draft = ML.surfaceUnion(edit.draft, moved);
+    pushEditEntry({ kind: "snapshot", draft: deepCopyContours(edit.draft) });
+    edit.draft = ML.surfaceUnionLocal(edit.draft, moved);
+    edit.added = addedRegions(edit.realFill, edit.draft);
     edit.dirty = true;
     clearLassoSelection();
     if (motif) redrawEditLayer(motif);
@@ -1532,8 +1618,9 @@
   function finalizeLassoErase() {
     if (!edit.lasso) return;
     const motif = state.motifs.find((m) => m.id === edit.motifId);
-    pushStrokeSnapshot();
+    pushEditEntry({ kind: "snapshot", draft: deepCopyContours(edit.draft) });
     edit.draft = edit.lasso.rest;
+    edit.added = addedRegions(edit.realFill, edit.draft);
     edit.dirty = true;
     clearLassoSelection();
     if (motif) redrawEditLayer(motif);
@@ -1745,6 +1832,7 @@
   document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
   document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
   document.getElementById("btn-edit-undo").onclick = () => undoStroke();
+  document.getElementById("btn-edit-redo").onclick = () => redoStroke();
   document.getElementById("btn-edit-exit").onclick = () => exitEdit();
   document.getElementById("btn-draft-apply-all").onclick = applyAllDrafts;
 
@@ -1780,6 +1868,7 @@
   window.addEventListener("keydown", (e) => {
     if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
     if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); if (edit.active) undoStroke(); else undo(); }
+    else if (e.key === "Z" && (e.ctrlKey || e.metaKey) && e.shiftKey && edit.active) { e.preventDefault(); redoStroke(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSel(); }
     else if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); duplicateSel(); }
     else if (e.key === "]") zorder("up"); else if (e.key === "[") zorder("down");
@@ -2023,6 +2112,8 @@
   const LOCAL_STORE = "projects";
   const LOCAL_KEY = "current";
   let localSaveTimer = null;
+  let idleCallbackId = null;
+  let idleCallbackType = null;
   function setLocalStatus(text, error) {
     const el = document.getElementById("local-save-status");
     el.textContent = text;
@@ -2056,16 +2147,44 @@
   }
   function scheduleLocalSave() {
     clearTimeout(localSaveTimer);
+    if (idleCallbackId) {
+      if (idleCallbackType === "idle") cancelIdleCallback(idleCallbackId);
+      else clearTimeout(idleCallbackId);
+      idleCallbackId = null;
+      idleCallbackType = null;
+    }
     localSaveTimer = setTimeout(() => {
       localSaveTimer = null;
-      saveLocalProject();
-    }, 300);
+      if (edit.drawing) {
+        scheduleLocalSave();
+        return;
+      }
+      const run = () => {
+        idleCallbackId = null;
+        idleCallbackType = null;
+        saveLocalProject();
+      };
+      if (window.requestIdleCallback) {
+        idleCallbackId = requestIdleCallback(run, { timeout: 4000 });
+        idleCallbackType = "idle";
+      } else {
+        idleCallbackId = setTimeout(run, 0);
+        idleCallbackType = "timeout";
+      }
+    }, 1000);
   }
   function markProjectChanged() { scheduleLocalSave(); }
   function flushLocalSave() {
-    if (!localSaveTimer) return;
-    clearTimeout(localSaveTimer);
-    localSaveTimer = null;
+    if (localSaveTimer) {
+      clearTimeout(localSaveTimer);
+      localSaveTimer = null;
+    }
+    if (idleCallbackId) {
+      if (idleCallbackType === "idle") cancelIdleCallback(idleCallbackId);
+      else clearTimeout(idleCallbackId);
+      idleCallbackId = null;
+      idleCallbackType = null;
+    }
     saveLocalProject();
   }
   document.addEventListener("visibilitychange", () => {

@@ -4,13 +4,13 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-03
+> **Dernière mise à jour :** 2026-07-03 (soir)
 
 ## Phase actuelle
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
-**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T11/T12 faites le 2026-07-03, reste T13-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
+**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T11/T12/T13/T14/T15 faites le 2026-07-03, reste T16)** : édition iPad/Pencil — corrections tactiles, tracé en
 pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
 localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
 décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
@@ -52,6 +52,33 @@ T12 : `ML.groupIslands` (regroupe contour extérieur + trous rattachés, cf. D-0
 touche celle de l'argument ± 1 px ; les autres traversent inchangés). Géométrie seule — **pas encore
 branché dans `app.js`** (branchement = T13). `node test/run.js` vert (5 nouveaux cas a-e comparés à
 l'oracle plein) ; rien de visible avant T13.
+T13 : `surfaceUnionLocal`/`surfaceDifferenceLocal` (T12) branchés dans `applyStroke`/`endShape`/les
+trois `finalizeLasso*` (union du draft). Surcharge verte (`edit.added`) maintenue en session au lieu
+d'un `addedRegions(réel, brouillon)` plein cadre à chaque trait : init dans `enterEdit`
+(`edit.realFill` mis en cache) ; pinceau = union locale de la part du trait absente du réel ;
+gomme = différence locale ; opérations non locales (`undoStroke`, les trois `finalizeLasso*`,
+`applyMotifDraft`/`applyAllDrafts` — qui rafraîchit aussi `edit.realFill` —, `discardMotifDraft`) font
+un recalcul plein. `redrawEditLayer` lit `edit.added` au lieu de le recalculer (l. ~1022).
+`node test/run.js` vert (aucune géométrie nouvelle, T12 couvre déjà Clipper localisé) ; validation
+visuelle restant à faire par Thibault (cf. `VALIDATION.md`, section P7 · T13).
+T14 : undo d'édition remplacé par un historique de commandes + keyframes (`edit.history` : entrées
+`{kind:"op", op, poly}` rejouables via `surfaceUnionLocal`/`surfaceDifferenceLocal`, ou
+`{kind:"snapshot", draft}` pour l'état initial, les keyframes auto (toutes les 8 `op`) et les
+mutations non rejouables — lasso ×3, Jeter). `pushEditEntry` gère l'insertion des keyframes, la
+borne 30 (purge par l'avant via `trimEditHistory`, resynthétise un snapshot si la coupe tombe au
+milieu d'une séquence d'ops) et vide `edit.redo` à chaque nouvelle mutation. `undoStroke`/`redoStroke`
+dépilent vers l'autre pile et reconstruisent via `rebuildDraftFrom` (dernier snapshot + replay des
+ops) ; les keyframes auto sont traversées en un seul clic (transparentes, sinon elles consommeraient
+un undo/redo sans effet visible). Bouton **Rétablir** ajouté à côté d'Annuler (`index.html`, grid2
+→ 3 colonnes), désactivé quand `edit.redo` est vide (Annuler désactivé quand l'historique n'a plus
+qu'un snapshot) ; raccourci `Ctrl/Cmd+Maj+Z`. `node test/run.js` vert (aucune géométrie touchée) ;
+validation visuelle restant à faire par Thibault (cf. `VALIDATION.md`, section P7 · T14).
+T15 : **Autosave différé en période creuse** — debounce 1 s (au lieu de 300 ms) + `requestIdleCallback`
+(timeout 4 s, fallback `setTimeout`) ; ne sauvegarder jamais pendant un trait (`edit.drawing` → replan).
+`localSaveTimer` (debounce) + `idleCallbackId`/`idleCallbackType` (pour annulation). `flushLocalSave`
+annule les deux et sauve immédiatement (événements `visibilitychange`/`pagehide` inchangés). Statut
+« Sauvegarde... » → « Sauvegardé localement » inchangé. `node test/run.js` vert (aucune géométrie).
+Validation de la fluidité édition : report `VALIDATION.md` (usage réel sur iPad).
 
 **Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu
