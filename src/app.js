@@ -44,10 +44,12 @@
     node.cache({ pixelRatio: pr });
   }
 
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+
   const tr = new Konva.Transformer({
     rotateEnabled: true, keepRatio: true,
     enabledAnchors: ["top-left", "top-right", "bottom-left", "bottom-right"],
-    anchorSize: 16, borderStroke: "#3b82f6", anchorStroke: "#3b82f6",
+    anchorSize: coarse ? 28 : 16, borderStroke: "#3b82f6", anchorStroke: "#3b82f6",
   });
   uiLayer.add(tr);
 
@@ -74,6 +76,8 @@
     if (!n) { moveHandle.visible(false); uiLayer.batchDraw(); return; }
     const box = n.getClientRect(); // px écran (transform stage inclus)
     moveHandle.absolutePosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    const s = (coarse ? 1.4 : 1) / stage.scaleX();
+    moveHandle.scale({ x: s, y: s });
     moveHandle.visible(true);
     moveHandle.moveToTop();
     uiLayer.batchDraw();
