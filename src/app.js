@@ -902,7 +902,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
@@ -1326,6 +1326,7 @@
     edit.drawing = true;
     edit.pts = [localPoint()];
     edit.pressures = [pointerPressure(e)];
+    edit.smoothPrev = edit.pts[0];
     editPreview = new Konva.Line({
       points: edit.pts.flat(), stroke: edit.op === "add" ? motif.color : "#ff0000",
       strokeWidth: edit.sizeMm * PX_PER_MM, lineCap: "round", lineJoin: "round", opacity: 0.55, listening: false,
@@ -1340,7 +1341,12 @@
     const minDist = 1 / edit.node.getAbsoluteScale().x;
     for (const ev of (e.getCoalescedEvents?.() ?? [e])) {
       stage.setPointersPositions(ev);
-      const p = localPoint();
+      let p = localPoint();
+      if (edit.smoothing > 0 && edit.smoothPrev) {
+        const s = edit.smoothing;
+        p = [edit.smoothPrev[0] + (p[0] - edit.smoothPrev[0]) * (1 - s), edit.smoothPrev[1] + (p[1] - edit.smoothPrev[1]) * (1 - s)];
+        edit.smoothPrev = p;
+      }
       const last = edit.pts[edit.pts.length - 1];
       if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) >= minDist) {
         edit.pts.push(p);
@@ -1688,6 +1694,12 @@
   document.getElementById("mode-round").onclick = () => setStrokeMode("round");
   document.getElementById("mode-pressure").onclick = () => setStrokeMode("pressure");
   document.getElementById("mode-calli").onclick = () => setStrokeMode("calli");
+  document.querySelectorAll("[data-smoothing]").forEach((b) => {
+    b.onclick = () => {
+      edit.smoothing = parseFloat(b.dataset.smoothing);
+      document.querySelectorAll("[data-smoothing]").forEach((s) => s.classList.toggle("on", s === b));
+    };
+  });
   function setPressureGammaButton(id) {
     edit.pressureGamma = { "pressure-soft": 0.6, "pressure-normal": 1, "pressure-firm": 1.6 }[id];
     ["pressure-soft", "pressure-normal", "pressure-firm"].forEach((i) => {

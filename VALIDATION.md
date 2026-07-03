@@ -114,3 +114,10 @@
   épaissir ; Normale = comme avant. Largeur min 0 % : un trait léger devient très fin.
 - [ ] La gomme garde une largeur constante quelle que soit la pression.
 - [ ] Souris : trait de largeur moyenne constante (pression 0.5), pas de régression.
+
+## P7 · T10 — Stabilisation de trait réglable (EMA)
+
+- [ ] Off (par défaut) : comportement identique à avant.
+- [ ] Fort, à fort zoom : un trait volontairement tremblé sort nettement plus régulier ; le trait se
+  termine bien sous la pointe (pas de « queue » qui s'arrête avant le lever).
+- [ ] Le lasso et les formes ne sont pas affectés par le réglage.
