@@ -902,7 +902,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
@@ -1053,6 +1053,7 @@
     edit.history = [];
     clearLassoSelection(); // pas de sélection lasso résiduelle d'une session d'édition précédente
     activeTouchPointers.clear();
+    edit.panAnchor = null;
     editContainer.addEventListener("pointerdown", editPointerDown, { passive: false });
     editContainer.addEventListener("pointermove", editPointerMove, { passive: false });
     editContainer.addEventListener("pointerup", editPointerUp, { passive: false });
@@ -1088,6 +1089,7 @@
     editContainer.removeEventListener("pointerup", editPointerUp, { passive: false });
     editContainer.removeEventListener("pointercancel", editPointerUp, { passive: false });
     activeTouchPointers.clear();
+    edit.panAnchor = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     editLayer.visible(false);
     editStaticGroup.clearCache();
@@ -1479,11 +1481,20 @@
   // activeTouchPointers : pointerId des contacts tactiles actifs — dès le 2e, on annule le geste en
   // cours et on laisse le pinch (touch events, non migré) prendre la main.
   const activeTouchPointers = new Set();
+  // (T6, D-010 volet 1) pan un doigt : un seul contact tactile actif, edit.fingerDraws désactivé
+  // -> translation manuelle de stage.position() (PAS stage.draggable(true), qui capterait aussi le
+  // stylet). panAnchor mémorise le pointerId + la dernière position client du contact qui panne.
   function editPointerDown(e) {
     if (!edit.active) return;
     if (e.pointerType === "touch") {
       activeTouchPointers.add(e.pointerId);
-      if (activeTouchPointers.size > 1) { cancelActiveStroke(); return; }
+      if (activeTouchPointers.size > 1) { edit.panAnchor = null; cancelActiveStroke(); return; }
+      if (!edit.fingerDraws) {
+        e.preventDefault();
+        editContainer.setPointerCapture(e.pointerId);
+        edit.panAnchor = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+        return;
+      }
     }
     e.preventDefault();
     stage.setPointersPositions(e);
@@ -1496,6 +1507,14 @@
   function editPointerMove(e) {
     if (!edit.active) return;
     if (e.pointerType === "touch" && activeTouchPointers.size > 1) return;
+    if (edit.panAnchor && e.pointerId === edit.panAnchor.pointerId) {
+      e.preventDefault();
+      const dx = e.clientX - edit.panAnchor.x, dy = e.clientY - edit.panAnchor.y;
+      stage.position({ x: stage.x() + dx, y: stage.y() + dy });
+      edit.panAnchor = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      stage.batchDraw();
+      return;
+    }
     stage.setPointersPositions(e);
     if (edit.lassoDragAnchor) { e.preventDefault(); moveLassoDrag(); return; }
     if (!edit.drawing) return;
@@ -1505,6 +1524,7 @@
   function editPointerUp(e) {
     if (!edit.active) return;
     if (e.pointerType === "touch") activeTouchPointers.delete(e.pointerId);
+    if (edit.panAnchor && e.pointerId === edit.panAnchor.pointerId) { edit.panAnchor = null; return; }
     if (e.type === "pointercancel") { cancelActiveStroke(); return; }
     if (edit.lassoDragAnchor) { edit.lassoDragAnchor = null; return; }
     if (!edit.drawing) return;
@@ -1537,6 +1557,16 @@
   document.getElementById("btn-lasso-move").onclick = finalizeLassoMove;
   document.getElementById("btn-lasso-duplicate").onclick = finalizeLassoDuplicate;
   document.getElementById("btn-lasso-erase").onclick = finalizeLassoErase;
+  function setFingerDrawsButton() {
+    const btn = document.getElementById("finger-draws");
+    btn.textContent = edit.fingerDraws ? "✍️ Doigt : dessine" : "✍️ Doigt : navigue";
+    btn.classList.toggle("on", edit.fingerDraws);
+  }
+  document.getElementById("finger-draws").onclick = () => {
+    edit.fingerDraws = !edit.fingerDraws;
+    setFingerDrawsButton();
+  };
+  setFingerDrawsButton();
   document.getElementById("brush-size").oninput = (e) => {
     edit.sizeMm = parseFloat(e.target.value) || 3;
     document.getElementById("brush-size-val").textContent = edit.sizeMm + " mm";

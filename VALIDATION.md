@@ -78,3 +78,12 @@
 - [ ] iPad : un doigt dessine (comme avant, T6 changera ça), deux doigts pan/zoom sans marque ;
   Pencil dessine ; tirer le centre de notifications pendant un trait (`pointercancel`) → pas de marque.
 - [ ] Sortir puis re-rentrer en édition : le tracé fonctionne toujours (listeners bien détachés/rattachés).
+
+## P7 · T6 — Stylet dessine, doigt navigue (+ bascule « dessin au doigt »)
+
+- [ ] iPad : Pencil dessine ; un doigt panne la vue (aucune marque) ; deux doigts zooment (inchangé).
+- [ ] Bascule « ✍️ Doigt : navigue » → « Doigt : dessine » → le doigt trace de nouveau (ancien
+  comportement) ; rebasculer → le doigt panne à nouveau.
+- [ ] Paume posée pendant un trait Pencil (2ᵉ contact) → pas de marque parasite, le trait Pencil en
+  cours saute proprement à `pointercancel` (T3/T5), jamais de fragment appliqué.
+- [ ] Desktop souris : dessine, rien ne change (comportement identique à T5).

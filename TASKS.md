@@ -21,7 +21,7 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [x] T-111 — Annuler le trait en cours à l'arrivée d'un 2e contact (trait fantôme) · modèle: Haiku, effort: low · plan: `plans/P7/` (T3)
 - [x] T-112 — Page de sonde des capacités stylet Safari (`test/pencil-probe.html`) · modèle: Haiku, effort: low · plan: `plans/P7/` (T4)
 - [x] T-113 — Tracé d'édition en Pointer Events natifs · modèle: Sonnet, effort: high · plan: `plans/P7/` (T5, dépend T3)
-- [ ] T-114 — Stylet dessine / doigt navigue + bascule « dessin au doigt » · modèle: Sonnet, effort: medium · plan: `plans/P7/` (T6, dépend T5)
+- [x] T-114 — Stylet dessine / doigt navigue + bascule « dessin au doigt » · modèle: Sonnet, effort: medium · plan: `plans/P7/` (T6, dépend T5)
 - [ ] T-115 — Points coalescés + prédits + décimation du trait · modèle: Sonnet, effort: medium · plan: `plans/P7/` (T7, dépend T5)
 - [ ] T-116 — Curseur d'outil taille réelle + survol Pencil · modèle: Sonnet, effort: medium · plan: `plans/P7/` (T8, dépend T5)
 - [ ] T-117 — Courbes de pression (gamma) + largeur minimale · modèle: Sonnet, effort: low · plan: `plans/P7/` (T9, dépend T5)
