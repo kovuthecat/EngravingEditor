@@ -18,6 +18,24 @@
 - [ ] iPad : fond visible hors mode édition (régression cache Konva corrigée via `safeCache`).
 - [ ] Décor : tient dans le contour, cliquable/déplaçable (poignées du Transformer visibles).
 
+## P7 · T14 — Undo par commandes + keyframes + Rétablir
+
+- [ ] 12 traits puis 12 Annuler → retour exact à l'état d'entrée (traverse les keyframes) ; puis 12
+  Rétablir → retour à l'état final.
+- [ ] Annuler ×2 puis un nouveau trait → Rétablir grisé (branche redo bien invalidée).
+- [ ] Lasso Déplacer puis Annuler → la portion revient à sa place ; Rétablir → re-déplacée.
+- [ ] Sur décor chargé : Annuler reste réactif (< ~1 s) après une longue session de traits.
+
+## P7 · T13 — Ops localisées + surcharge verte incrémentale
+
+- [ ] Sur un décor chargé : la fin de trait (lever du stylet) ne gèle plus l'interface.
+- [ ] Le vert reste exact : pinceau hors du réel = vert ; pinceau sur du réel = pas de vert ; gomme
+  sur du vert = le vert disparaît ; après Annuler (undo), le vert correspond toujours au delta réel.
+- [ ] Lasso Déplacer/Dupliquer/Effacer : le vert reste cohérent après l'action.
+- [ ] Appliquer : tout le vert disparaît ; Jeter : le brouillon revient au réel sans vert.
+- [ ] Comparer visuellement un même enchaînement de traits avant/après la tâche sur un petit motif :
+  rendu identique.
+
 ## P7 · T11 — Cache bitmap du brouillon entre les traits
 
 - [ ] Sur un décor chargé, en édition : l'aperçu pendant le trait est nettement plus fluide qu'avant ;
