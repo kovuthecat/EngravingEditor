@@ -201,6 +201,29 @@ if (!contoursEqual(ML.surfaceUnionLocal(t12Surface, []), t12Surface, 1e-9)) fail
 if (!contoursEqual(ML.surfaceDifferenceLocal(t12Surface, []), t12Surface, 1e-9)) fail("T12e : argument vide (différence) -> la surface doit rester inchangée");
 console.log("  e. cas limites OK (surface vide déléguée à l'oracle, argument vide -> surface inchangée)");
 
+// ─── P8 T1 : computeTiling (tuilage A4, orientation min, recouvrement) ───────
+{
+  const t1 = ML.computeTiling({ x: 0, y: 0, w: 100, h: 100 });
+  if (t1.landscape !== false || t1.cols !== 1 || t1.rows !== 1) fail("T1a : bbox 100×100 doit tenir en 1×1 portrait");
+  const expX = 0 - (190 - 100) / 2;
+  if (Math.abs(t1.pages[0].x - expX) > 1e-9) fail("T1a : page unique doit être centrée sur le bbox");
+
+  const t1b = ML.computeTiling({ x: 0, y: 0, w: 500, h: 380 });
+  if (t1b.landscape !== false || t1b.cols !== 3 || t1b.rows !== 2) fail("T1b : bbox 500×380 -> égalité 6 pages -> portrait 3×2 attendu");
+
+  const t1c = ML.computeTiling({ x: 0, y: 0, w: 400, h: 260 });
+  if (t1c.landscape !== false || t1c.cols !== 3 || t1c.rows !== 1) fail("T1c : bbox 400×260 -> portrait 3×1 (3) doit battre paysage 2×2 (4)");
+
+  const first = t1b.pages[0], last = t1b.pages[t1b.pages.length - 1];
+  if (first.label !== "L1·C1") fail("T1d : première page doit être L1·C1");
+  if (last.label !== `L${t1b.rows}·C${t1b.cols}`) fail("T1d : dernière page doit être L{rows}·C{cols}");
+
+  const neighborX = t1b.pages.find((p) => p.row === 0 && p.col === 1);
+  if (Math.abs(first.x + t1b.uw - neighborX.x - t1b.overlap) > 1e-9) fail("T1e : recouvrement en X entre pages voisines incorrect");
+
+  console.log("computeTiling OK (100×100 -> 1×1, 500×380 -> 3×2 portrait, 400×260 -> 3×1, labels + recouvrement)");
+}
+
 // ─── export SVG final (mm, evenodd, multi-couleur — Lot 1 + décor) ───────────
 const merged = {};
 for (const color in lot1Visible) (merged[color] = merged[color] || []).push(...lot1Visible[color]);

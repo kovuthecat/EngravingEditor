@@ -4,7 +4,7 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-03 (soir)
+> **Dernière mise à jour :** 2026-07-03 (soir 2)
 
 ## Phase actuelle
 
@@ -80,12 +80,18 @@ annule les deux et sauve immédiatement (événements `visibilitychange`/`pagehi
 « Sauvegarde... » → « Sauvegardé localement » inchangé. `node test/run.js` vert (aucune géométrie).
 Validation de la fluidité édition : report `VALIDATION.md` (usage réel sur iPad).
 
-**Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
+**Plan P8 en cours (cadré 2026-07-02)** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu
 contours 0,3 mm couleur calque + surfaces gris clair, contour guitare pointillé, recouvrement
 10 mm avec croix de recalage, règle de contrôle 100 mm, page de garde plan d'assemblage, sens
 écran (pas de miroir). 4 tâches : `plans/P8/index.md` ; décisions : `DECISIONS.md §D-011` ;
 backlog : T-125.
+T1 (2026-07-03) : `ML.computeTiling(bbox, opts)` — pur, dans `geometry.js`. Pour chaque orientation
+(portrait/paysage), calcule `cols`/`rows` (fenêtre utile − recouvrement) et retient celle au nombre
+de feuilles minimal (égalité → portrait) ; grille centrée sur le bbox (`originX/Y`) ; retourne
+`{ landscape, cols, rows, pageW, pageH, margin, overlap, uw, uh, pages: [{row, col, x, y, label}] }`.
+Aucun rendu PDF/DOM (T2), pas encore branché dans `app.js` (T4). `node test/run.js` vert (5 cas :
+1×1 centré, 500×380 égalité→portrait 3×2, 400×260 portrait 3×1, labels, recouvrement voisines).
 
 ## Ce qui fonctionne
 

@@ -499,6 +499,41 @@
     }));
   };
 
+  // tuilage A4 (mm, repère scène) : découpe bbox en grille de feuilles avec recouvrement,
+  // en choisissant l'orientation (portrait/paysage) qui minimise le nombre de feuilles.
+  ML.computeTiling = function (bbox, opts) {
+    const o = Object.assign({ pageW: 210, pageH: 297, margin: 10, overlap: 10 }, opts || {});
+    const { margin, overlap } = o;
+
+    function planFor(pageW, pageH) {
+      const uw = pageW - 2 * margin, uh = pageH - 2 * margin;
+      const stepX = uw - overlap, stepY = uh - overlap;
+      const cols = bbox.w - overlap <= 0 ? 1 : Math.max(1, Math.ceil((bbox.w - overlap) / stepX));
+      const rows = bbox.h - overlap <= 0 ? 1 : Math.max(1, Math.ceil((bbox.h - overlap) / stepY));
+      return { pageW, pageH, uw, uh, stepX, stepY, cols, rows };
+    }
+
+    const portrait = planFor(o.pageW, o.pageH);
+    const landscapePlan = planFor(o.pageH, o.pageW);
+    const portraitCount = portrait.cols * portrait.rows;
+    const landscapeCount = landscapePlan.cols * landscapePlan.rows;
+    const landscape = landscapeCount < portraitCount;
+    const plan = landscape ? landscapePlan : portrait;
+    const { pageW, pageH, uw, uh, stepX, stepY, cols, rows } = plan;
+
+    const covW = cols * stepX + overlap, covH = rows * stepY + overlap;
+    const originX = bbox.x - (covW - bbox.w) / 2, originY = bbox.y - (covH - bbox.h) / 2;
+
+    const pages = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        pages.push({ row, col, x: originX + col * stepX, y: originY + row * stepY, label: `L${row + 1}·C${col + 1}` });
+      }
+    }
+
+    return { landscape, cols, rows, pageW, pageH, margin, overlap, uw, uh, pages };
+  };
+
   // SVG couleur (export) : un <path fill=couleur fill-rule="evenodd"> par groupe, en mm.
   // groupsMm: { [color]: [{pts,closed:true}] } déjà en mm (via pxPathsToMm) ; viewBoxMm: { w, h }.
   ML.writeSVG = function (groupsMm, viewBoxMm) {

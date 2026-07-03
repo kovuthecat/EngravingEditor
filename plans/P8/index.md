@@ -16,7 +16,7 @@ Nota : P7 = plan iPad/Pencil (D-010), indépendant ; la refonte spatiale défér
 
 | Tâche | Titre | Modèle | Effort | Dépend de | Statut |
 | --- | --- | --- | --- | --- | --- |
-| [T1](T1.md) | `ML.computeTiling` (tuilage A4 pur) + cas de test | Sonnet | medium | — | [ ] |
+| [T1](T1.md) | `ML.computeTiling` (tuilage A4 pur) + cas de test | Sonnet | medium | — | [x] |
 | [T2](T2.md) | jsPDF vendored + `src/print.js` : rendu des feuilles | Sonnet | high | T1 | [ ] |
 | [T3](T3.md) | Repères (croix, libellés, règle 100 mm) + page de garde | Sonnet | medium | T2 | [ ] |
 | [T4](T4.md) | `collectPrintScene()` + bouton « PDF A4 1:1 » (branchement) | Sonnet | medium | T2 | [ ] |
