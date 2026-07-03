@@ -10,11 +10,11 @@
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
-**Plan P7 démarré (T1/T2/T3 faites le 2026-07-03, reste T4-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
+**Plan P7 démarré (T1/T2/T3/T4 faites le 2026-07-03, reste T5-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
 pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
 localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
 décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
-(Claude + Codex, `AUDIT_UI_IPAD_APPLE_PENCIL.md`).
+(Claude + Codex, `AUDIT_UI_IPAD_APPLE_PENCIL.md`). T4 (`pencil-probe.html`) = sonde autonome stylet Safari.
 
 **Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu
