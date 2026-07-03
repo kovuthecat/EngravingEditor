@@ -40,6 +40,11 @@ header h1 { font-size: 16px; margin: 0; color: #fff; }
 #sidebar details.advanced h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin: 14px 0 6px; }
 #sidebar details.advanced h3:first-of-type { margin-top: 10px; }
 
+/* D-012 pt 7 (T-135) : section Projet épinglée en bas de la sidebar (overflow-y:auto) plutôt que sous
+   ~6 500 px de scroll. Fond opaque + séparateur : elle passe au-dessus du reste du contenu au scroll. */
+#section-projet { position: sticky; bottom: 0; z-index: 5; margin: 12px -12px -12px; padding: 10px 12px 12px;
+  background: #12151c; border-top: 1px solid #262b36; }
+
 #stage-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
 #stage { flex: 1; min-width: 0; background: #1c1f27; background-image: radial-gradient(#2a2f3a 1px, transparent 1px); background-size: 24px 24px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
