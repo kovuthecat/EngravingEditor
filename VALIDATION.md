@@ -63,3 +63,10 @@
 - [ ] iPad paysage : idem ; le bas de l'app (section Projet) n'est pas masqué par la barre Safari.
 - [ ] iPad : le × des vignettes de bibliothèque est visible sans survol ; pas de zoom page au double-tap
   sur les boutons ; pas de loupe à l'appui long sur le canevas.
+
+## P7 · T3 — Un 2ᵉ contact annule le trait en cours (tablette)
+
+- [ ] En édition : commencer un trait, poser un 2ᵉ doigt → **aucune** marque appliquée, le pinch
+  zoome/panne normalement ; relever les doigts → aucun trait résiduel.
+- [ ] Même test avec Rectangle en cours et avec un tracé de lasso en cours → annulés proprement.
+- [ ] Une sélection lasso déjà fermée (surlignée orange) **survit** à un pinch.
