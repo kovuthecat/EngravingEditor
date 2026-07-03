@@ -50,3 +50,8 @@
   rafraîchir. »), pas de crash.
 - [ ] Un décor avait des retouches stylet (`motif.surface`) → après rafraîchissement, elles sont
   écrasées par le nouveau tracé (attendu, cf. `DECISIONS.md` §D-009).
+
+## P7 · T1 — Garde l'export CommonJS final de `vendor/clipper.js`
+
+- [ ] Ouvrir l'app (console navigateur) : **aucune** `ReferenceError: module is not defined` au chargement.
+- [ ] Les tests Node (`node test/run.js`) passent vert (export CommonJS toujours fonctionnel).
