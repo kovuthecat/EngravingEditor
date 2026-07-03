@@ -92,6 +92,15 @@ de feuilles minimal (égalité → portrait) ; grille centrée sur le bbox (`ori
 `{ landscape, cols, rows, pageW, pageH, margin, overlap, uw, uh, pages: [{row, col, x, y, label}] }`.
 Aucun rendu PDF/DOM (T2), pas encore branché dans `app.js` (T4). `node test/run.js` vert (5 cas :
 1×1 centré, 500×380 égalité→portrait 3×2, 400×260 portrait 3×1, labels, recouvrement voisines).
+T2 (2026-07-03) : jsPDF 2.5.1 UMD vendored (`vendor/jspdf.umd.min.js`, expose `window.jspdf.jsPDF`)
++ `src/print.js` (`ML.renderPrintPdf(scene, tiling, opts)`) : par page, clip fenêtre utile
+(`rect`+`clip`+`discardPath`), pré-filtrage des sous-chemins par bbox, un `path()`/couleur pour
+surfaces (gris clair `fillEvenOdd`) et contours (couleur calque, 0,3 mm), contour guitare + cavités
+en pointillé gris. Aucune divergence d'API jsPDF par rapport au plan (`clip`/`discardPath`/`path`
+présents tels quels). Smoke testé en Node (VM sandbox simulant les globals navigateur) :
+`computeTiling` → `renderPrintPdf` sur une scène d'exemple produit un PDF valide multi-pages.
+`node test/run.js` vert (aucune géométrie de cœur touchée). Pas d'UI/bouton (T4) — rendu réel à
+valider visuellement à ce moment-là.
 
 ## Ce qui fonctionne
 
