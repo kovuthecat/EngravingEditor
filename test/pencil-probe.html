@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonde Stylet Safari — Capacités Pencil</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #000;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            touch-action: none;
+        }
+
+        .panel {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            padding: 20px;
+            border: 2px solid #0f0;
+            line-height: 1.6;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+
+        .panel-live {
+            top: 20px;
+            left: 20px;
+            width: 450px;
+            max-height: 60vh;
+        }
+
+        .panel-summary {
+            top: 20px;
+            right: 20px;
+            width: 450px;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 20px;
+            text-decoration: underline;
+        }
+
+        .panel-line {
+            margin-bottom: 10px;
+            word-break: break-word;
+        }
+
+        .label {
+            font-weight: bold;
+            min-width: 180px;
+            display: inline-block;
+        }
+
+        .value {
+            color: #0f0;
+        }
+
+        .bool-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: rgba(15, 240, 15, 0.05);
+            border-radius: 4px;
+        }
+
+        .bool-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #0f0;
+            border-radius: 3px;
+            background: #000;
+        }
+
+        .bool-indicator.active {
+            background: #0f0;
+            box-shadow: 0 0 10px #0f0;
+        }
+
+        .copy-button {
+            margin-top: 20px;
+            padding: 12px 20px;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            background: #0f0;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .copy-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 20px #0f0;
+        }
+
+        .copy-button:hover {
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        .absent {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="panel panel-live">
+        <div class="panel-title">En direct (Live)</div>
+        <div class="panel-line"><span class="label">pointerType:</span> <span id="pointerType" class="value">—</span></div>
+        <div class="panel-line"><span class="label">pressure:</span> <span id="pressure" class="value">—</span> <span id="pressureMinMax" style="color: #888; font-size: 14px;"></span></div>
+        <div class="panel-line"><span class="label">tiltX:</span> <span id="tiltX" class="value">—</span></div>
+        <div class="panel-line"><span class="label">tiltY:</span> <span id="tiltY" class="value">—</span></div>
+        <div class="panel-line"><span class="label">twist:</span> <span id="twist" class="value">—</span></div>
+        <div class="panel-line"><span class="label">altitudeAngle:</span> <span id="altitudeAngle" class="value">—</span></div>
+        <div class="panel-line"><span class="label">azimuthAngle:</span> <span id="azimuthAngle" class="value">—</span></div>
+        <div class="panel-line"><span class="label">coalesced:</span> <span id="coalesced" class="value">—</span></div>
+        <div class="panel-line"><span class="label">predicted:</span> <span id="predicted" class="value">—</span></div>
+        <div class="panel-line"><span class="label">pointeurs actifs:</span> <span id="pointerCount" class="value">—</span></div>
+    </div>
+
+    <div class="panel panel-summary">
+        <div class="panel-title">Bilan (✓ = observé)</div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-pen"></div>
+            <span>Stylet détecté</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-pressure"></div>
+            <span>Pression variable (≠ 0.5)</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-coalesced"></div>
+            <span>Coalesced &gt; 1</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-predicted"></div>
+            <span>Predicted ≥ 1</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-twist"></div>
+            <span>Twist ≠ 0 observé</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-tilt"></div>
+            <span>Tilt/Altitude présents</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-hover"></div>
+            <span>Survol observé</span>
+        </div>
+
+        <button class="copy-button" id="copyButton">Copier le bilan</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Dimensionner le canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // État live
+        let liveState = {
+            pointerType: null,
+            pressure: null,
+            tiltX: null,
+            tiltY: null,
+            twist: null,
+            altitudeAngle: null,
+            azimuthAngle: null,
+            coalescedCount: 0,
+            predictedCount: 0,
+            pointerCount: 0
+        };
+
+        // État résumé
+        let summary = {
+            penDetected: false,
+            pressureVariable: false,
+            coalescedGt1: false,
+            predictedGte1: false,
+            twistNonZero: false,
+            tiltAltitudePresent: false,
+            hoverObserved: false
+        };
+
+        // Tracking pour déterminer min/max pression
+        let pressureMin = Infinity;
+        let pressureMax = -Infinity;
+
+        // Set de pointeurs actifs
+        const activePointers = new Set();
+
+        function updateUI() {
+            // Live panel
+            document.getElementById('pointerType').textContent = liveState.pointerType || '—';
+
+            if (liveState.pressure !== null) {
+                const pStr = liveState.pressure.toFixed(3);
+                const minMaxStr = pressureMin !== Infinity && pressureMax !== -Infinity
+                    ? `(min: ${pressureMin.toFixed(3)}, max: ${pressureMax.toFixed(3)})`
+                    : '';
+                document.getElementById('pressure').textContent = pStr;
+                document.getElementById('pressureMinMax').textContent = minMaxStr;
+            } else {
+                document.getElementById('pressure').textContent = '—';
+                document.getElementById('pressureMinMax').textContent = '';
+            }
+
+            document.getElementById('tiltX').innerHTML = liveState.tiltX !== null ? liveState.tiltX.toFixed(1) : '<span class="absent">absent</span>';
+            document.getElementById('tiltY').innerHTML = liveState.tiltY !== null ? liveState.tiltY.toFixed(1) : '<span class="absent">absent</span>';
+            document.getElementById('twist').innerHTML = liveState.twist !== null ? liveState.twist.toFixed(1) : '<span class="absent">absent</span>';
+            document.getElementById('altitudeAngle').innerHTML = liveState.altitudeAngle !== null ? liveState.altitudeAngle.toFixed(3) : '<span class="absent">absent</span>';
+            document.getElementById('azimuthAngle').innerHTML = liveState.azimuthAngle !== null ? liveState.azimuthAngle.toFixed(3) : '<span class="absent">absent</span>';
+
+            const coalStr = liveState.coalescedCount > 0 ? liveState.coalescedCount : '<span class="absent">API absente</span>';
+            document.getElementById('coalesced').innerHTML = coalStr;
+
+            const predStr = liveState.predictedCount >= 0 ? liveState.predictedCount : '<span class="absent">API absente</span>';
+            document.getElementById('predicted').innerHTML = predStr;
+
+            document.getElementById('pointerCount').textContent = activePointers.size;
+
+            // Summary booleans
+            updateBool('bool-pen', summary.penDetected);
+            updateBool('bool-pressure', summary.pressureVariable);
+            updateBool('bool-coalesced', summary.coalescedGt1);
+            updateBool('bool-predicted', summary.predictedGte1);
+            updateBool('bool-twist', summary.twistNonZero);
+            updateBool('bool-tilt', summary.tiltAltitudePresent);
+            updateBool('bool-hover', summary.hoverObserved);
+        }
+
+        function updateBool(elemId, value) {
+            const elem = document.getElementById(elemId);
+            if (value) {
+                elem.classList.add('active');
+            }
+        }
+
+        function handlePointerEvent(e) {
+            // Gérer pointeurs actifs
+            if (e.type === 'pointerdown') {
+                activePointers.add(e.pointerId);
+            } else if (e.type === 'pointerup' || e.type === 'pointercancel') {
+                activePointers.delete(e.pointerId);
+            }
+
+            // Mettre à jour live state
+            liveState.pointerType = e.pointerType;
+            liveState.pressure = e.pressure;
+            liveState.tiltX = e.tiltX;
+            liveState.tiltY = e.tiltY;
+            liveState.twist = e.twist;
+            liveState.altitudeAngle = e.altitudeAngle;
+            liveState.azimuthAngle = e.azimuthAngle;
+            liveState.pointerCount = activePointers.size;
+
+            // Tracer une ligne
+            if (e.type === 'pointerdown') {
+                ctx.beginPath();
+                ctx.moveTo(e.clientX, e.clientY);
+            } else if (e.type === 'pointermove' && e.buttons > 0) {
+                ctx.lineTo(e.clientX, e.clientY);
+                ctx.strokeStyle = e.pointerType === 'pen' ? '#0f0' : '#666';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
+
+            // Mettre à jour résumé
+            if (e.pointerType === 'pen') {
+                summary.penDetected = true;
+            }
+
+            if (e.pressure !== null && e.pressure !== 0.5 && e.pressure !== 0) {
+                summary.pressureVariable = true;
+                if (e.pressure < pressureMin) pressureMin = e.pressure;
+                if (e.pressure > pressureMax) pressureMax = e.pressure;
+            }
+
+            if (e.getCoalescedEvents) {
+                const coalesced = e.getCoalescedEvents();
+                liveState.coalescedCount = coalesced.length;
+                if (coalesced.length > 1) {
+                    summary.coalescedGt1 = true;
+                }
+            }
+
+            if (e.getPredictedEvents) {
+                const predicted = e.getPredictedEvents();
+                liveState.predictedCount = predicted.length;
+                if (predicted.length >= 1) {
+                    summary.predictedGte1 = true;
+                }
+            }
+
+            if (e.twist !== undefined && e.twist !== 0) {
+                summary.twistNonZero = true;
+            }
+
+            if ((e.tiltX !== undefined && e.tiltX !== null) ||
+                (e.tiltY !== undefined && e.tiltY !== null) ||
+                (e.altitudeAngle !== undefined && e.altitudeAngle !== null)) {
+                summary.tiltAltitudePresent = true;
+            }
+
+            // Survol : pointermove avec buttons === 0 et pointerType === "pen"
+            if (e.type === 'pointermove' && e.buttons === 0 && e.pointerType === 'pen') {
+                summary.hoverObserved = true;
+            }
+
+            updateUI();
+            if (e.type !== 'pointerdown') {
+                e.preventDefault();
+            }
+        }
+
+        // Attacher les event listeners avec passive: false
+        canvas.addEventListener('pointerdown', handlePointerEvent, { passive: false });
+        canvas.addEventListener('pointermove', handlePointerEvent, { passive: false });
+        canvas.addEventListener('pointerup', handlePointerEvent, { passive: false });
+        canvas.addEventListener('pointercancel', handlePointerEvent, { passive: false });
+
+        // Bouton copier le bilan
+        document.getElementById('copyButton').addEventListener('click', async function() {
+            const bilanText = generateBilanText();
+            try {
+                await navigator.clipboard.writeText(bilanText);
+                this.textContent = '✓ Copié!';
+                setTimeout(() => {
+                    this.textContent = 'Copier le bilan';
+                }, 2000);
+            } catch (err) {
+                // Fallback : afficher le texte à sélectionner
+                const textArea = document.createElement('textarea');
+                textArea.value = bilanText;
+                textArea.style.position = 'fixed';
+                textArea.style.top = '0';
+                textArea.style.left = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                this.textContent = '✓ Copié (fallback)!';
+                setTimeout(() => {
+                    this.textContent = 'Copier le bilan';
+                }, 2000);
+            }
+        });
+
+        function generateBilanText() {
+            return `=== Sonde Stylet Safari ===
+Timestamp: ${new Date().toLocaleString()}
+
+Stylet détecté: ${summary.penDetected ? 'OUI' : 'NON'}
+Pression variable: ${summary.pressureVariable ? 'OUI' : 'NON'}${pressureMin !== Infinity ? ` (min: ${pressureMin.toFixed(3)}, max: ${pressureMax.toFixed(3)})` : ''}
+Coalesced > 1: ${summary.coalescedGt1 ? 'OUI' : 'NON'}
+Predicted ≥ 1: ${summary.predictedGte1 ? 'OUI' : 'NON'}
+Twist ≠ 0: ${summary.twistNonZero ? 'OUI' : 'NON'}
+Tilt/Altitude présents: ${summary.tiltAltitudePresent ? 'OUI' : 'NON'}
+Survol observé: ${summary.hoverObserved ? 'OUI' : 'NON'}`;
+        }
+
+        // Initialisation
+        updateUI();
+    </script>
+</body>
+</html>
