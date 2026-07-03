@@ -10,7 +10,7 @@
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
-**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9/T10 faites le 2026-07-03, reste T11-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
+**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T11 faites le 2026-07-03, reste T12-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
 pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
 localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
 décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
@@ -39,8 +39,14 @@ Fort, `s = 0/0.3/0.55/0.75`) appliquée à l'ingestion dans `moveStroke` (`edit.
 `edit.smoothPrev`), après la décimation T7 ; dernier point brut du `pointerup` toujours empilé
 (trait atteint le lever du stylet) ; défaut Off (comportement inchangé) ; lasso/formes non affectés ;
 réglage de session, non persisté.
+T11 : `editDraftGroup` (brouillon couleur + surcharge verte) mis en cache bitmap après chaque
+`redrawEditLayer` (`safeCache(editDraftGroup, 1)`) — le mouvement pendant un trait ne coûte plus que
+le blit d'un bitmap sur décor chargé (des milliers de contours retracés sinon). `getSelfRect` ajouté
+aux deux `Konva.Shape` (sceneFunc sur canvas brut, même piège que `fillGroupContent`) ; `clearCache`
+en tête de `redrawEditLayer` et dans `exitEdit`. `editPreview`/`lassoHighlight` restent enfants de
+`editLayer` (frères, pas dans le groupe caché).
 `node test/run.js` vert (aucune géométrie touchée), validation tactile/iPad restant à faire par
-Thibault (cf. `VALIDATION.md`, sections P7 · T6/T7/T8/T9/T10).
+Thibault (cf. `VALIDATION.md`, sections P7 · T6/T7/T8/T9/T10/T11).
 
 **Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu

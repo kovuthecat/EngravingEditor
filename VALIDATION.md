@@ -18,6 +18,14 @@
 - [ ] iPad : fond visible hors mode édition (régression cache Konva corrigée via `safeCache`).
 - [ ] Décor : tient dans le contour, cliquable/déplaçable (poignées du Transformer visibles).
 
+## P7 · T11 — Cache bitmap du brouillon entre les traits
+
+- [ ] Sur un décor chargé, en édition : l'aperçu pendant le trait est nettement plus fluide qu'avant ;
+  après le lever, le trait fusionné apparaît correctement (pas de bitmap vide ni de décalage).
+- [ ] Gomme, formes, lasso (surlignage orange et glissé) : rendu inchangé.
+- [ ] Zoomer fort pendant l'édition : le brouillon peut être un peu plus doux (bitmap), mais jamais
+  absent ni tronqué (garde `safeCache` iOS).
+
 ## P6 · T1 — Verrou global du décor (bascule 🔒)
 
 - [ ] Verrou ON : impossible de sélectionner/déplacer/éditer le décor ; un motif posé au-dessus du

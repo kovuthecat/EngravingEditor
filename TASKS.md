@@ -26,7 +26,7 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [x] T-116 — Curseur d'outil taille réelle + survol Pencil · modèle: Sonnet, effort: medium · plan: `plans/P7/` (T8, dépend T5)
 - [x] T-117 — Courbes de pression (gamma) + largeur minimale · modèle: Sonnet, effort: low · plan: `plans/P7/` (T9, dépend T5)
 - [x] T-118 — Stabilisation de trait réglable (EMA) · modèle: Sonnet, effort: low · plan: `plans/P7/` (T10, dépend T7)
-- [ ] T-119 — Cache bitmap du brouillon d'édition entre les traits · modèle: Sonnet, effort: low · plan: `plans/P7/` (T11)
+- [x] T-119 — Cache bitmap du brouillon d'édition entre les traits · modèle: Sonnet, effort: low · plan: `plans/P7/` (T11)
 - [ ] T-120 — Géométrie : union/différence localisées par îlots + tests · modèle: Sonnet, effort: high · plan: `plans/P7/` (T12)
 - [ ] T-121 — Branchement ops localisées + surcharge verte incrémentale · modèle: Sonnet, effort: medium · plan: `plans/P7/` (T13, dépend T11+T12)
 - [ ] T-122 — Undo d'édition par commandes + keyframes + Rétablir · modèle: Sonnet, effort: high · plan: `plans/P7/` (T14, dépend T13)

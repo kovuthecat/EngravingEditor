@@ -20,7 +20,7 @@ undo par commandes, autosave différé). Décisions figées : `DECISIONS.md §D-
 | [T8](T8.md) | Curseur d'outil (taille réelle) + survol Pencil | Sonnet | medium | T5 | [ ] |
 | [T9](T9.md) | Courbes de pression + largeur minimale | Sonnet | low | T5 | [ ] |
 | [T10](T10.md) | Stabilisation de trait réglable (EMA) | Sonnet | low | T7 | [ ] |
-| [T11](T11.md) | Cache bitmap du brouillon entre les traits | Sonnet | low | — | [ ] |
+| [T11](T11.md) | Cache bitmap du brouillon entre les traits | Sonnet | low | — | [x] |
 | [T12](T12.md) | Géométrie : union/différence localisées par îlots (bbox) + tests | Sonnet | high | — | [ ] |
 | [T13](T13.md) | Branchement des ops localisées + surcharge verte incrémentale | Sonnet | medium | T11, T12 | [ ] |
 | [T14](T14.md) | Undo d'édition par commandes + keyframes + bouton Rétablir | Sonnet | high | T13 | [ ] |

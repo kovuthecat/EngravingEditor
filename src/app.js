@@ -995,6 +995,7 @@
   // ajoutée par l'essai en cours (vs la surface réelle, exportFill(motif) — qui ignore le brouillon
   // en cours). Le fond silhouette (editStaticGroup) n'est plus retracé ici (T3, cf. buildEditStatic).
   function redrawEditLayer(motif) {
+    editDraftGroup.clearCache();
     editDraftGroup.destroyChildren();
     if (edit.draft.length) {
       const draft = edit.draft;
@@ -1006,6 +1007,15 @@
           for (const region of draft) tracePoly(c, region.pts);
           c.fillStyle = shape.fill();
           c.fill("evenodd");
+        },
+        // (T11) sceneFunc dessine sur le canvas brut -> getSelfRect renverrait 0x0 sans ça, et
+        // safeCache produirait un bitmap vide (même piège que fillGroupContent, l. 526-532).
+        getSelfRect: () => {
+          const allPts = draft.flatMap((region) => region.pts);
+          if (!allPts.length) return { x: 0, y: 0, width: 0, height: 0 };
+          const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
+          const [minx, maxx] = minMax(xs), [miny, maxy] = minMax(ys);
+          return { x: minx, y: miny, width: maxx - minx, height: maxy - miny };
         },
       }));
       const added = addedRegions(exportFill(motif)[motif.color], draft);
@@ -1019,9 +1029,21 @@
             c.fillStyle = shape.fill();
             c.fill("evenodd");
           },
+          getSelfRect: () => {
+            const allPts = added.flatMap((region) => region.pts);
+            if (!allPts.length) return { x: 0, y: 0, width: 0, height: 0 };
+            const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
+            const [minx, maxx] = minMax(xs), [miny, maxy] = minMax(ys);
+            return { x: minx, y: miny, width: maxx - minx, height: maxy - miny };
+          },
         }));
       }
     }
+    // (T11) le brouillon (contours du décor, potentiellement des milliers) est retracé à chaque
+    // trait -> mise en cache bitmap pour que le déplacement du pointeur ne coûte plus qu'un blit
+    // (cf. buildEditStatic, même logique). pixelRatio 1 : retracé à chaque trait, la netteté du
+    // pixelRatio 2 ne vaut pas le coût.
+    if (edit.draft.length) safeCache(editDraftGroup, 1);
     uiLayer.batchDraw();
   }
   // cale editLayer (uiLayer) sur la transform de edit.node (mainLayer) : tous deux enfants directs
@@ -1102,6 +1124,7 @@
     if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
     editLayer.visible(false);
     editStaticGroup.clearCache();
+    editDraftGroup.clearCache();
     editStaticGroup.destroyChildren();
     editDraftGroup.destroyChildren();
     document.getElementById("edit-palette").hidden = true;
