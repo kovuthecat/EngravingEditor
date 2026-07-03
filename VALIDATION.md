@@ -55,3 +55,11 @@
 
 - [ ] Ouvrir l'app (console navigateur) : **aucune** `ReferenceError: module is not defined` au chargement.
 - [ ] Les tests Node (`node test/run.js`) passent vert (export CommonJS toujours fonctionnel).
+
+## P7 · T2 — CSS tactile iPad (repli sidebar, lib-del, 100dvh, touch-action)
+
+- [ ] Desktop fenêtre large (> 900 px) : le bouton ☰ replie/déplie la sidebar ; « Entrer en édition »
+  replie automatiquement, « Sortir » restaure.
+- [ ] iPad paysage : idem ; le bas de l'app (section Projet) n'est pas masqué par la barre Safari.
+- [ ] iPad : le × des vignettes de bibliothèque est visible sans survol ; pas de zoom page au double-tap
+  sur les boutons ; pas de loupe à l'appui long sur le canevas.
