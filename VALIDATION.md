@@ -3,6 +3,14 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## P9 · S3 — Sonde Pencil Pro (twist/altitude/azimuth/tangentialPressure)
+
+**Auto-validation :** ✅ HTML valide, aucune erreur console attendue.
+- [ ] Thibault sur iPad Pro + Pencil Pro : ouvrir `http://localhost:8000/test/pencil-probe.html`
+- [ ] Roter/incliner le Pencil, observer quels champs « varient » (min ≠ max)
+- [ ] Copier le bilan → valide/invalide T-138 (go/no-go Lot E)
+- [ ] Reporter le résultat dans `plans/P9/S4.md` (T-138)
+
 ## P9 · S2 — Ancres/pastille compensées + gains HTML
 
 - [ ] T-127 — iPad : zoomer/dézoomer (molette + pinch) → ancres et pastille gardent une taille
