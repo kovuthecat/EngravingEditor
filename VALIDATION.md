@@ -94,3 +94,23 @@
   la pointe du Pencil ; un trait lent ne « vibre » pas plus qu'avant.
 - [ ] Mode Pression : traits rapides fluides, pas de gel à la fin du trait plus long qu'avant.
 - [ ] Desktop : aucun changement perceptible.
+
+## P7 · T8 — Curseur d'outil (taille réelle) + survol Pencil
+
+- [ ] Desktop souris : le cercle suit le pointeur en mode édition ; son diamètre correspond exactement
+  au trait posé (Pinceau), à deux zooms différents.
+- [ ] Il devient rouge en Gomme ; en mode Plume, le curseur est un nib incliné qui suit le slider d'angle.
+- [ ] Outils ligne/rectangle/ellipse : réticule en croix ; lasso : point.
+- [ ] iPad M2+ : le cercle apparaît en **survol** du Pencil avant tout contact avec la vitre ; il ne
+  s'affiche jamais au doigt (bascule « dessin au doigt » incluse).
+- [ ] Le curseur disparaît en sortant du mode édition (aucun résidu) et à la sortie du conteneur du
+  canevas (`pointerleave`).
+- [ ] Si le survol Pencil n'émet aucun `pointermove` sur l'iPad de test (bilan sonde T4 négatif) :
+  noter ici que seul le curseur pendant-le-tracé + souris a été livré.
+
+## P7 · T9 — Courbes de pression + largeur minimale
+
+- [ ] iPad, mode Pression : Douce = trait épais dès l'effleurement ; Ferme = il faut appuyer pour
+  épaissir ; Normale = comme avant. Largeur min 0 % : un trait léger devient très fin.
+- [ ] La gomme garde une largeur constante quelle que soit la pression.
+- [ ] Souris : trait de largeur moyenne constante (pression 0.5), pas de régression.

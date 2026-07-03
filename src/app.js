@@ -902,11 +902,16 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null, fingerDraws: false, panAnchor: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
   let editPreview = null;
+  // curseur d'outil (T8, D-010 volet 1) : cercle/nib/réticule au diamètre RÉEL du pinceau/de la
+  // gomme (edit.sizeMm * PX_PER_MM en local editLayer = exactement la taille du trait, à tout zoom).
+  // Recréé au changement d'outil/mode/taille/angle (buildEditCursor), juste repositionné sinon
+  // (editPointerMove). Caché au toucher (le doigt masque le point) et hors du conteneur.
+  let editCursorNode = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
   // brouillons en attente (D-007) : motifId -> { surfaceByColor }. Session uniquement, jamais
@@ -1058,6 +1063,7 @@
     editContainer.addEventListener("pointermove", editPointerMove, { passive: false });
     editContainer.addEventListener("pointerup", editPointerUp, { passive: false });
     editContainer.addEventListener("pointercancel", editPointerUp, { passive: false });
+    editContainer.addEventListener("pointerleave", hideEditCursor);
     // T3 : le groupe a été mis en cache (bitmap) à sa création. Un groupe caché affiche son bitmap
     // figé et ignore les enfants ajoutés ensuite ; on le décache (exitEdit recache), mais le calque
     // d'essai (editLayer, jamais caché) est désormais ce qui affiche réellement le tracé en direct.
@@ -1069,6 +1075,7 @@
     buildEditStatic(motif);
     redrawEditLayer(motif);
     editLayer.visible(true);
+    buildEditCursor();
     mainLayer.batchDraw();
     uiLayer.batchDraw();
     populateStyletEditor(motif);
@@ -1088,9 +1095,11 @@
     editContainer.removeEventListener("pointermove", editPointerMove, { passive: false });
     editContainer.removeEventListener("pointerup", editPointerUp, { passive: false });
     editContainer.removeEventListener("pointercancel", editPointerUp, { passive: false });
+    editContainer.removeEventListener("pointerleave", hideEditCursor);
     activeTouchPointers.clear();
     edit.panAnchor = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
+    if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
     editLayer.visible(false);
     editStaticGroup.clearCache();
     editStaticGroup.destroyChildren();
@@ -1204,7 +1213,7 @@
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
     // pression (T11) / plume (T12) : largeur variable selon le mode ; la gomme reste uniforme.
     const poly = edit.strokeMode === "pressure" && edit.tool === "brush"
-      ? ML.variableStroke(localPts, edit.pressures.map((p) => radiusPx * (0.25 + 0.75 * p)))
+      ? ML.variableStroke(localPts, edit.pressures.map((p) => radiusPx * (edit.minWidthFrac + (1 - edit.minWidthFrac) * Math.pow(p, edit.pressureGamma))))
       : edit.strokeMode === "calli" && edit.tool === "brush"
       ? ML.calligraphicStroke(localPts, edit.sizeMm * PX_PER_MM, edit.calliAngle)
       : ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
@@ -1515,10 +1524,69 @@
   // (T6, D-010 volet 1) pan un doigt : un seul contact tactile actif, edit.fingerDraws désactivé
   // -> translation manuelle de stage.position() (PAS stage.draggable(true), qui capterait aussi le
   // stylet). panAnchor mémorise le pointerId + la dernière position client du contact qui panne.
+  function hideEditCursor() {
+    if (editCursorNode && editCursorNode.visible()) { editCursorNode.visible(false); uiLayer.batchDraw(); }
+  }
+  // repositionne/affiche le curseur existant sur le point courant ; jamais recréé ici (cf.
+  // buildEditCursor pour la forme). Caché pour le doigt (survol Pencil/souris uniquement).
+  function updateEditCursor(e) {
+    if (!editCursorNode) return;
+    if (e.pointerType === "touch") { hideEditCursor(); return; }
+    editCursorNode.position(localPoint());
+    editCursorNode.visible(true);
+    uiLayer.batchDraw();
+  }
+  // (re)crée le nœud du curseur selon outil/mode/taille/angle courants (forme+couleur) ; conserve
+  // la position/visibilité du nœud précédent pour ne pas faire disparaître le curseur pendant un
+  // survol immobile (slider taille glissé sans bouger le stylet).
+  function buildEditCursor() {
+    const prevPos = editCursorNode ? editCursorNode.position() : null;
+    const wasVisible = editCursorNode ? editCursorNode.visible() : false;
+    if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
+    const motif = state.motifs.find((m) => m.id === edit.motifId);
+    if (!motif) return;
+    const scale = edit.node ? edit.node.getAbsoluteScale().x || 1 : 1;
+    const strokeW = 1.5 / scale;
+    if (isFreehandTool(edit.tool)) {
+      const strokeColor = edit.tool === "eraser" ? "#ff0000" : motif.color;
+      if (edit.tool === "brush" && edit.strokeMode === "calli") {
+        const w = edit.sizeMm * PX_PER_MM;
+        editCursorNode = new Konva.Rect({
+          width: w, height: w * 0.15, offsetX: w / 2, offsetY: w * 0.075,
+          rotation: edit.calliAngle, stroke: strokeColor, strokeWidth: strokeW, listening: false,
+        });
+      } else {
+        const r = (edit.sizeMm * PX_PER_MM) / 2;
+        editCursorNode = new Konva.Circle({ radius: r, stroke: strokeColor, strokeWidth: strokeW, listening: false });
+      }
+    } else if (edit.tool === "lasso") {
+      editCursorNode = new Konva.Circle({ radius: 2 / scale, fill: "#fbbf24", listening: false });
+    } else {
+      // ligne/rectangle/ellipse : réticule en croix (taille fixe écran, pas liée à sizeMm)
+      const s = 8 / scale;
+      editCursorNode = new Konva.Shape({
+        listening: false, stroke: motif.color, strokeWidth: strokeW,
+        sceneFunc: (ctx, shape) => {
+          const c = ctx._context;
+          c.beginPath();
+          c.moveTo(-s, 0); c.lineTo(s, 0);
+          c.moveTo(0, -s); c.lineTo(0, s);
+          c.strokeStyle = shape.stroke();
+          c.lineWidth = shape.strokeWidth();
+          c.stroke();
+        },
+      });
+    }
+    editLayer.add(editCursorNode);
+    if (prevPos) editCursorNode.position(prevPos);
+    editCursorNode.visible(wasVisible);
+    uiLayer.batchDraw();
+  }
   function editPointerDown(e) {
     if (!edit.active) return;
     if (e.pointerType === "touch") {
       activeTouchPointers.add(e.pointerId);
+      hideEditCursor();
       if (activeTouchPointers.size > 1) { edit.panAnchor = null; cancelActiveStroke(); return; }
       if (!edit.fingerDraws) {
         e.preventDefault();
@@ -1547,6 +1615,7 @@
       return;
     }
     stage.setPointersPositions(e);
+    updateEditCursor(e);
     if (edit.lassoDragAnchor) { e.preventDefault(); moveLassoDrag(); return; }
     if (!edit.drawing) return;
     e.preventDefault();
@@ -1570,6 +1639,7 @@
     ["tool-brush", "tool-eraser", "tool-line", "tool-rect", "tool-ellipse", "tool-lasso"].forEach((id) => {
       document.getElementById(id).classList.toggle("on", id === "tool-" + tool);
     });
+    if (edit.active) buildEditCursor();
   }
   function setStrokeMode(mode) {
     edit.strokeMode = mode;
@@ -1577,6 +1647,8 @@
     document.getElementById("mode-pressure").classList.toggle("on", mode === "pressure");
     document.getElementById("mode-calli").classList.toggle("on", mode === "calli");
     document.getElementById("calli-angle-row").hidden = mode !== "calli";
+    document.getElementById("pressure-row").hidden = mode !== "pressure";
+    if (edit.active) buildEditCursor();
   }
   document.getElementById("btn-edit").onclick = () => { if (edit.active) exitEdit(); else enterEdit(); };
   document.getElementById("tool-brush").onclick = () => setEditTool("brush");
@@ -1602,6 +1674,7 @@
     edit.sizeMm = parseFloat(e.target.value) || 3;
     document.getElementById("brush-size-val").textContent = edit.sizeMm + " mm";
     document.querySelectorAll(".size-btn").forEach((b) => b.classList.toggle("on", parseFloat(b.dataset.sizeMm) === edit.sizeMm));
+    if (edit.active) buildEditCursor();
   };
   document.querySelectorAll(".size-btn").forEach((b) => {
     b.onclick = () => {
@@ -1609,12 +1682,31 @@
       document.getElementById("brush-size").value = edit.sizeMm;
       document.getElementById("brush-size-val").textContent = edit.sizeMm + " mm";
       document.querySelectorAll(".size-btn").forEach((s) => s.classList.toggle("on", s === b));
+      if (edit.active) buildEditCursor();
     };
   });
   document.getElementById("mode-round").onclick = () => setStrokeMode("round");
   document.getElementById("mode-pressure").onclick = () => setStrokeMode("pressure");
   document.getElementById("mode-calli").onclick = () => setStrokeMode("calli");
-  document.getElementById("calli-angle").oninput = (e) => { edit.calliAngle = +e.target.value || 0; };
+  function setPressureGammaButton(id) {
+    edit.pressureGamma = { "pressure-soft": 0.6, "pressure-normal": 1, "pressure-firm": 1.6 }[id];
+    ["pressure-soft", "pressure-normal", "pressure-firm"].forEach((i) => {
+      document.getElementById(i).classList.toggle("on", i === id);
+    });
+    if (edit.active) buildEditCursor();
+  }
+  document.getElementById("pressure-soft").onclick = () => setPressureGammaButton("pressure-soft");
+  document.getElementById("pressure-normal").onclick = () => setPressureGammaButton("pressure-normal");
+  document.getElementById("pressure-firm").onclick = () => setPressureGammaButton("pressure-firm");
+  document.getElementById("pressure-min-width").oninput = (e) => {
+    edit.minWidthFrac = (parseFloat(e.target.value) || 0) / 100;
+    document.getElementById("pressure-min-width-val").textContent = e.target.value + " %";
+    if (edit.active) buildEditCursor();
+  };
+  document.getElementById("calli-angle").oninput = (e) => {
+    edit.calliAngle = +e.target.value || 0;
+    if (edit.active) buildEditCursor();
+  };
   document.getElementById("btn-draft-apply").onclick = () => { const m = selectedMotif(); if (m) applyMotifDraft(m); };
   document.getElementById("btn-draft-discard").onclick = () => { const m = selectedMotif(); if (m) discardMotifDraft(m); };
   document.getElementById("btn-edit-undo").onclick = () => undoStroke();

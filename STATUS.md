@@ -10,7 +10,7 @@
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
-**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7 faites le 2026-07-03, reste T8-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
+**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9 faites le 2026-07-03, reste T10-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
 pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
 localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
 décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
@@ -24,8 +24,18 @@ T7 : trait libre + lasso ingèrent les points coalescés (`getCoalescedEvents`, 
 avec décimation (seuil 1 px écran → local via `getAbsoluteScale`), aperçu prolongé par les points
 prédits (`getPredictedEvents`, jamais dans `edit.pts`), premier point du down + dernier du up
 toujours empilés même sous le seuil.
+T8 : curseur d'outil dans `editLayer` (`editCursorNode`, coords locales — rayon `sizeMm * PX_PER_MM
+/ 2` = taille réelle du trait à tout zoom) : cercle (pinceau/gomme, rouge en gomme), nib incliné
+(mode Plume, suit `calliAngle`), réticule (ligne/rect/ellipse), point (lasso). Suit `pointermove`
+même en survol (`buttons === 0`, Pencil) ; caché au toucher et hors du conteneur (`pointerleave`) ;
+recréé (forme/couleur) par `buildEditCursor()` sur changement d'outil/mode/taille/angle, détruit à
+`exitEdit`.
+T9 : mode Pression rendu naturel — courbe gamma `pEff = p^γ` (γ = 0.6 Douce / 1 Normale / 1.6 Ferme,
+boutons dans `#pressure-row`) et largeur minimale réglable (`edit.minWidthFrac`, slider 0-60 %, défaut
+25 % = comportement précédent) ; mapping uniquement côté `app.js` (`applyStroke`), `ML.variableStroke`
+inchangé ; gomme toujours insensible à la pression ; réglages de session, non persistés.
 `node test/run.js` vert (aucune géométrie touchée), validation tactile/iPad restant à faire par
-Thibault (cf. `VALIDATION.md`, sections P7 · T6/T7).
+Thibault (cf. `VALIDATION.md`, sections P7 · T6/T7/T8/T9).
 
 **Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu

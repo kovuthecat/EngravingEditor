@@ -193,6 +193,15 @@
             <label for="calli-angle">Angle plume</label>
             <input type="range" id="calli-angle" min="0" max="180" step="5" value="45">
           </div>
+          <div id="pressure-row" hidden>
+            <div style="display:flex;gap:6px;margin:6px 0">
+              <button id="pressure-soft" class="btn sm tool-btn">Douce</button>
+              <button id="pressure-normal" class="btn sm tool-btn on">Normale</button>
+              <button id="pressure-firm" class="btn sm tool-btn">Ferme</button>
+            </div>
+            <div class="row"><label>Largeur min</label><span id="pressure-min-width-val">25 %</span></div>
+            <input id="pressure-min-width" type="range" min="0" max="60" step="5" value="25" />
+          </div>
           <p class="note">Pencil = trait · un doigt = déplacer la vue (sauf si « Doigt : dessine ») · deux doigts = zoom. La sélection reste verrouillée sur ce motif tant que l'édition est active.</p>
         </div>
         <div id="stylet-draft-actions" class="grid2" style="display:none">
