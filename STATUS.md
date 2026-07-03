@@ -112,6 +112,14 @@ globaux de Node) qui inspecte le flux PDF brut (non compressé) : opérateurs de
 présents (croix, règle, textes, grille de la page de garde bien strokée). `node test/run.js` vert
 (print.js hors périmètre des tests headless). Pas d'UI/bouton (T4) — rendu réel à valider sur
 papier à ce moment-là (report `VALIDATION.md`, section prévue pour T2+T3+T4).
+T4 (2026-07-03) : bouton **« PDF A4 1:1 »** dans la section Projet (`index.html`, à côté des exports
+SVG/PNG/JPEG). `collectPrintScene()` dans `app.js` réutilise `instancesBottomToTop()` +
+`ML.occludeSurfaces` (même géométrie que `exportPNG`), convertit px→mm par simple division
+`PX_PER_MM` **sans passer par `ML.pxPathsToMm`** (pas de miroir laser, sens écran, D-011 pt 4-5) ;
+bbox inclut le contour. `exportPdfA4()` enchaîne `ML.computeTiling` (T1) → `ML.renderPrintPdf` (T2/T3)
+→ `doc.save("pattern-A4.pdf")`. `node test/run.js` vert (aucune géométrie de cœur touchée). Rendu
+réel (papier/règle 100 mm/raccord des feuilles) à valider par Thibault (`VALIDATION.md`, section
+« P8 · impression A4 »). Plan P8 complet (T1-T4 codés).
 
 ## Ce qui fonctionne
 

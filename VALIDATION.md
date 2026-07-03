@@ -3,6 +3,16 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## P8 · impression A4
+
+- [ ] le bouton produit un PDF ; page 1 = page de garde avec plan d'assemblage cohérent ;
+- [ ] nombre de feuilles et orientation plausibles pour le pattern courant ;
+- [ ] imprimer 2 feuilles voisines à 100 % : la règle fait exactement 100 mm à la règle métal ;
+- [ ] les croix de bord de l'une se superposent aux croix intérieures de l'autre, motifs continus
+  au raccord ;
+- [ ] contour guitare en pointillés, surfaces gris clair + contours nets dans la couleur du calque,
+  orientation identique à l'écran (pas de miroir).
+
 ## Lot 5 — bibliothèque de base (site déployé Vercel)
 - [ ] Les grilles Personnages/Symboles listent les motifs des dossiers ; les vignettes se dessinent au défilement.
 - [ ] Clic sur un built-in → instance posée.

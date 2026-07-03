@@ -2014,6 +2014,35 @@
     }, mime, format === "jpeg" ? 0.92 : undefined);
   }
 
+  // ─── export PDF A4 (T4) : même géométrie sens écran que exportPNG (pas de pxPathsToMm, pas de
+  // flip), convertie en mm par simple division PX_PER_MM, puis tuilée/rendue par ML.renderPrintPdf.
+  function collectPrintScene() {
+    if (!guardPendingDrafts()) return null;
+    const insts = instancesBottomToTop();
+    if (!insts.length) { alert("Rien à imprimer."); return null; }
+    const visible = ML.occludeSurfaces(insts, state.boundary, reservedPolys());
+    const colors = Object.keys(visible);
+    const toMm = (pts) => pts.map(([x, y]) => [x / PX_PER_MM, y / PX_PER_MM]);
+    const surfaces = {};
+    colors.forEach((color) => { surfaces[color] = visible[color].map((p) => ({ pts: toMm(p.pts) })); });
+    const boundary = state.boundary ? toMm(state.boundary) : null;
+    const holes = (state.holes || []).map((h) => toMm(h));
+    const allPts = colors.flatMap((color) => surfaces[color].flatMap((p) => p.pts));
+    if (boundary) allPts.push(...boundary);
+    if (!allPts.length) { alert("Rien de visible à imprimer."); return null; }
+    const [minx, maxx] = minMax(allPts.map((p) => p[0]));
+    const [miny, maxy] = minMax(allPts.map((p) => p[1]));
+    const bbox = { x: minx, y: miny, w: maxx - minx, h: maxy - miny };
+    return { surfaces, boundary, holes, bbox };
+  }
+  function exportPdfA4() {
+    const scene = collectPrintScene();
+    if (!scene) return;
+    const tiling = ML.computeTiling(scene.bbox);
+    const doc = ML.renderPrintPdf(scene, tiling);
+    doc.save("pattern-A4.pdf");
+  }
+
   // ─── projet (save/load JSON) ────────────────────────────────────────────────
   function projectData() {
     return {
@@ -2409,6 +2438,7 @@
   document.getElementById("btn-export").onclick = exportSVG;
   document.getElementById("btn-export-png").onclick = () => exportPNG("png");
   document.getElementById("btn-export-jpeg").onclick = () => exportPNG("jpeg");
+  document.getElementById("export-pdf").onclick = exportPdfA4;
   document.getElementById("btn-pack").onclick = () =>
     packing(parseInt(document.getElementById("pack-count").value) || 30,
       parseFloat(document.getElementById("pack-smin").value) || 0.6,

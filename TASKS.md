@@ -32,4 +32,4 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [x] T-122 — Undo d'édition par commandes + keyframes + Rétablir · modèle: Sonnet, effort: high · plan: `plans/P7/` (T14, dépend T13)
 - [x] T-123 — Autosave différé en période creuse (idle) · modèle: Haiku, effort: low · plan: `plans/P7/` (T15)
 - [ ] T-124 — Validation d'ensemble P7 sur iPad + Pencil Pro · modèle: — (humain) · plan: `plans/P7/` (T16, dépend T1-T15)
-- [ ] T-125 — Impression 1:1 multi-feuilles A4 (PDF jsPDF, décalque pyrogravure) · modèle: Sonnet, effort: medium (T2: high) · plan: `plans/P8/` (D-011)
+- [x] T-125 — Impression 1:1 multi-feuilles A4 (PDF jsPDF, décalque pyrogravure) · modèle: Sonnet, effort: medium (T2: high) · plan: `plans/P8/` (D-011)
