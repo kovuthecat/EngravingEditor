@@ -70,3 +70,11 @@
   zoome/panne normalement ; relever les doigts → aucun trait résiduel.
 - [ ] Même test avec Rectangle en cours et avec un tracé de lasso en cours → annulés proprement.
 - [ ] Une sélection lasso déjà fermée (surlignée orange) **survit** à un pinch.
+
+## P7 · T5 — Tracé d'édition en Pointer Events natifs
+
+- [ ] Desktop souris : pinceau, gomme, ligne (+Maj), rectangle (+Maj), ellipse, lasso (tracé, glissé,
+  3 actions), annulation par trait — comportement identique à avant.
+- [ ] iPad : un doigt dessine (comme avant, T6 changera ça), deux doigts pan/zoom sans marque ;
+  Pencil dessine ; tirer le centre de notifications pendant un trait (`pointercancel`) → pas de marque.
+- [ ] Sortir puis re-rentrer en édition : le tracé fonctionne toujours (listeners bien détachés/rattachés).

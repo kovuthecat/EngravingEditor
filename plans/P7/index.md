@@ -14,7 +14,7 @@ undo par commandes, autosave différé). Décisions figées : `DECISIONS.md §D-
 | [T2](T2.md) | CSS tactile : repli sidebar toutes largeurs, `.lib-del` visible, `100dvh`, `touch-action` | Haiku | low | — | [ ] |
 | [T3](T3.md) | Annuler le trait en cours à l'arrivée d'un 2ᵉ contact | Haiku | low | — | [ ] |
 | [T4](T4.md) | Page de sonde des capacités stylet (`test/pencil-probe.html`) | Haiku | low | — | [ ] |
-| [T5](T5.md) | Tracé d'édition en Pointer Events natifs | Sonnet | high | T3 | [ ] |
+| [T5](T5.md) | Tracé d'édition en Pointer Events natifs | Sonnet | high | T3 | [x] |
 | [T6](T6.md) | Stylet dessine, doigt navigue (+ bascule « dessin au doigt ») | Sonnet | medium | T5 | [ ] |
 | [T7](T7.md) | Points coalescés + prédits + décimation | Sonnet | medium | T5 | [ ] |
 | [T8](T8.md) | Curseur d'outil (taille réelle) + survol Pencil | Sonnet | medium | T5 | [ ] |

@@ -903,6 +903,9 @@
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
   const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, drawing: false, pts: [], pressures: [], draft: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], reopenDetails: null };
+  // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
+  // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
+  const editContainer = stage.container();
   let editPreview = null;
   // surlignage (orange) de la sélection lasso en attente (T8) — séparé du brouillon, sur editLayer.
   let lassoHighlight = null;
@@ -1049,6 +1052,11 @@
     edit.dirty = false;
     edit.history = [];
     clearLassoSelection(); // pas de sélection lasso résiduelle d'une session d'édition précédente
+    activeTouchPointers.clear();
+    editContainer.addEventListener("pointerdown", editPointerDown, { passive: false });
+    editContainer.addEventListener("pointermove", editPointerMove, { passive: false });
+    editContainer.addEventListener("pointerup", editPointerUp, { passive: false });
+    editContainer.addEventListener("pointercancel", editPointerUp, { passive: false });
     // T3 : le groupe a été mis en cache (bitmap) à sa création. Un groupe caché affiche son bitmap
     // figé et ignore les enfants ajoutés ensuite ; on le décache (exitEdit recache), mais le calque
     // d'essai (editLayer, jamais caché) est désormais ce qui affiche réellement le tracé en direct.
@@ -1075,6 +1083,11 @@
     edit.active = false; edit.drawing = false; edit.pts = []; edit.pressures = []; edit.draft = []; edit.dirty = false;
     edit.history = [];
     clearLassoSelection();
+    editContainer.removeEventListener("pointerdown", editPointerDown, { passive: false });
+    editContainer.removeEventListener("pointermove", editPointerMove, { passive: false });
+    editContainer.removeEventListener("pointerup", editPointerUp, { passive: false });
+    editContainer.removeEventListener("pointercancel", editPointerUp, { passive: false });
+    activeTouchPointers.clear();
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     editLayer.visible(false);
     editStaticGroup.clearCache();
@@ -1247,7 +1260,7 @@
     edit.drawing = true;
     edit.shapeAnchor = localPoint();
     edit.shapeCurrent = edit.shapeAnchor;
-    edit.shapeConstrain = !!(e.evt && e.evt.shiftKey);
+    edit.shapeConstrain = !!e.shiftKey;
     editPreview = makeShapePreview(edit.tool, motif);
     editLayer.add(editPreview);
     uiLayer.batchDraw();
@@ -1255,7 +1268,7 @@
   function moveShape(e) {
     const a = edit.shapeAnchor, p = localPoint();
     edit.shapeCurrent = p;
-    edit.shapeConstrain = !!(e.evt && e.evt.shiftKey);
+    edit.shapeConstrain = !!e.shiftKey;
     if (edit.tool === "line") {
       editPreview.points(a.concat(p));
     } else if (edit.tool === "rect") {
@@ -1294,10 +1307,9 @@
     const p = edit.node.getRelativePointerPosition();
     return [p.x, p.y];
   }
-  // pression du stylet (T11) ; 0 (souris/tactile sans capteur) -> 0.5 (largeur "moyenne" par défaut).
+  // pression du stylet (T11) ; 0.5 pour souris/doigt (pas de capteur). e = PointerEvent natif (T5).
   function pointerPressure(e) {
-    const ev = e.evt;
-    return (ev.pressure ?? ev.touches?.[0]?.force ?? 0.5) || 0.5;
+    return e.pointerType === "pen" ? Math.max(e.pressure, 0.05) : 0.5;
   }
   function startStroke(motif, e) {
     edit.drawing = true;
@@ -1457,35 +1469,47 @@
   }
 
   const isFreehandTool = (tool) => tool === "brush" || tool === "eraser";
-  // capté au niveau du stage (pas du groupe) : la portée est le motif verrouillé, pas ce qui
-  // est sous le pointeur. Deux doigts = pan (T2) a priorité, donc ignoré ici. brush/eraser = tracé
-  // libre (startStroke/moveStroke/endStroke) ; line/rect/ellipse = ancrage+aperçu (T7, startShape/
-  // moveShape/endShape) ; lasso (T8) = trace une sélection OU glisse celle déjà sélectionnée
-  // (edit.lassoDragAnchor, hors du flag edit.drawing — sinon il faudrait re-brancher tous les
-  // autres outils) — même dispatch stage, le tool actif décide de la branche.
-  stage.on("mousedown touchstart", (e) => {
+  // (T5, D-010 volet 1) tracé d'édition en Pointer Events natifs, attachés au conteneur du stage
+  // (enterEdit/exitEdit) — même logique de branchement que l'ancien dispatch Konva, mais nécessaire
+  // pour exposer pression/coalescés/survol fiables (T6-T10). brush/eraser = tracé libre
+  // (startStroke/moveStroke/endStroke) ; line/rect/ellipse = ancrage+aperçu (startShape/moveShape/
+  // endShape) ; lasso = trace une sélection OU glisse celle déjà sélectionnée (edit.lassoDragAnchor,
+  // hors du flag edit.drawing — sinon il faudrait re-brancher tous les autres outils). Konva reste
+  // maître de tout le reste (sélection, Transformer, pinch deux doigts en touch events, inchangé).
+  // activeTouchPointers : pointerId des contacts tactiles actifs — dès le 2e, on annule le geste en
+  // cours et on laisse le pinch (touch events, non migré) prendre la main.
+  const activeTouchPointers = new Set();
+  function editPointerDown(e) {
     if (!edit.active) return;
-    if (e.evt.touches && e.evt.touches.length > 1) { cancelActiveStroke(); return; }
-    e.evt.preventDefault();
+    if (e.pointerType === "touch") {
+      activeTouchPointers.add(e.pointerId);
+      if (activeTouchPointers.size > 1) { cancelActiveStroke(); return; }
+    }
+    e.preventDefault();
+    stage.setPointersPositions(e);
+    editContainer.setPointerCapture(e.pointerId);
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
     if (edit.tool === "lasso") { startLassoPointer(); return; }
     if (isFreehandTool(edit.tool)) startStroke(motif, e); else startShape(motif, e);
-  });
-  stage.on("mousemove touchmove", (e) => {
+  }
+  function editPointerMove(e) {
     if (!edit.active) return;
-    if (e.evt.touches && e.evt.touches.length !== 1) return;
-    if (edit.lassoDragAnchor) { e.evt.preventDefault(); moveLassoDrag(); return; }
+    if (e.pointerType === "touch" && activeTouchPointers.size > 1) return;
+    stage.setPointersPositions(e);
+    if (edit.lassoDragAnchor) { e.preventDefault(); moveLassoDrag(); return; }
     if (!edit.drawing) return;
-    e.evt.preventDefault();
+    e.preventDefault();
     if (isFreehandTool(edit.tool)) moveStroke(e); else if (edit.tool === "lasso") moveLassoTrace(); else moveShape(e);
-  });
-  stage.on("mouseup touchend touchcancel", () => {
+  }
+  function editPointerUp(e) {
     if (!edit.active) return;
+    if (e.pointerType === "touch") activeTouchPointers.delete(e.pointerId);
+    if (e.type === "pointercancel") { cancelActiveStroke(); return; }
     if (edit.lassoDragAnchor) { edit.lassoDragAnchor = null; return; }
     if (!edit.drawing) return;
     if (isFreehandTool(edit.tool)) endStroke(); else if (edit.tool === "lasso") endLassoTrace(); else endShape();
-  });
+  }
 
   function setEditTool(tool) {
     if (edit.tool === "lasso" && tool !== "lasso") clearLassoSelection();
