@@ -137,9 +137,10 @@
         <div class="panel-line"><span class="label">pressure:</span> <span id="pressure" class="value">—</span> <span id="pressureMinMax" style="color: #888; font-size: 14px;"></span></div>
         <div class="panel-line"><span class="label">tiltX:</span> <span id="tiltX" class="value">—</span></div>
         <div class="panel-line"><span class="label">tiltY:</span> <span id="tiltY" class="value">—</span></div>
-        <div class="panel-line"><span class="label">twist:</span> <span id="twist" class="value">—</span></div>
-        <div class="panel-line"><span class="label">altitudeAngle:</span> <span id="altitudeAngle" class="value">—</span></div>
-        <div class="panel-line"><span class="label">azimuthAngle:</span> <span id="azimuthAngle" class="value">—</span></div>
+        <div class="panel-line"><span class="label">twist:</span> <span id="twist" class="value">—</span> <span id="twistMinMax" style="color: #888; font-size: 14px;"></span></div>
+        <div class="panel-line"><span class="label">altitudeAngle:</span> <span id="altitudeAngle" class="value">—</span> <span id="altitudeAngleMinMax" style="color: #888; font-size: 14px;"></span></div>
+        <div class="panel-line"><span class="label">azimuthAngle:</span> <span id="azimuthAngle" class="value">—</span> <span id="azimuthAngleMinMax" style="color: #888; font-size: 14px;"></span></div>
+        <div class="panel-line"><span class="label">tangentialPressure:</span> <span id="tangentialPressure" class="value">—</span> <span id="tangentialPressureMinMax" style="color: #888; font-size: 14px;"></span></div>
         <div class="panel-line"><span class="label">coalesced:</span> <span id="coalesced" class="value">—</span></div>
         <div class="panel-line"><span class="label">predicted:</span> <span id="predicted" class="value">—</span></div>
         <div class="panel-line"><span class="label">pointeurs actifs:</span> <span id="pointerCount" class="value">—</span></div>
@@ -183,6 +184,26 @@
             <span>Survol observé</span>
         </div>
 
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-twist-varies"></div>
+            <span>Twist — varie</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-altitude-varies"></div>
+            <span>Altitude — varie</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-azimuth-varies"></div>
+            <span>Azimuth — varie</span>
+        </div>
+
+        <div class="bool-item">
+            <div class="bool-indicator" id="bool-tangential-varies"></div>
+            <span>TangentialPressure — varie</span>
+        </div>
+
         <button class="copy-button" id="copyButton">Copier le bilan</button>
     </div>
 
@@ -207,6 +228,7 @@
             twist: null,
             altitudeAngle: null,
             azimuthAngle: null,
+            tangentialPressure: null,
             coalescedCount: 0,
             predictedCount: 0,
             pointerCount: 0
@@ -220,12 +242,24 @@
             predictedGte1: false,
             twistNonZero: false,
             tiltAltitudePresent: false,
-            hoverObserved: false
+            hoverObserved: false,
+            twistVaries: false,
+            altitudeVaries: false,
+            azimuthVaries: false,
+            tangentialVaries: false
         };
 
-        // Tracking pour déterminer min/max pression
+        // Tracking pour déterminer min/max
         let pressureMin = Infinity;
         let pressureMax = -Infinity;
+        let twistMin = Infinity;
+        let twistMax = -Infinity;
+        let altitudeAngleMin = Infinity;
+        let altitudeAngleMax = -Infinity;
+        let azimuthAngleMin = Infinity;
+        let azimuthAngleMax = -Infinity;
+        let tangentialPressureMin = Infinity;
+        let tangentialPressureMax = -Infinity;
 
         // Set de pointeurs actifs
         const activePointers = new Set();
@@ -248,9 +282,54 @@
 
             document.getElementById('tiltX').innerHTML = liveState.tiltX !== null ? liveState.tiltX.toFixed(1) : '<span class="absent">absent</span>';
             document.getElementById('tiltY').innerHTML = liveState.tiltY !== null ? liveState.tiltY.toFixed(1) : '<span class="absent">absent</span>';
-            document.getElementById('twist').innerHTML = liveState.twist !== null ? liveState.twist.toFixed(1) : '<span class="absent">absent</span>';
-            document.getElementById('altitudeAngle').innerHTML = liveState.altitudeAngle !== null ? liveState.altitudeAngle.toFixed(3) : '<span class="absent">absent</span>';
-            document.getElementById('azimuthAngle').innerHTML = liveState.azimuthAngle !== null ? liveState.azimuthAngle.toFixed(3) : '<span class="absent">absent</span>';
+
+            if (liveState.twist !== null) {
+                const twistStr = liveState.twist.toFixed(1);
+                const twistMinMaxStr = twistMin !== Infinity && twistMax !== -Infinity
+                    ? `(min: ${twistMin.toFixed(1)}, max: ${twistMax.toFixed(1)})`
+                    : '';
+                document.getElementById('twist').textContent = twistStr;
+                document.getElementById('twistMinMax').textContent = twistMinMaxStr;
+            } else {
+                document.getElementById('twist').innerHTML = '<span class="absent">absent</span>';
+                document.getElementById('twistMinMax').textContent = '';
+            }
+
+            if (liveState.altitudeAngle !== null) {
+                const altStr = liveState.altitudeAngle.toFixed(3);
+                const altMinMaxStr = altitudeAngleMin !== Infinity && altitudeAngleMax !== -Infinity
+                    ? `(min: ${altitudeAngleMin.toFixed(3)}, max: ${altitudeAngleMax.toFixed(3)})`
+                    : '';
+                document.getElementById('altitudeAngle').textContent = altStr;
+                document.getElementById('altitudeAngleMinMax').textContent = altMinMaxStr;
+            } else {
+                document.getElementById('altitudeAngle').innerHTML = '<span class="absent">absent</span>';
+                document.getElementById('altitudeAngleMinMax').textContent = '';
+            }
+
+            if (liveState.azimuthAngle !== null) {
+                const azStr = liveState.azimuthAngle.toFixed(3);
+                const azMinMaxStr = azimuthAngleMin !== Infinity && azimuthAngleMax !== -Infinity
+                    ? `(min: ${azimuthAngleMin.toFixed(3)}, max: ${azimuthAngleMax.toFixed(3)})`
+                    : '';
+                document.getElementById('azimuthAngle').textContent = azStr;
+                document.getElementById('azimuthAngleMinMax').textContent = azMinMaxStr;
+            } else {
+                document.getElementById('azimuthAngle').innerHTML = '<span class="absent">absent</span>';
+                document.getElementById('azimuthAngleMinMax').textContent = '';
+            }
+
+            if (liveState.tangentialPressure !== null) {
+                const tanStr = liveState.tangentialPressure.toFixed(3);
+                const tanMinMaxStr = tangentialPressureMin !== Infinity && tangentialPressureMax !== -Infinity
+                    ? `(min: ${tangentialPressureMin.toFixed(3)}, max: ${tangentialPressureMax.toFixed(3)})`
+                    : '';
+                document.getElementById('tangentialPressure').textContent = tanStr;
+                document.getElementById('tangentialPressureMinMax').textContent = tanMinMaxStr;
+            } else {
+                document.getElementById('tangentialPressure').innerHTML = '<span class="absent">absent</span>';
+                document.getElementById('tangentialPressureMinMax').textContent = '';
+            }
 
             const coalStr = liveState.coalescedCount > 0 ? liveState.coalescedCount : '<span class="absent">API absente</span>';
             document.getElementById('coalesced').innerHTML = coalStr;
@@ -268,6 +347,10 @@
             updateBool('bool-twist', summary.twistNonZero);
             updateBool('bool-tilt', summary.tiltAltitudePresent);
             updateBool('bool-hover', summary.hoverObserved);
+            updateBool('bool-twist-varies', summary.twistVaries);
+            updateBool('bool-altitude-varies', summary.altitudeVaries);
+            updateBool('bool-azimuth-varies', summary.azimuthVaries);
+            updateBool('bool-tangential-varies', summary.tangentialVaries);
         }
 
         function updateBool(elemId, value) {
@@ -293,6 +376,7 @@
             liveState.twist = e.twist;
             liveState.altitudeAngle = e.altitudeAngle;
             liveState.azimuthAngle = e.azimuthAngle;
+            liveState.tangentialPressure = e.tangentialPressure;
             liveState.pointerCount = activePointers.size;
 
             // Tracer une ligne
@@ -317,6 +401,42 @@
                 summary.pressureVariable = true;
                 if (e.pressure < pressureMin) pressureMin = e.pressure;
                 if (e.pressure > pressureMax) pressureMax = e.pressure;
+            }
+
+            // Track twist variations
+            if (e.twist !== null && e.twist !== undefined) {
+                if (e.twist < twistMin) twistMin = e.twist;
+                if (e.twist > twistMax) twistMax = e.twist;
+                if (twistMin !== Infinity && twistMax !== -Infinity && twistMin !== twistMax) {
+                    summary.twistVaries = true;
+                }
+            }
+
+            // Track altitudeAngle variations
+            if (e.altitudeAngle !== null && e.altitudeAngle !== undefined) {
+                if (e.altitudeAngle < altitudeAngleMin) altitudeAngleMin = e.altitudeAngle;
+                if (e.altitudeAngle > altitudeAngleMax) altitudeAngleMax = e.altitudeAngle;
+                if (altitudeAngleMin !== Infinity && altitudeAngleMax !== -Infinity && altitudeAngleMin !== altitudeAngleMax) {
+                    summary.altitudeVaries = true;
+                }
+            }
+
+            // Track azimuthAngle variations
+            if (e.azimuthAngle !== null && e.azimuthAngle !== undefined) {
+                if (e.azimuthAngle < azimuthAngleMin) azimuthAngleMin = e.azimuthAngle;
+                if (e.azimuthAngle > azimuthAngleMax) azimuthAngleMax = e.azimuthAngle;
+                if (azimuthAngleMin !== Infinity && azimuthAngleMax !== -Infinity && azimuthAngleMin !== azimuthAngleMax) {
+                    summary.azimuthVaries = true;
+                }
+            }
+
+            // Track tangentialPressure variations
+            if (e.tangentialPressure !== null && e.tangentialPressure !== undefined) {
+                if (e.tangentialPressure < tangentialPressureMin) tangentialPressureMin = e.tangentialPressure;
+                if (e.tangentialPressure > tangentialPressureMax) tangentialPressureMax = e.tangentialPressure;
+                if (tangentialPressureMin !== Infinity && tangentialPressureMax !== -Infinity && tangentialPressureMin !== tangentialPressureMax) {
+                    summary.tangentialVaries = true;
+                }
             }
 
             if (e.getCoalescedEvents) {
@@ -398,6 +518,10 @@ Pression variable: ${summary.pressureVariable ? 'OUI' : 'NON'}${pressureMin !== 
 Coalesced > 1: ${summary.coalescedGt1 ? 'OUI' : 'NON'}
 Predicted ≥ 1: ${summary.predictedGte1 ? 'OUI' : 'NON'}
 Twist ≠ 0: ${summary.twistNonZero ? 'OUI' : 'NON'}
+Twist varie: ${summary.twistVaries ? 'OUI' : 'NON'}${twistMin !== Infinity ? ` (min: ${twistMin.toFixed(1)}, max: ${twistMax.toFixed(1)})` : ''}
+Altitude varie: ${summary.altitudeVaries ? 'OUI' : 'NON'}${altitudeAngleMin !== Infinity ? ` (min: ${altitudeAngleMin.toFixed(3)}, max: ${altitudeAngleMax.toFixed(3)})` : ''}
+Azimuth varie: ${summary.azimuthVaries ? 'OUI' : 'NON'}${azimuthAngleMin !== Infinity ? ` (min: ${azimuthAngleMin.toFixed(3)}, max: ${azimuthAngleMax.toFixed(3)})` : ''}
+TangentialPressure varie: ${summary.tangentialVaries ? 'OUI' : 'NON'}${tangentialPressureMin !== Infinity ? ` (min: ${tangentialPressureMin.toFixed(3)}, max: ${tangentialPressureMax.toFixed(3)})` : ''}
 Tilt/Altitude présents: ${summary.tiltAltitudePresent ? 'OUI' : 'NON'}
 Survol observé: ${summary.hoverObserved ? 'OUI' : 'NON'}`;
         }

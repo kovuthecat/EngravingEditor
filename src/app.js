@@ -2448,6 +2448,7 @@
       parseFloat(document.getElementById("pack-smin").value) || 0.6,
       parseFloat(document.getElementById("pack-smax").value) || 1.2);
   document.getElementById("btn-dup").onclick = duplicateSel;
+  document.getElementById("btn-dup-sel").onclick = duplicateSel;
   document.getElementById("btn-del").onclick = deleteSel;
   document.getElementById("btn-up").onclick = () => zorder("up");
   document.getElementById("btn-down").onclick = () => zorder("down");

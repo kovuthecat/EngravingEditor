@@ -3,6 +3,13 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## P9 · S2 — Ancres/pastille compensées + gains HTML
+
+- [ ] T-127 — iPad : zoomer/dézoomer (molette + pinch) → ancres et pastille gardent une taille
+  confortable au doigt à tout zoom ; le déplacement via la pastille reste précis.
+- [ ] T-128 — iPad : taper dans un champ numérique ouvre le pavé décimal ; sélectionner un motif →
+  Dupliquer visible dans la palette flottante et fonctionnel.
+
 ## P8 · impression A4
 
 - [ ] le bouton produit un PDF ; page 1 = page de garde avec plan d'assemblage cohérent ;
