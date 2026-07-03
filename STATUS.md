@@ -10,7 +10,7 @@
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
-**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T11 faites le 2026-07-03, reste T12-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
+**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T11/T12 faites le 2026-07-03, reste T13-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
 pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
 localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
 décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
@@ -47,6 +47,11 @@ en tête de `redrawEditLayer` et dans `exitEdit`. `editPreview`/`lassoHighlight`
 `editLayer` (frères, pas dans le groupe caché).
 `node test/run.js` vert (aucune géométrie touchée), validation tactile/iPad restant à faire par
 Thibault (cf. `VALIDATION.md`, sections P7 · T6/T7/T8/T9/T10/T11).
+T12 : `ML.groupIslands` (regroupe contour extérieur + trous rattachés, cf. D-010) et
+`ML.surfaceUnionLocal`/`ML.surfaceDifferenceLocal` (n'envoient à Clipper que les îlots dont la bbox
+touche celle de l'argument ± 1 px ; les autres traversent inchangés). Géométrie seule — **pas encore
+branché dans `app.js`** (branchement = T13). `node test/run.js` vert (5 nouveaux cas a-e comparés à
+l'oracle plein) ; rien de visible avant T13.
 
 **Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu

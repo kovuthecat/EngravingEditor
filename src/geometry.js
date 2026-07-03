@@ -305,6 +305,82 @@
     return clipBy(contours || [], true, clipInt, ClipperLib.ClipType.ctIntersection);
   };
 
+  function bboxOf(pts) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    return { minX, maxX, minY, maxY };
+  }
+  function bboxContains(outer, inner) {
+    return inner.minX >= outer.minX && inner.maxX <= outer.maxX && inner.minY >= outer.minY && inner.maxY <= outer.maxY;
+  }
+  function bboxIntersects(a, b) {
+    return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+  }
+
+  // regroupe `contours` (sortie Clipper, {pts,closed}) en îlots (D-010 volet 2) : un extérieur + ses
+  // trous, jamais séparés lors d'un partitionnement ultérieur -> [{contours:[...], bbox}].
+  // Extérieur/trou distingués par le signe de `ML.signedArea` (convention Clipper préservée par
+  // `fromInt`) : signe majoritaire pondéré par |aire| = extérieurs (le plus grand contour est un
+  // extérieur). Un trou est rattaché au plus petit extérieur dont la bbox contient la sienne ET dont
+  // `pointInPoly(premier point du trou, extérieur)` est vrai.
+  ML.groupIslands = function (contours) {
+    const list = contours || [];
+    if (!list.length) return [];
+    const areas = list.map((c) => ML.signedArea(c.pts));
+    const posArea = areas.reduce((s, a) => (a > 0 ? s + Math.abs(a) : s), 0);
+    const negArea = areas.reduce((s, a) => (a < 0 ? s + Math.abs(a) : s), 0);
+    const outerSign = posArea >= negArea ? 1 : -1;
+    const outerIdx = [], holeIdx = [];
+    areas.forEach((a, i) => { if (Math.sign(a) === outerSign || a === 0) outerIdx.push(i); else holeIdx.push(i); });
+    const outerBbox = outerIdx.map((i) => bboxOf(list[i].pts));
+    const islands = outerIdx.map((i, k) => ({ contours: [list[i]], bbox: outerBbox[k] }));
+    for (const hi of holeIdx) {
+      const hole = list[hi];
+      let best = -1, bestArea = Infinity;
+      for (let k = 0; k < outerIdx.length; k++) {
+        const ob = outerBbox[k];
+        const hb = bboxOf(hole.pts);
+        if (!bboxContains(ob, hb)) continue;
+        if (!ML.pointInPoly(hole.pts[0], list[outerIdx[k]].pts)) continue;
+        const a = Math.abs(areas[outerIdx[k]]);
+        if (a < bestArea) { bestArea = a; best = k; }
+      }
+      if (best === -1) { islands.push({ contours: [hole], bbox: bboxOf(hole.pts) }); continue; }
+      islands[best].contours.push(hole);
+    }
+    return islands;
+  };
+
+  // union/différence localisées (D-010 volet 2) : ne passe à Clipper que les îlots dont la bbox
+  // intersecte celle de l'argument (élargie de 1 px) — les autres contours traversent inchangés
+  // (mêmes références). Cas limites : surface vide -> délègue à la fonction pleine ; argument vide ->
+  // surface inchangée.
+  function localOp(contours, argContours, fullOp) {
+    const list = contours || [];
+    const args = argContours || [];
+    if (!list.length) return fullOp(list, args);
+    if (!args.length) return list.map((p) => ({ pts: p.pts.slice(), closed: p.closed }));
+    const argBbox = bboxOf(args.flatMap((c) => c.pts));
+    argBbox.minX -= 1; argBbox.minY -= 1; argBbox.maxX += 1; argBbox.maxY += 1;
+    const islands = ML.groupIslands(list);
+    const participating = [], untouched = [];
+    for (const isl of islands) {
+      if (bboxIntersects(isl.bbox, argBbox)) participating.push(...isl.contours);
+      else untouched.push(...isl.contours);
+    }
+    const result = fullOp(participating, args);
+    return untouched.map((p) => ({ pts: p.pts.slice(), closed: p.closed })).concat(result);
+  }
+  ML.surfaceUnionLocal = function (contours, addContours) {
+    return localOp(contours, addContours, ML.surfaceUnion);
+  };
+  ML.surfaceDifferenceLocal = function (contours, cutContours) {
+    return localOp(contours, cutContours, ML.surfaceDifference);
+  };
+
   // silhouette (contours extérieurs, multi-pièces) d'un jeu de contours fermés {pts,closed} —
   // délègue à `motifSilhouette` en adaptant l'entrée « contours » en pseudo-zones de depth 0.
   ML.silhouetteFromSurface = function (contours) {

@@ -134,6 +134,73 @@ const belowAreaSticker = (belowOnlySticker["#000000"] || []).reduce((a, p) => a 
 console.log(`  surface perso caché visible : occluder=surface réelle (vides) -> ${belowAreaReal.toFixed(0)}  vs  occluder=silhouette (sticker) -> ${belowAreaSticker.toFixed(0)}`);
 if (!(belowAreaReal > belowAreaSticker)) fail("le perso caché ne profite pas des vides du décor (occlusion par surface réelle vs silhouette opaque)");
 
+// ─── T12 (D-010 volet 2) : union/différence localisées par îlots (groupIslands + *Local) ───
+// comparaison systématique au résultat des fonctions PLEINES (oracle), cf. plans/P7/T12.md §3a-e.
+function sq(x0, y0, x1, y1) { return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]; }
+function netArea(contours) { return contours.reduce((s, c) => s + ML.signedArea(c.pts), 0); }
+function contoursEqual(a, b, eps) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].pts.length !== b[i].pts.length) return false;
+    for (let j = 0; j < a[i].pts.length; j++) {
+      if (Math.abs(a[i].pts[j][0] - b[i].pts[j][0]) > eps || Math.abs(a[i].pts[j][1] - b[i].pts[j][1]) > eps) return false;
+    }
+  }
+  return true;
+}
+
+console.log("\nT12 (D-010) — union/différence localisées par îlots :");
+
+// îlot 1 : carré 0..100 avec un trou 30..70 (passe Clipper réelle -> orientation garantie) ;
+// îlot 2 : carré 200..300, disjoint, sans trou.
+const island1 = ML.surfaceDifference(ML.surfaceUnion([], [{ pts: sq(0, 0, 100, 100), closed: true }]), [{ pts: sq(30, 30, 70, 70), closed: true }]);
+const island1Hole = island1.reduce((a, c) => (ML.absArea(c.pts) < ML.absArea(a.pts) ? c : a));
+const island2 = ML.surfaceUnion([], [{ pts: sq(200, 0, 300, 100), closed: true }]);
+const t12Surface = island1.concat(island2);
+
+// a. trait sur l'îlot 1 (bbox x:-20..10, hors bbox de l'îlot 2) -> aire nette = oracle, îlot 2 inchangé
+const addA = [{ pts: sq(-20, 40, 10, 60), closed: true }];
+const oracleA = ML.surfaceUnion(t12Surface, addA);
+const localA = ML.surfaceUnionLocal(t12Surface, addA);
+console.log(`  a. aire nette : local=${netArea(localA).toFixed(3)}  oracle=${netArea(oracleA).toFixed(3)}`);
+if (Math.abs(netArea(localA) - netArea(oracleA)) > 0.1) fail("T12a : aire nette du résultat local ≠ oracle (trait sur l'îlot 1)");
+const island2InLocalA = localA.filter((c) => c.pts.every(([x]) => x >= 150));
+if (!contoursEqual(island2InLocalA, island2, 1e-9)) fail("T12a : les contours de l'îlot 2 (non participant) ne sont pas strictement inchangés");
+
+// b. gomme traversant l'îlot 1 sans toucher son trou (bande x:80..90) -> le trou survit
+const cutB = [{ pts: sq(80, -10, 90, 110), closed: true }];
+const oracleB = ML.surfaceDifference(t12Surface, cutB);
+const localB = ML.surfaceDifferenceLocal(t12Surface, cutB);
+console.log(`  b. contours : local=${localB.length}  oracle=${oracleB.length} (le trou doit survivre)`);
+if (localB.length !== oracleB.length) fail("T12b : nombre de contours du résultat local ≠ oracle");
+if (Math.abs(netArea(localB) - netArea(oracleB)) > 0.1) fail("T12b : aire nette du résultat local ≠ oracle (gomme sans toucher le trou)");
+const near1B = ML.groupIslands(localB).find((g) => g.bbox.minX < 150);
+if (!near1B || near1B.contours.length < 2) fail("T12b : le trou de l'îlot 1 a disparu (îlot réduit à un seul contour)");
+const holeInB = near1B.contours.reduce((a, c) => (ML.absArea(c.pts) < ML.absArea(a.pts) ? c : a));
+if (Math.abs(ML.absArea(holeInB.pts) - ML.absArea(island1Hole.pts)) > 0.1 || !ML.pointInPoly([50, 50], holeInB.pts))
+  fail("T12b : le trou de l'îlot 1 n'a pas survécu intact");
+
+// c. gomme coupant l'îlot 2 en deux (bande x:240..260) -> même aire nette que l'oracle
+const cutC = [{ pts: sq(240, -10, 260, 110), closed: true }];
+const oracleC = ML.surfaceDifference(t12Surface, cutC);
+const localC = ML.surfaceDifferenceLocal(t12Surface, cutC);
+console.log(`  c. aire nette : local=${netArea(localC).toFixed(3)}  oracle=${netArea(oracleC).toFixed(3)}`);
+if (Math.abs(netArea(localC) - netArea(oracleC)) > 0.1) fail("T12c : aire nette du résultat local ≠ oracle (gomme coupant un îlot en deux)");
+
+// d. trait à cheval sur les deux îlots (bbox x:90..210) -> tous participants, résultat = oracle
+const addD = [{ pts: sq(90, 40, 210, 60), closed: true }];
+const oracleD = ML.surfaceUnion(t12Surface, addD);
+const localD = ML.surfaceUnionLocal(t12Surface, addD);
+console.log(`  d. contours : local=${localD.length}  oracle=${oracleD.length}  aire nette local=${netArea(localD).toFixed(3)}  oracle=${netArea(oracleD).toFixed(3)}`);
+if (!contoursEqual(localD, oracleD, 1e-6)) fail("T12d : trait à cheval sur les deux îlots -> résultat local ≠ oracle");
+
+// e. cas limites : surface vide + trait -> délègue (= trait) ; argument vide -> surface inchangée
+const emptyPlusTrait = ML.surfaceUnionLocal([], addA);
+if (!contoursEqual(emptyPlusTrait, ML.surfaceUnion([], addA), 1e-9)) fail("T12e : surface vide + trait -> doit déléguer à la fonction pleine");
+if (!contoursEqual(ML.surfaceUnionLocal(t12Surface, []), t12Surface, 1e-9)) fail("T12e : argument vide (union) -> la surface doit rester inchangée");
+if (!contoursEqual(ML.surfaceDifferenceLocal(t12Surface, []), t12Surface, 1e-9)) fail("T12e : argument vide (différence) -> la surface doit rester inchangée");
+console.log("  e. cas limites OK (surface vide déléguée à l'oracle, argument vide -> surface inchangée)");
+
 // ─── export SVG final (mm, evenodd, multi-couleur — Lot 1 + décor) ───────────
 const merged = {};
 for (const color in lot1Visible) (merged[color] = merged[color] || []).push(...lot1Visible[color]);
