@@ -87,3 +87,10 @@
 - [ ] Paume posée pendant un trait Pencil (2ᵉ contact) → pas de marque parasite, le trait Pencil en
   cours saute proprement à `pointercancel` (T3/T5), jamais de fragment appliqué.
 - [ ] Desktop souris : dessine, rien ne change (comportement identique à T5).
+
+## P7 · T7 — Points coalescés + prédits + décimation du trait
+
+- [ ] iPad : un trait rapide en courbe est lisse (pas de segments anguleux) ; l'aperçu colle mieux à
+  la pointe du Pencil ; un trait lent ne « vibre » pas plus qu'avant.
+- [ ] Mode Pression : traits rapides fluides, pas de gel à la fin du trait plus long qu'avant.
+- [ ] Desktop : aucun changement perceptible.

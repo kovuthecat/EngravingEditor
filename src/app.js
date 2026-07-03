@@ -1323,14 +1323,34 @@
     });
     editLayer.add(editPreview);
   }
+  // (T7, D-010 volet 1) coalescés : échantillonnage réel du Pencil (jusqu'à 240 Hz) au lieu d'un
+  // point par frame -> décimation (seuil 1 px écran, converti en local via getAbsoluteScale) pour ne
+  // pas gonfler edit.pts/edit.pressures. Prédits : ajoutés SEULEMENT à l'aperçu (jamais à edit.pts),
+  // reconstruits depuis les points réels au prochain événement.
   function moveStroke(e) {
-    edit.pts.push(localPoint());
-    edit.pressures.push(pointerPressure(e));
-    editPreview.points(edit.pts.flat());
+    const minDist = 1 / edit.node.getAbsoluteScale().x;
+    for (const ev of (e.getCoalescedEvents?.() ?? [e])) {
+      stage.setPointersPositions(ev);
+      const p = localPoint();
+      const last = edit.pts[edit.pts.length - 1];
+      if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) >= minDist) {
+        edit.pts.push(p);
+        edit.pressures.push(pointerPressure(ev));
+      }
+    }
+    const preds = (e.getPredictedEvents?.() ?? []).map((ev) => { stage.setPointersPositions(ev); return localPoint(); });
+    editPreview.points(edit.pts.concat(preds).flat());
     uiLayer.batchDraw();
   }
-  function endStroke() {
+  function endStroke(e) {
     edit.drawing = false;
+    // dernier point du up toujours empilé, même sous le seuil de décimation (le trait doit
+    // atteindre exactement le lever du stylet).
+    if (e) {
+      stage.setPointersPositions(e);
+      edit.pts.push(localPoint());
+      edit.pressures.push(pointerPressure(e));
+    }
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (motif && edit.pts.length) applyStroke(motif, edit.pts);
@@ -1398,13 +1418,24 @@
     });
     editLayer.add(editPreview);
   }
-  function moveLassoTrace() {
-    edit.pts.push(localPoint());
-    editPreview.points(edit.pts.flat());
+  function moveLassoTrace(e) {
+    const minDist = 1 / edit.node.getAbsoluteScale().x;
+    for (const ev of (e.getCoalescedEvents?.() ?? [e])) {
+      stage.setPointersPositions(ev);
+      const p = localPoint();
+      const last = edit.pts[edit.pts.length - 1];
+      if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) >= minDist) edit.pts.push(p);
+    }
+    const preds = (e.getPredictedEvents?.() ?? []).map((ev) => { stage.setPointersPositions(ev); return localPoint(); });
+    editPreview.points(edit.pts.concat(preds).flat());
     uiLayer.batchDraw();
   }
-  function endLassoTrace() {
+  function endLassoTrace(e) {
     edit.drawing = false;
+    if (e) {
+      stage.setPointersPositions(e);
+      edit.pts.push(localPoint());
+    }
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     if (edit.pts.length > 2) applyLassoTrace(edit.pts);
     edit.pts = [];
@@ -1519,7 +1550,7 @@
     if (edit.lassoDragAnchor) { e.preventDefault(); moveLassoDrag(); return; }
     if (!edit.drawing) return;
     e.preventDefault();
-    if (isFreehandTool(edit.tool)) moveStroke(e); else if (edit.tool === "lasso") moveLassoTrace(); else moveShape(e);
+    if (isFreehandTool(edit.tool)) moveStroke(e); else if (edit.tool === "lasso") moveLassoTrace(e); else moveShape(e);
   }
   function editPointerUp(e) {
     if (!edit.active) return;
@@ -1528,7 +1559,7 @@
     if (e.type === "pointercancel") { cancelActiveStroke(); return; }
     if (edit.lassoDragAnchor) { edit.lassoDragAnchor = null; return; }
     if (!edit.drawing) return;
-    if (isFreehandTool(edit.tool)) endStroke(); else if (edit.tool === "lasso") endLassoTrace(); else endShape();
+    if (isFreehandTool(edit.tool)) endStroke(e); else if (edit.tool === "lasso") endLassoTrace(e); else endShape();
   }
 
   function setEditTool(tool) {

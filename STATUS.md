@@ -10,7 +10,7 @@
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 
-**Plan P7 en cours (T1/T2/T3/T4/T5/T6 faites le 2026-07-03, reste T7-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
+**Plan P7 en cours (T1/T2/T3/T4/T5/T6/T7 faites le 2026-07-03, reste T8-T16)** : édition iPad/Pencil — corrections tactiles, tracé en
 pointer events (stylet/doigt, coalescés, curseur, pression), perf décor (cache brouillon, Clipper
 localisé par îlots, undo par commandes, autosave différé). 16 tâches : `plans/P7/index.md` ;
 décisions : `DECISIONS.md §D-010` ; backlog : T-106 + T-110…T-124. Source : double audit
@@ -20,8 +20,12 @@ T5 : le tracé d'édition (pinceau/gomme/formes/lasso) capte désormais des Poin
 T6 : modèle Procreate — stylet/souris dessinent, un doigt panne la vue (translation manuelle de
 `stage.position()`, pas de `draggable`), deux doigts pan/zoom (Konva, inchangé) ; bascule
 « ✍️ Doigt : navigue/dessine » dans la palette (`edit.fingerDraws`, non persisté).
+T7 : trait libre + lasso ingèrent les points coalescés (`getCoalescedEvents`, repli `[e]` si absent)
+avec décimation (seuil 1 px écran → local via `getAbsoluteScale`), aperçu prolongé par les points
+prédits (`getPredictedEvents`, jamais dans `edit.pts`), premier point du down + dernier du up
+toujours empilés même sous le seuil.
 `node test/run.js` vert (aucune géométrie touchée), validation tactile/iPad restant à faire par
-Thibault (cf. `VALIDATION.md`, section P7 · T6).
+Thibault (cf. `VALIDATION.md`, sections P7 · T6/T7).
 
 **Plan P8 cadré (2026-07-02), non démarré** : impression 1:1 multi-feuilles A4 en **PDF** (jsPDF
 vendored) pour décalque + pyrogravure — le dôme de la table écarte la gravure laser. Rendu
