@@ -249,3 +249,15 @@ simple retenue par §Étapes 1 du plan).
 - [ ] Fort, à fort zoom : un trait volontairement tremblé sort nettement plus régulier ; le trait se
   termine bien sous la pointe (pas de « queue » qui s'arrête avant le lever).
 - [ ] Le lasso et les formes ne sont pas affectés par le réglage.
+
+## P9 · S10 — Projet sticky + PWA (manifest, safe-area)
+
+- [ ] T-135 : sur iPad, scroller la sidebar (bibliothèque longue) → la section **Projet**
+  (Exporter/Enregistrer) reste visible en bas sans dérouler jusqu'au bout.
+- [ ] T-135 : sidebar repliée (`#app.collapsed`) → rien ne dépasse, aucun résidu visible.
+- [ ] T-136 : sur iPad, « Ajouter à l'écran d'accueil » → l'app se lance en plein écran (sans barre
+  Safari), icône et nom corrects sur l'écran d'accueil.
+- [ ] T-136 : en paysage (notch/coins arrondis), le header et les barres flottantes d'édition ne sont
+  pas masqués par les zones sûres.
+- [ ] T-136 : ouverture normale en `file://` et via URL statique — aucune erreur console, comportement
+  inchangé (manifest ignoré sans incidence).
