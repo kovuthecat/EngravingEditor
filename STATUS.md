@@ -4,7 +4,7 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-03 (soir 2)
+> **Dernière mise à jour :** 2026-07-03 (soir 3)
 
 ## Phase actuelle
 
@@ -101,6 +101,17 @@ présents tels quels). Smoke testé en Node (VM sandbox simulant les globals nav
 `computeTiling` → `renderPrintPdf` sur une scène d'exemple produit un PDF valide multi-pages.
 `node test/run.js` vert (aucune géométrie de cœur touchée). Pas d'UI/bouton (T4) — rendu réel à
 valider visuellement à ce moment-là.
+T3 (2026-07-03) : croix de recalage (4 coins + fantômes à `overlap` vers l'intérieur sur les bords
+partagés), libellé par feuille (marge haute), règle de contrôle 100 mm graduée (marge basse), page
+de garde insérée en position 1 via `doc.insertPage(1)` (dispo dans le jsPDF vendored — pas de repli
+nécessaire) avec plan d'assemblage réduit (contours seuls + grille des fenêtres utiles + labels).
+Bug trouvé et corrigé pendant la vérif Node : `doc.rect(...,null)` ne peint rien (ni trait ni
+fond) dans ce jsPDF vendored — la grille du plan réduit était invisible ; fix = style `"S"`
+explicite. Vérifié par un harnais Node (jsPDF tourne en CommonJS hors navigateur avec `atob`/`btoa`
+globaux de Node) qui inspecte le flux PDF brut (non compressé) : opérateurs de tracé attendus
+présents (croix, règle, textes, grille de la page de garde bien strokée). `node test/run.js` vert
+(print.js hors périmètre des tests headless). Pas d'UI/bouton (T4) — rendu réel à valider sur
+papier à ce moment-là (report `VALIDATION.md`, section prévue pour T2+T3+T4).
 
 ## Ce qui fonctionne
 
