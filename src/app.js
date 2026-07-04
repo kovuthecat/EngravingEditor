@@ -926,7 +926,7 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
+  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], altitudes: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
@@ -1238,7 +1238,7 @@
     // D-007 : plus de confirm bloquant -- un brouillon modifié est simplement rangé (en attente),
     // restauré si on revient sur ce motif (enterEdit), visible en vert sur ses instances (T5 §5).
     if (motif && wasDirty) editDrafts.set(motif.id, { surfaceByColor: { [motif.color]: edit.draft } });
-    edit.active = false; edit.drawing = false; edit.drawingPointerType = null; edit.pts = []; edit.pressures = []; edit.draft = []; edit.dirty = false;
+    edit.active = false; edit.drawing = false; edit.drawingPointerType = null; edit.pts = []; edit.pressures = []; edit.altitudes = []; edit.draft = []; edit.dirty = false;
     edit.history = [];
     edit.redo = [];
     clearLassoSelection();
@@ -1387,13 +1387,23 @@
   // applique un trait terminé (déjà en coords locales du motif) au BROUILLON (pas motif.surface) :
   // union (pinceau) ou différence (gomme) sous la couleur focale. Aucun rerenderMotif ici (gain
   // perf D-007) : seul editLayer est redessiné, instantanément, quelle que soit la taille du décor.
+  // (T-140) inclinaison → largeur : couché (altitude ~0) = large (radiusPx), vertical (~π/2) = fin
+  // (SHADE_MIN_FRAC * radiusPx). Borné par sizeMm, aucun réglage supplémentaire (D-012 pt 8).
+  const SHADE_MIN_FRAC = 0.2;
+  function shadeRadius(radiusPx, altitude) {
+    const t = 1 - Math.min(Math.max(altitude / (Math.PI / 2), 0), 1); // 0 = vertical, 1 = couché
+    return radiusPx * (SHADE_MIN_FRAC + (1 - SHADE_MIN_FRAC) * t);
+  }
   function applyStroke(motif, localPts) {
     const radiusPx = (edit.sizeMm * PX_PER_MM) / 2;
-    // pression (T11) / plume (T12) : largeur variable selon le mode ; la gomme reste uniforme.
+    // pression (T11) / plume (T12) / ombrage (T-140) : largeur variable selon le mode ; la gomme
+    // reste uniforme. Ombrage : seulement au Pencil (altitudeAngle exploitable), sinon trait constant.
     const poly = edit.strokeMode === "pressure" && edit.tool === "brush"
       ? ML.variableStroke(localPts, edit.pressures.map((p) => radiusPx * (edit.minWidthFrac + (1 - edit.minWidthFrac) * Math.pow(p, edit.pressureGamma))))
       : edit.strokeMode === "calli" && edit.tool === "brush"
       ? ML.calligraphicStroke(localPts, edit.sizeMm * PX_PER_MM, edit.calliAngle)
+      : edit.strokeMode === "shade" && edit.tool === "brush" && edit.drawingPointerType === "pen" && edit.altitudes.every(Number.isFinite)
+      ? ML.variableStroke(localPts, edit.altitudes.map((a) => shadeRadius(radiusPx, a)))
       : ML.strokeToPolygon(localPts, radiusPx, edit.strokeMode);
     if (edit.op === "add") {
       edit.draft = ML.surfaceUnionLocal(edit.draft, poly);
@@ -1514,11 +1524,17 @@
   function pointerPressure(e) {
     return e.pointerType === "pen" ? Math.max(e.pressure, 0.05) : 0.5;
   }
+  // inclinaison du stylet (T-140, mode Ombrage) ; NaN si non-Pencil ou capteur absent -> applyStroke
+  // détecte via edit.altitudes.every(Number.isFinite) et retombe en trait constant (D-012 pt 8).
+  function pointerAltitude(e) {
+    return e.pointerType === "pen" ? e.altitudeAngle : NaN;
+  }
   function startStroke(motif, e) {
     edit.drawing = true;
     edit.drawingPointerType = e.pointerType;
     edit.pts = [localPoint()];
     edit.pressures = [pointerPressure(e)];
+    edit.altitudes = [pointerAltitude(e)];
     edit.smoothPrev = edit.pts[0];
     editPreview = new Konva.Line({
       points: edit.pts.flat(), stroke: edit.op === "add" ? motif.color : "#ff0000",
@@ -1544,6 +1560,7 @@
       if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) >= minDist) {
         edit.pts.push(p);
         edit.pressures.push(pointerPressure(ev));
+        edit.altitudes.push(pointerAltitude(ev));
       }
     }
     const preds = (e.getPredictedEvents?.() ?? []).map((ev) => { stage.setPointersPositions(ev); return localPoint(); });
@@ -1559,12 +1576,14 @@
       stage.setPointersPositions(e);
       edit.pts.push(localPoint());
       edit.pressures.push(pointerPressure(e));
+      edit.altitudes.push(pointerAltitude(e));
     }
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (motif && edit.pts.length) applyStroke(motif, edit.pts);
     edit.pts = [];
     edit.pressures = [];
+    edit.altitudes = [];
   }
   // (D-010 volet 1) annule le geste en cours (trait/forme/tracé ou glissé de lasso) quand un 2e
   // contact arrive : rien n'est appliqué au brouillon. Ne touche pas edit.lasso ni edit.draft.
@@ -1574,6 +1593,7 @@
     edit.drawingPointerType = null;
     edit.pts = [];
     edit.pressures = [];
+    edit.altitudes = [];
     edit.shapeAnchor = null;
     edit.shapeCurrent = null;
     edit.lassoDragAnchor = null;
@@ -1896,6 +1916,7 @@
     document.getElementById("mode-round").classList.toggle("on", mode === "round");
     document.getElementById("mode-pressure").classList.toggle("on", mode === "pressure");
     document.getElementById("mode-calli").classList.toggle("on", mode === "calli");
+    document.getElementById("mode-shade").classList.toggle("on", mode === "shade");
     document.getElementById("calli-angle-row").hidden = mode !== "calli";
     document.getElementById("pressure-row").hidden = mode !== "pressure";
     refreshDrawerForTool();
@@ -1970,6 +1991,7 @@
   document.getElementById("mode-round").onclick = () => setStrokeMode("round");
   document.getElementById("mode-pressure").onclick = () => setStrokeMode("pressure");
   document.getElementById("mode-calli").onclick = () => setStrokeMode("calli");
+  document.getElementById("mode-shade").onclick = () => setStrokeMode("shade");
   document.querySelectorAll("[data-smoothing]").forEach((b) => {
     b.onclick = () => {
       edit.smoothing = parseFloat(b.dataset.smoothing);

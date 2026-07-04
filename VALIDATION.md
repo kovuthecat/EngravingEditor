@@ -83,10 +83,43 @@ simple retenue par §Étapes 1 du plan).
 ## P9 · S3 — Sonde Pencil Pro (twist/altitude/azimuth/tangentialPressure)
 
 **Auto-validation :** ✅ HTML valide, aucune erreur console attendue.
-- [ ] Thibault sur iPad Pro + Pencil Pro : ouvrir `http://localhost:8000/test/pencil-probe.html`
-- [ ] Roter/incliner le Pencil, observer quels champs « varient » (min ≠ max)
-- [ ] Copier le bilan → valide/invalide T-138 (go/no-go Lot E)
-- [ ] Reporter le résultat dans `plans/P9/S4.md` (T-138)
+- [x] Thibault sur iPad Pro + Pencil Pro : ouvert `http://<ip-locale>:8000/test/pencil-probe.html`
+  (via `python -m http.server`, `file://` insuffisant pour les pointer events pen).
+- [x] Roulé/incliné le Pencil, bilan copié → voir gate T-138 ci-dessous.
+
+## P9 · S11 · gate T-138 — Verdict Pencil Pro (2026-07-04)
+
+**Bilan sonde (iPad + Pencil Pro réel) :** tout vert sauf `coalesced > 1`, `twist ≠ 0`,
+`twist varie`, `tangentialPressure varie` (rouges). `altitude varie` et `azimuth varie` : verts.
+
+- **Twist (barrel roll) → NO-GO T-139.** Le Pencil Pro sur cet iPad n'expose pas de rotation
+  exploitable à Safari (`twist` figé). **S11 abandonnée** : pas de mapping twist→angle de plume,
+  le slider `#calli-angle` reste seul contrôle. Le hover atténué (bundlé dans T-139) n'est pas
+  livré non plus (même tâche).
+- **Altitude (inclinaison) → GO T-140.** `altitudeAngle` varie bien à l'inclinaison du stylet.
+  **S12 lancée directement** (sans passer par S11 — pas de conflit de code, S12 ne touche pas les
+  lignes que S11 aurait modifiées).
+
+Statuts mis à jour : `plans/P9/S11.md` (T-138 → [x] tranché no-go/go mixte, T-139 → abandonnée),
+`plans/P9/index.md`.
+
+## P9 · S12 — Mode « ombrage » par inclinaison Pencil (T-140)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée, `variableStroke` déjà
+couvert). Smoke Node (script ad hoc, non conservé) : radii dérivés d'altitudes de test
+(π/2 → 0.05 rad) via la fonction de mapping → `ML.variableStroke` retourne un polygone non vide.
+Choix pris pendant l'exécution : mapping linéaire `altitude→largeur` (pas de gamma réglable comme la
+pression), borne basse fixe `SHADE_MIN_FRAC = 0.2` (pas de nouveau slider, conforme au plan) ;
+fallback trait constant (`ML.strokeToPolygon`, mode courant) dès que `edit.drawingPointerType !==
+"pen"` ou qu'une inclinaison de la passe n'est pas finie (capteur absent/instable) ; gomme insensible
+comme les autres modes variables.
+
+- [ ] Sur iPad + Pencil Pro, mode Ombrage actif : coucher le stylet élargit le trait, le redresser
+  l'affine, en continu.
+- [ ] Les autres modes (Rond/Pression/Plume) restent inchangés ; bascule entre modes cohérente.
+- [ ] Gomme en mode Ombrage : largeur constante (insensible à l'inclinaison), comme en Pression/Plume.
+- [ ] Au doigt/souris (pas de Pencil) : trait à largeur constante, pas de tremblement ni d'erreur.
+- [ ] Curseur d'outil : cercle à la taille réelle (`sizeMm`), pas de comportement différent de Rond.
 
 ## P9 · S2 — Ancres/pastille compensées + gains HTML
 

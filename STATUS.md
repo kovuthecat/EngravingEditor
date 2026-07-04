@@ -4,7 +4,7 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-03 (soir 5)
+> **Dernière mise à jour :** 2026-07-04
 
 ## Phase actuelle
 
@@ -164,6 +164,23 @@ Les `alert()` d'export/erreur restent natifs (pas de choix à faire, coût async
 `#draft-badge` dans le header (`refreshDraftCounter`), tap = déplie la sidebar et scrolle vers
 `#section-projet`. `node test/run.js` vert (aucune géométrie touchée). Reste : validation visuelle
 iPad (`VALIDATION.md`, P9 · S9). S9 débloque S10 (T-135/T-136).
+S3 (T-137, 2026-07-03) : sonde `test/pencil-probe.html` étendue (`twist`/`altitudeAngle`/
+`azimuthAngle`/`tangentialPressure` loggés avec min/max + verdict « varie »/« figé » par champ),
+fichier isolé hors app. Débloque le gate humain T-138.
+Gate T-138 (2026-07-04, `VALIDATION.md` P9 · S11 · gate) : sur iPad + Pencil Pro réel, `twist`
+figé (**no-go T-139**, S11 abandonnée, slider `#calli-angle` reste seul contrôle d'angle plume) ;
+`altitudeAngle` varie (**go T-140**).
+S12 (T-140, 2026-07-04) : 4ᵉ mode de trait **Ombrage** (inclinaison Pencil) — `edit.altitudes`
+capturé en parallèle de `edit.pressures` (`startStroke`/`moveStroke`/`endStroke`, via
+`e.altitudeAngle`, `NaN` si non-Pencil) ; branche `strokeMode === "shade"` dans `applyStroke` :
+mapping linéaire couché→large/vertical→fin (borne basse fixe `SHADE_MIN_FRAC = 0.2`, pas de nouveau
+slider) appelle `ML.variableStroke` (même géométrie que le mode Pression) ; actif seulement au
+Pencil (`edit.drawingPointerType === "pen"` et altitudes finies), sinon repli trait constant ; gomme
+insensible comme les autres modes variables. Bouton « Ombrage » ajouté à côté de Rond/Pression/Plume
+(`index.html`, `setStrokeMode`) ; curseur inchangé (cercle, comme Rond — seul le mode Plume a un
+curseur dédié). `node test/run.js` vert (aucune géométrie nouvelle) + smoke Node ad hoc confirmant un
+polygone non vide. Reste : validation visuelle iPad (`VALIDATION.md`, P9 · S12). **Plan P9 complet
+(T-126…T-140, T-139 abandonnée par gate no-go).**
 
 ## Ce qui fonctionne
 

@@ -20,7 +20,7 @@ doit rester **vert/inchangé** partout (non-régression). Toute validation visue
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [S1](S1.md) | T-126 | Cibles tactiles CSS 44 px | Sonnet | medium | — | `src/style.css` | [ ] |
 | [S2](S2.md) | T-127, T-128 | Ancres/pastille compensées + gains HTML | Sonnet | medium | — | `src/app.js`, `index.html` | [ ] |
-| [S3](S3.md) | T-137 | Étendre la sonde Pencil (twist/tilt) | Haiku | low | — | `test/pencil-probe.html` | [ ] |
+| [S3](S3.md) | T-137 | Étendre la sonde Pencil (twist/tilt) | Haiku | low | — | `test/pencil-probe.html` | [x] fait |
 | [S4](S4.md) | T-129 | Barre d'outils d'édition compacte | Sonnet | high | S2 | `index.html`, `src/style.css`, `src/app.js` | [x] |
 | [S5](S5.md) | T-130 | Tiroir de réglages contextuel à l'outil | Sonnet | high | S4 | `index.html`, `src/style.css`, `src/app.js` | [ ] |
 | [S6](S6.md) | T-131 | Actions lasso/brouillon flottantes + retrait notes | Sonnet | medium | S4 | `index.html`, `src/style.css`, `src/app.js` | [x] |
@@ -28,8 +28,8 @@ doit rester **vert/inchangé** partout (non-régression). Toute validation visue
 | [S8](S8.md) | T-133 | Gestes tap 2/3 doigts (Annuler/Rétablir) | Sonnet | high | S7 | `src/app.js` | [x] |
 | [S9](S9.md) | T-134 | Dialogue custom + badge « essais en attente » | Sonnet | medium | — | `src/app.js`, `index.html`, `src/style.css` | [ ] |
 | [S10](S10.md) | T-135, T-136 | Projet sticky + PWA (manifest, safe-area) | Sonnet | medium | — | `index.html`, `src/style.css`, `manifest.webmanifest` | [ ] |
-| [S11](S11.md) | T-138, T-139 | Gate sonde + `twist`→angle plume + hover atténué | Sonnet | high | S3, T-138 | `src/app.js` | [ ] |
-| [S12](S12.md) | T-140 | Mode « ombrage » par inclinaison Pencil | Sonnet | high | S11 | `src/app.js` | [ ] |
+| [S11](S11.md) | T-138, T-139 | Gate sonde + `twist`→angle plume + hover atténué | Sonnet | high | S3, T-138 | `src/app.js` | [x] gate tranché no-go (T-139 abandonnée) |
+| [S12](S12.md) | T-140 | Mode « ombrage » par inclinaison Pencil | Sonnet | high | S11 | `src/app.js` | [x] fait |
 
 ## Ordonnancement
 
