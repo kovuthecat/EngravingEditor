@@ -2250,8 +2250,9 @@
     const scene = await collectPrintScene();
     if (!scene) return;
     const tiling = ML.computeTiling(scene.bbox);
-    const doc = ML.renderPrintPdf(scene, tiling);
-    doc.save("pattern-A4.pdf");
+    const fill = document.getElementById("pdf-fill").checked;
+    const doc = ML.renderPrintPdf(scene, tiling, fill ? { style: "fill" } : undefined);
+    doc.save(fill ? "pattern-A4-aplat.pdf" : "pattern-A4.pdf");
   }
 
   // ─── projet (save/load JSON) ────────────────────────────────────────────────

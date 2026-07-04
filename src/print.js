@@ -5,7 +5,10 @@
   const ML = (window.ML = window.ML || {});
 
   const DEFAULT_OPTS = {
-    strokeMm: 0.3, fillGray: 230, dashMm: [3, 2], boundaryGray: 136,
+    // style: "outline" (défaut) = fond très clair + contour couleur calque (double trait visible) ;
+    //        "fill" = aplat plein par trait, sans contour (test décalque, cf. STATUS "double contour").
+    style: "outline", strokeMm: 0.3, fillGray: 230, fillSolidGray: 130,
+    dashMm: [3, 2], boundaryGray: 136,
     crossArmMm: 4, crossStrokeMm: 0.15, crossGray: 153, labelGray: 120,
     coverStrokeMm: 0.2,
   };
@@ -209,15 +212,22 @@
         if (!visible.length) continue;
         const ptsList = visible.map((s) => s.pts);
 
-        doc.path(toPathOps(ptsList, tx, ty));
-        doc.setFillColor(o.fillGray, o.fillGray, o.fillGray);
-        doc.fillEvenOdd();
+        if (o.style === "fill") {
+          // aplat plein : un seul remplissage gris moyen par trait, aucun contour.
+          doc.path(toPathOps(ptsList, tx, ty));
+          doc.setFillColor(o.fillSolidGray, o.fillSolidGray, o.fillSolidGray);
+          doc.fillEvenOdd();
+        } else {
+          doc.path(toPathOps(ptsList, tx, ty));
+          doc.setFillColor(o.fillGray, o.fillGray, o.fillGray);
+          doc.fillEvenOdd();
 
-        const [r, g, b] = hexToRgb(color);
-        doc.path(toPathOps(ptsList, tx, ty));
-        doc.setDrawColor(r, g, b);
-        doc.setLineWidth(o.strokeMm);
-        doc.stroke();
+          const [r, g, b] = hexToRgb(color);
+          doc.path(toPathOps(ptsList, tx, ty));
+          doc.setDrawColor(r, g, b);
+          doc.setLineWidth(o.strokeMm);
+          doc.stroke();
+        }
       }
 
       const visibleBoundary = boundarySubpaths.filter((pts) => intersects(subpathBbox(pts), win));
