@@ -2494,8 +2494,11 @@
   // Vectorise un PNG (dessin Procreate) en interne via ImageTracer.js (vendored) et renvoie
   // un objet au format ML.parseSVG() : { paths:[{color,subpaths}], subpaths }. Seuillage sur
   // l'alpha (encre = alpha > 128) -> sortie bilevel -> ne garde que le tracé sombre (D-009).
+  // Étendu : encre = opaque ET sombre (luminance < PNG_INK_LUM), pour absorber aussi les PNG
+  // aplatis à fond blanc opaque (pas seulement les exports Procreate à fond transparent).
   // Générique/réutilisable (pas couplée à l'UI d'import) : consommée aussi par T3 (Rafraîchir le décor).
   const PNG_TRACE_MAX_DIM = 2000; // plafond de dimension pour borner le coût de tracé
+  const PNG_INK_LUM = 200; // seuil de luminance (0-255) sous lequel un pixel opaque est considéré "encre"
   function pngFileToParsedSVG(file, cb) {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -2513,9 +2516,10 @@
         const imagedata = ctx.getImageData(0, 0, w, h);
         const data = imagedata.data;
         for (let i = 0; i < data.length; i += 4) {
-          const opaque = data[i + 3] > 128;
+          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const ink = data[i + 3] > 128 && lum < PNG_INK_LUM;
           data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
-          data[i + 3] = opaque ? 255 : 0;
+          data[i + 3] = ink ? 255 : 0;
         }
         const svgString = ImageTracer.imagedataToSVG(imagedata, {
           pal: [{ r: 0, g: 0, b: 0, a: 255 }, { r: 255, g: 255, b: 255, a: 0 }],

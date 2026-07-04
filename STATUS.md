@@ -185,7 +185,7 @@ polygone non vide. Reste : validation visuelle iPad (`VALIDATION.md`, P9 · S12)
 ## Ce qui fonctionne
 
 - **Verrou global du décor** (bouton 🔒/🔓) : décor inerte au pointeur (sélection/déplacement/édition bloqués), clic traversant vers les motifs posés au-dessus, état persisté dans le projet JSON.
-- **Import décor PNG vectorisé in-app** (`vendor/imagetracer.js` vendored, seuillage sur l'alpha) et **« Rafraîchir le décor »** (remplacement de la géométrie sur place, position/échelle/rotation/z-order des exemplaires préservées).
+- **Import décor PNG vectorisé in-app** (`vendor/imagetracer.js` vendored, seuillage opaque+sombre — couvre fond transparent Procreate *et* fond blanc opaque, cf. D-009 extension 2026-07-04) et **« Rafraîchir le décor »** (remplacement de la géométrie sur place, position/échelle/rotation/z-order des exemplaires préservées).
 - **Import SVG** (perso / symbole / décor via 3 boutons) → bibliothèque à vignettes ; clic = pose une instance. Grilles repliables par rôle + suppression motif (× avec cascade des instances, annulable Ctrl+Z).
 - **Bibliothèque de base inlinée** (`src/builtin-motifs.js`, ~132 motifs) : matérialisation paresseuse (IntersectionObserver), masquage local persistant (`hiddenBuiltins`), promotion en motif local à la 1ʳᵉ édition. Régénérée par hook pre-commit (`tools/build-builtin-motifs.js`).
 - **Détection de zones** (`ML.buildZones`) + éditeur de rôles REMPLI/VIDE par motif.

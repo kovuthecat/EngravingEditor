@@ -541,6 +541,14 @@ géométrie de cœur → `node test/run.js` doit rester **vert/inchangé** (gard
 du décor vectorisé et comportement verrou/rafraîchir : **validation visuelle par Thibault** (report
 `VALIDATION.md`, pas de navigateur/Playwright côté IA).
 
+**Extension (2026-07-04)** : le seuillage sur l'alpha seul supposait un export Procreate à fond
+**transparent**. Un PNG **aplati à fond blanc opaque** (alpha=255 partout) faisait passer l'image entière
+pour de l'encre → décor vectorisé en un unique rectangle plein. Fix : encre = pixel **opaque ET sombre**
+(`lum = 0.299r+0.587g+0.114b < PNG_INK_LUM(=200)`), calculé avant l'écrasement RGB dans
+`pngFileToParsedSVG` (`src/app.js`). Couvre les deux cas (fond transparent D-009 d'origine, et fond blanc
+opaque) sans passe supplémentaire ni détection de fond. Suppose encre sombre sur fond clair (motif noir sur
+blanc, cas de Thibault) — un fond sombre casserait à nouveau l'hypothèse (non traité, hors scope).
+
 ## 2026-07-02 — D-011 : Impression 1:1 multi-feuilles A4 (PDF) pour décalque/pyrogravure
 
 ### Décision

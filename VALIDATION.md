@@ -3,6 +3,20 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## Fix — Import PNG décor à fond blanc opaque (D-009 extension, 2026-07-04)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie de cœur touchée, modif isolée dans le
+prétraitement pixel de `pngFileToParsedSVG`).
+**Bug d'origine :** un PNG aplati à fond **blanc opaque** (alpha=255 partout, pas de transparence) se
+vectorisait en un unique rectangle plein (tout l'alpha > 128 → considéré comme encre) ; le motif réel
+disparaissait dessous. Fix : encre = pixel opaque **ET** sombre (luminance < 200), au lieu d'opaque seul.
+
+- [ ] Importer un PNG **fond blanc / trait noir** (le cas qui posait problème) → le décor vectorisé
+  montre le trait réel, pas un rectangle plein.
+- [ ] Importer un PNG **fond transparent** (export Procreate classique, cf. P6 · T2 ci-dessous) → toujours
+  correct (non-régression du comportement D-009 d'origine).
+- [ ] « Rafraîchir le décor… » avec un PNG fond blanc → même correction (fonction partagée).
+
 ## P9 · S9 — Dialogue custom + badge « essais en attente » (T-134)
 
 **Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
