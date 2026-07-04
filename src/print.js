@@ -6,8 +6,8 @@
 
   const DEFAULT_OPTS = {
     // style: "outline" (défaut) = fond très clair + contour couleur calque (double trait visible) ;
-    //        "fill" = aplat plein par trait, sans contour (test décalque, cf. STATUS "double contour").
-    style: "outline", strokeMm: 0.3, fillGray: 230, fillSolidGray: 130,
+    //        "fill" = aplat opaque couleur calque par trait, sans contour (test décalque).
+    style: "outline", strokeMm: 0.3, fillGray: 230,
     dashMm: [3, 2], boundaryGray: 136,
     crossArmMm: 4, crossStrokeMm: 0.15, crossGray: 153, labelGray: 120,
     coverStrokeMm: 0.2,
@@ -213,9 +213,10 @@
         const ptsList = visible.map((s) => s.pts);
 
         if (o.style === "fill") {
-          // aplat plein : un seul remplissage gris moyen par trait, aucun contour.
+          // aplat plein : remplissage opaque dans la couleur du calque, aucun contour.
+          const [r, g, b] = hexToRgb(color);
           doc.path(toPathOps(ptsList, tx, ty));
-          doc.setFillColor(o.fillSolidGray, o.fillSolidGray, o.fillSolidGray);
+          doc.setFillColor(r, g, b);
           doc.fillEvenOdd();
         } else {
           doc.path(toPathOps(ptsList, tx, ty));
