@@ -5,9 +5,12 @@
   const ML = (window.ML = window.ML || {});
 
   const DEFAULT_OPTS = {
-    // style: "outline" (défaut) = fond très clair + contour couleur calque (double trait visible) ;
-    //        "fill" = aplat opaque couleur calque par trait, sans contour (test décalque).
-    style: "outline", strokeMm: 0.3, fillGray: 230,
+    // style: "fill" (défaut) = aplat opaque couleur calque par tracé, sans contour — restitue le
+    //        dessin au trait tel qu'à l'écran (evenodd), lisible à décalquer/pyrograver ;
+    //        "outline" = fond gris clair + contour couleur calque (double trait, ancien rendu P8).
+    // Le décor étant un dessin au trait vectorisé (imagetracer trace chaque trait par ses 2 bords),
+    // seul "fill" evenodd rend des traits pleins ; "outline" strokait chaque bord (creux/doublé).
+    style: "fill", strokeMm: 0.3, fillGray: 230,
     dashMm: [3, 2], boundaryGray: 136,
     crossArmMm: 4, crossStrokeMm: 0.15, crossGray: 153, labelGray: 120,
     coverStrokeMm: 0.2,

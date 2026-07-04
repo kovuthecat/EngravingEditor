@@ -2250,9 +2250,8 @@
     const scene = await collectPrintScene();
     if (!scene) return;
     const tiling = ML.computeTiling(scene.bbox);
-    const fill = document.getElementById("pdf-fill").checked;
-    const doc = ML.renderPrintPdf(scene, tiling, fill ? { style: "fill" } : undefined);
-    doc.save(fill ? "pattern-A4-aplat.pdf" : "pattern-A4.pdf");
+    const doc = ML.renderPrintPdf(scene, tiling); // style "fill" par défaut : aplat opaque couleur calque (dessin au trait)
+    doc.save("pattern-A4.pdf");
   }
 
   // ─── projet (save/load JSON) ────────────────────────────────────────────────

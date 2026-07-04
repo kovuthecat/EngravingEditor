@@ -622,6 +622,16 @@ Plan d'exécution : `plans/P8/` (T1 tuilage · T2 rendu PDF · T3 repères+page 
 Seul `computeTiling` touche `geometry.js` → `node test/run.js` doit rester vert (cas ajoutés en T1).
 Validation visuelle/papier : report `VALIDATION.md`.
 
+### Amendement 2026-07-04 — rendu = aplat plein (annule le pt 2 « contours + gris clair »)
+Le pt 2 (contours 0,3 mm + fond gris 230) produisait un **double trait creux** sur le décor : celui-ci
+est un dessin au trait vectorisé (imagetracer trace chaque trait par ses **2 bords**), donc strocker le
+pourtour dessine les deux bords de chaque trait. Décision Thibault : le PDF doit restituer le **dessin au
+trait tel qu'à l'écran** — chaque tracé en **aplat opaque de la couleur du calque** (`fillEvenOdd`, sans
+contour), comme `fillGroupContent`. `renderPrintPdf` `opts.style` par défaut **`"fill"`** ; `"outline"`
+(ancien rendu) conservé en option seulement, case UI retirée. Diagnostic reproduit hors navigateur (jsPDF +
+`pdftoppm` sur `projet.mlayout` réel) : evenodd émet bien `f*` et rend des traits pleins ; l'occlusion
+Clipper ne dégrade pas le line-art. Contour guitare pointillé, croix, règle, page de garde inchangés.
+
 ## 2026-07-02 — D-010 : Édition iPad/Pencil — entrées pointer natives, stylet/doigt séparés, perf localisée
 
 ### Décision

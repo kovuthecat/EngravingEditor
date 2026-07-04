@@ -226,13 +226,17 @@ touche pas `visible`, le nœud reste masqué tant qu'on est en édition. Comment
 corrigé au passage. `node test/run.js` vert (aucune géométrie touchée) ; à valider visuellement
 (`VALIDATION.md`, checklist T-141).
 
-Test décalque PDF (2026-07-04) : `ML.renderPrintPdf` accepte `opts.style` — `"outline"` (défaut,
-inchangé : fond gris clair 230 + contour couleur calque 0,3 mm, d'où le **double trait** par forme) ou
-`"fill"` (aplat **opaque dans la couleur du calque** par trait, **sans contour**). Case à cocher « PDF : aplat
-plein (test décalque) » (`#pdf-fill`) dans Export & sauvegarde ; `exportPdfA4` passe `{style:"fill"}` et
-nomme le fichier `pattern-A4-aplat.pdf`. Page de garde inchangée. `node test/run.js` vert (print.js hors
-périmètre headless) ; **à trancher sur papier** (`VALIDATION.md`, P8 · Test décalque) : quelle variante se
-décalque/pyrograve le mieux.
+Rendu PDF = aplat plein par défaut (2026-07-04) : le PDF d'impression restitue désormais le **dessin au
+trait tel qu'à l'écran** — `ML.renderPrintPdf` `opts.style` par défaut `"fill"` (aplat opaque couleur calque,
+evenodd, **sans contour**) ; `"outline"` (ancien : fond gris + contour couleur 0,3 mm) conservé en option
+seulement. Bouton « PDF A4 1:1 » sans case à cocher (`#pdf-fill` retiré). **Diagnostic** (reproduit hors
+navigateur avec jsPDF + `pdftoppm`, projet réel `projet.mlayout`) : le décor est un dessin au trait
+vectorisé (imagetracer trace chaque trait par ses **2 bords**) ; le mode `"outline"` strokait chaque bord →
+traits **creux/doublés** (le « double contour » signalé). Le remplissage **evenodd** (`f*`, vérifié dans le
+flux PDF) rend au contraire des traits pleins identiques à l'écran (`fillGroupContent`). L'occlusion Clipper
+(`occludeSurfaces`, nonzero) ne dégrade PAS le line-art (490 régions in/out inchangées). `node test/run.js`
+vert (print.js hors périmètre headless) ; rendu réel validé par rastérisation `pdftoppm` du PDF du projet
+réel (voir `VALIDATION.md`, P8 · rendu aplat).
 
 ## Ce qui fonctionne
 

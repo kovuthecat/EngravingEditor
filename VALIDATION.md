@@ -185,12 +185,16 @@ comme les autres modes variables.
 - [ ] contour guitare en pointillés, surfaces gris clair + contours nets dans la couleur du calque,
   orientation identique à l'écran (pas de miroir).
 
-### Test décalque — aplat plein vs double contour (2026-07-04)
+### Rendu aplat plein par défaut (2026-07-04)
 
-- [ ] cocher « PDF : aplat plein (test décalque) » → PDF `pattern-A4-aplat.pdf` : chaque trait est un
-  aplat gris uni **sans** double contour ; case décochée → rendu historique (fond clair + contour couleur).
-- [ ] imprimer les deux et décider lequel se décalque/pyrograve le mieux (fond clair + contour = repérage,
-  aplat = silhouette pleine). Reporter le choix retenu dans DECISIONS.md §D-011 si on abandonne une variante.
+Le PDF restitue maintenant le dessin au trait tel qu'à l'écran (aplat opaque couleur calque, sans contour).
+Diagnostic vérifié hors navigateur (jsPDF + `pdftoppm` sur le projet réel), mais le rendu papier reste à
+confirmer :
+
+- [ ] « PDF A4 1:1 » → chaque tracé du décor est un **trait plein** dans sa couleur (pas de double contour
+  creux) ; personnages/symboles idem dans leur couleur ; identique à l'écran.
+- [ ] contour guitare toujours en pointillés, croix de recalage / règle 100 mm / page de garde inchangées.
+- [ ] imprimer 1 feuille et vérifier que le trait plein se décalque/pyrograve bien (lisibilité, encre).
 
 ## Lot 5 — bibliothèque de base (site déployé Vercel)
 - [ ] Les grilles Personnages/Symboles listent les motifs des dossiers ; les vignettes se dessinent au défilement.
