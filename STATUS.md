@@ -189,6 +189,30 @@ sauvegarde locale du header). Le badge essais en attente (`#draft-badge`) dépli
 section avant de scroller vers elle. `node test/run.js` vert (aucune géométrie touchée) ; à valider
 visuellement (`VALIDATION.md`).
 
+Bug corrigé (2026-07-04) : **la gomme n'effaçait pas le corps initial du motif en direct** (ne
+« s'appliquait » qu'à la sortie d'édition). Cause : le fond blanc « sticker » (`editStaticGroup`)
+était construit UNE fois à `enterEdit` (`buildEditStatic`) puis figé/caché (optimisation T3) ; effacer
+retirait bien la couleur (`editDraftGroup`, depuis `edit.draft`) mais le fond blanc restait plein →
+la zone effacée virait au blanc au lieu de disparaître, et la silhouette ne rétrécissait qu'à la
+sortie (`rerenderMotif` la recalculait alors). Les traits *tracés* (hors silhouette d'origine)
+s'effaçaient bien, d'où le symptôme « efface mes traits mais pas le motif initial ». Fix :
+`buildEditStatic` scindé en `paintEditStatic(silhouette)` + wrapper ; `redrawEditLayer` repeint
+désormais le fond depuis `ML.silhouetteFromSurface(edit.draft)` (== ce que produit `rerenderMotif`)
+à chaque trait, **sauf pour le décor** (see-through + milliers de contours → fond figé conservé,
+coût T3 ; effacement du corps d'un décor toujours visible à la sortie, limite documentée).
+`redrawEditLayer` étant appelé une fois par trait (pas par frame — `moveStroke` ne touche que
+l'aperçu), le surcoût sur un motif normal est négligeable. `node test/run.js` vert + smoke Node
+(la silhouette rétrécit après effacement du bord). À valider sur iPad (`VALIDATION.md`).
+
+Bug corrigé (2026-07-04) : en édition, le stylet dessinait ET déplaçait le stage en même temps
+(dessin impossible). Cause : `endPinch()` (l. ~205, pinch-zoom deux doigts hors édition) réactivait
+inconditionnellement `stage.draggable(true)` après un geste deux doigts, y compris pendant l'édition
+où `enterEdit` force `stage.draggable(false)` (le pan un doigt y est géré à la main par
+`edit.panAnchor`). Tout pinch/contact deux doigts pendant l'édition (pinch-zoom volontaire ou contact
+parasite) réactivait donc le drag natif Konva du stage, qui captait aussi le stylet en plus du tracé
+custom. Fix : `stage.draggable(!edit.active)` dans `endPinch`. `node test/run.js` vert (aucune
+géométrie touchée) ; à valider sur iPad par Thibault (`VALIDATION.md`).
+
 ## Ce qui fonctionne
 
 - **Verrou global du décor** (bouton 🔒/🔓) : décor inerte au pointeur (sélection/déplacement/édition bloqués), clic traversant vers les motifs posés au-dessus, état persisté dans le projet JSON.

@@ -324,3 +324,25 @@ comme les autres modes variables.
   pas masqués par les zones sûres.
 - [ ] T-136 : ouverture normale en `file://` et via URL statique — aucune erreur console, comportement
   inchangé (manifest ignoré sans incidence).
+
+## Fix 2026-07-04 — Gomme n'efface pas le corps initial en direct
+
+- [ ] En édition, gomme sur le **corps initial** du motif (pas seulement un trait ajouté) : la zone
+  disparaît **immédiatement** sous le stylet, pas seulement à la sortie d'édition.
+- [ ] Effacer un **bord** du motif : la silhouette blanche (fond « sticker ») rétrécit en direct.
+- [ ] Effacer un morceau **intérieur** d'un motif plein : la zone passe au blanc du corps (cohérent
+  avec le rendu après Appliquer), pas de résidu de couleur.
+- [ ] Les traits **ajoutés** (pinceau) s'effacent toujours correctement (pas de régression).
+- [ ] Annuler/Rétablir après un effacement : le fond blanc suit l'état reconstruit.
+- [ ] Décor (si édité déverrouillé) : effacement du corps encore visible seulement à la sortie
+  (limite connue, fond figé pour la perf) — vérifier qu'il n'y a pas de ralentissement.
+- [ ] Motif normal : pas de ralentissement perceptible pendant le tracé (fond recalculé une fois
+  par trait, pas par frame).
+
+## Fix 2026-07-04 — Stylet dessine ET déplace en même temps (conflit pan/tracé)
+
+- [ ] iPad, en édition : pincer-zoomer à deux doigts, relâcher, puis dessiner au stylet sans lever le
+  regard vers un autre geste → le trait suit le stylet sans que la vue ne glisse en même temps.
+- [ ] Idem après un contact parasite à deux doigts (ex. paume posée un instant) pendant l'édition.
+- [ ] Le pan un doigt (mode navigue) et le pinch-zoom deux doigts restent inchangés en édition.
+- [ ] Hors édition, le pan un doigt natif Konva fonctionne toujours normalement après un pinch-zoom.

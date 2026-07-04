@@ -205,7 +205,9 @@
   function endPinch(e) {
     if (pinchDist != null && (!e.evt.touches || e.evt.touches.length < 2)) {
       pinchDist = null;
-      stage.draggable(true);
+      // en édition, le pan reste géré par edit.panAnchor (stage.draggable forcé à false par
+      // enterEdit) -- le réactiver ici ferait dessiner ET glisser le stage en même temps au stylet.
+      stage.draggable(!edit.active);
     }
   }
   stage.on("touchend", endPinch);
@@ -1064,15 +1066,19 @@
     document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "flex" : "none";
   }
 
-  // (T3) fond silhouette : construit UNE SEULE FOIS par enterEdit (après syncEditLayerTransform),
-  // puis mis en cache (bitmap) — sur le décor (des milliers de sous-chemins), c'était le coût
-  // dominant de redrawEditLayer répété à chaque trait. exitEdit purge editStaticGroup.
-  function buildEditStatic(motif) {
+  // (T3) fond silhouette "sticker" (blanc) : mis en cache bitmap pour ne pas re-tracer des milliers
+  // de Konva.Line (décor) à chaque redraw. paintEditStatic repeint depuis une liste de contours
+  // silhouette donnée ; buildEditStatic l'appelle avec la silhouette du motif à l'entrée.
+  function paintEditStatic(silhouette) {
+    editStaticGroup.clearCache();
     editStaticGroup.destroyChildren();
-    for (const contour of motifSilhouettePts(motif)) {
+    for (const contour of silhouette) {
       editStaticGroup.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: false }));
     }
-    safeCache(editStaticGroup, 1);
+    if (silhouette.length) safeCache(editStaticGroup, 1);
+  }
+  function buildEditStatic(motif) {
+    paintEditStatic(motifSilhouettePts(motif));
   }
   // (ré)affiche le brouillon courant en couleur focale, + (T5) surcharge verte sur la seule matière
   // ajoutée par l'essai en cours (vs la surface réelle, exportFill(motif) — qui ignore le brouillon
@@ -1127,6 +1133,14 @@
     // (cf. buildEditStatic, même logique). pixelRatio 1 : retracé à chaque trait, la netteté du
     // pixelRatio 2 ne vaut pas le coût.
     if (edit.draft.length) safeCache(editDraftGroup, 1);
+    // (fix 2026-07-04) le fond blanc "sticker" doit suivre le brouillon courant. Sans ça, effacer
+    // le CORPS INITIAL du motif ne se voyait pas : editDraftGroup retirait bien la couleur, mais le
+    // fond blanc (figé à l'entrée) restait plein -> la zone effacée virait au blanc au lieu de
+    // disparaître, et la silhouette ne rétrécissait qu'à la sortie (rerenderMotif la recalculait).
+    // On la recalcule ici depuis edit.draft (== ce que rerenderMotif produira). Décor exclu : fond
+    // see-through en rendu normal + des milliers de contours -> on garde le fond figé de l'entrée
+    // (coût T3), l'effacement du corps d'un décor reste visible à la sortie (limite documentée).
+    if (motif.role !== "DECOR") paintEditStatic(ML.silhouetteFromSurface(edit.draft));
     uiLayer.batchDraw();
     updateEditUndoRedoButtons();
   }
