@@ -2492,10 +2492,10 @@
   }
 
   // Vectorise un PNG (dessin Procreate) en interne via ImageTracer.js (vendored) et renvoie
-  // un objet au format ML.parseSVG() : { paths:[{color,subpaths}], subpaths }. Seuillage sur
-  // l'alpha (encre = alpha > 128) -> sortie bilevel -> ne garde que le tracé sombre (D-009).
-  // Étendu : encre = opaque ET sombre (luminance < PNG_INK_LUM), pour absorber aussi les PNG
-  // aplatis à fond blanc opaque (pas seulement les exports Procreate à fond transparent).
+  // un objet au format ML.parseSVG() : { paths:[{color,subpaths}], subpaths }. Seuillage bilevel
+  // encre = opaque ET sombre (alpha > 128 ET luminance < PNG_INK_LUM) -> encre en noir, fond en
+  // blanc -> ne garde que le tracé sombre (D-009). Couvre les exports Procreate à fond transparent
+  // ET les PNG aplatis à fond blanc opaque.
   // Générique/réutilisable (pas couplée à l'UI d'import) : consommée aussi par T3 (Rafraîchir le décor).
   const PNG_TRACE_MAX_DIM = 2000; // plafond de dimension pour borner le coût de tracé
   const PNG_INK_LUM = 200; // seuil de luminance (0-255) sous lequel un pixel opaque est considéré "encre"
@@ -2515,10 +2515,14 @@
         ctx.drawImage(img, 0, 0, w, h);
         const imagedata = ctx.getImageData(0, 0, w, h);
         const data = imagedata.data;
+        // Encre -> noir opaque, fond -> blanc (transparent). Le fond DOIT être blanc et non noir :
+        // ImageTracer apparie chaque pixel à la couleur de palette la plus proche par distance RGB
+        // (l'alpha ne domine pas), donc un fond en (0,0,0,0) serait classé "noir" -> rectangle plein.
         for (let i = 0; i < data.length; i += 4) {
           const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
           const ink = data[i + 3] > 128 && lum < PNG_INK_LUM;
-          data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
+          const v = ink ? 0 : 255;
+          data[i] = v; data[i + 1] = v; data[i + 2] = v;
           data[i + 3] = ink ? 255 : 0;
         }
         const svgString = ImageTracer.imagedataToSVG(imagedata, {

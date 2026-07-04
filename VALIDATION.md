@@ -5,11 +5,12 @@
 
 ## Fix — Import PNG décor à fond blanc opaque (D-009 extension, 2026-07-04)
 
-**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie de cœur touchée, modif isolée dans le
-prétraitement pixel de `pngFileToParsedSVG`).
-**Bug d'origine :** un PNG aplati à fond **blanc opaque** (alpha=255 partout, pas de transparence) se
-vectorisait en un unique rectangle plein (tout l'alpha > 128 → considéré comme encre) ; le motif réel
-disparaissait dessous. Fix : encre = pixel opaque **ET** sombre (luminance < 200), au lieu d'opaque seul.
+**Auto-validation :** ✅ `node test/run.js` vert + vérif pipeline hors navigateur sur `decor hybride.png`
+(seuillage → ImageTracer → parseSVG donne 1129 chemins / 179 k points au lieu d'un rectangle de 6 points).
+**Bug d'origine (2 causes) :** un PNG aplati à fond **blanc opaque** se vectorisait en rectangle plein.
+(1) seuillage sur l'alpha seul → tout l'opaque pris pour de l'encre ; (2) surtout, le fond était mis en
+noir transparent `(0,0,0,0)`, or ImageTracer apparie par **distance RGB** (pas l'alpha) → fond classé
+« noir ». Fix : encre = opaque **ET** sombre (lum < 200) → noir ; fond → **blanc**.
 
 - [ ] Importer un PNG **fond blanc / trait noir** (le cas qui posait problème) → le décor vectorisé
   montre le trait réel, pas un rectangle plein.

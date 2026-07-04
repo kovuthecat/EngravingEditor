@@ -543,11 +543,19 @@ du décor vectorisé et comportement verrou/rafraîchir : **validation visuelle 
 
 **Extension (2026-07-04)** : le seuillage sur l'alpha seul supposait un export Procreate à fond
 **transparent**. Un PNG **aplati à fond blanc opaque** (alpha=255 partout) faisait passer l'image entière
-pour de l'encre → décor vectorisé en un unique rectangle plein. Fix : encre = pixel **opaque ET sombre**
-(`lum = 0.299r+0.587g+0.114b < PNG_INK_LUM(=200)`), calculé avant l'écrasement RGB dans
-`pngFileToParsedSVG` (`src/app.js`). Couvre les deux cas (fond transparent D-009 d'origine, et fond blanc
-opaque) sans passe supplémentaire ni détection de fond. Suppose encre sombre sur fond clair (motif noir sur
-blanc, cas de Thibault) — un fond sombre casserait à nouveau l'hypothèse (non traité, hors scope).
+pour de l'encre → décor vectorisé en un unique rectangle plein. Fix `pngFileToParsedSVG` (`src/app.js`),
+**deux corrections** :
+1. Encre = pixel **opaque ET sombre** (`lum = 0.299r+0.587g+0.114b < PNG_INK_LUM(=200)`) au lieu
+   d'opaque seul → distingue le fond blanc de l'encre noire.
+2. **Fond mis en blanc** (255,255,255,0), pas en noir transparent (0,0,0,0). Cause racine réelle :
+   ImageTracer apparie chaque pixel à la couleur de palette la plus proche par **distance RGB** (l'alpha
+   ne domine pas) ; l'ancien code mettait *tous* les pixels en RGB noir et ne jouait que sur l'alpha, donc
+   le fond (0,0,0,0) était classé « noir » → rectangle plein même quand le seuillage était correct.
+
+Couvre les deux cas (fond transparent d'origine + fond blanc opaque) sans détection de fond. Suppose encre
+sombre sur fond clair (motif noir sur blanc, cas de Thibault) — un fond sombre casserait l'hypothèse (hors
+scope). Vérifié hors navigateur : pipeline seuillage → ImageTracer → `parseSVG` sur `decor hybride.png`
+donne 1129 chemins / 179 k points (motif réel), au lieu d'un rectangle de 6 points.
 
 ## 2026-07-02 — D-011 : Impression 1:1 multi-feuilles A4 (PDF) pour décalque/pyrogravure
 
