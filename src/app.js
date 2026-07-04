@@ -2684,7 +2684,9 @@
   document.getElementById("sidebar").addEventListener("transitionend", syncStageSize);
   document.getElementById("draft-badge").onclick = () => {
     document.getElementById("app").classList.remove("collapsed");
-    document.getElementById("section-projet").scrollIntoView({ behavior: "smooth", block: "start" });
+    const projetSection = document.getElementById("section-projet");
+    projetSection.open = true;
+    projetSection.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   document.getElementById("load-project").onchange = (e) =>
     readFiles(e.target.files, (_n, text) => {

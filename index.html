@@ -19,7 +19,7 @@
     <div class="project-history" aria-label="Historique et sauvegarde locale">
       <button id="btn-undo" class="btn sm" type="button" disabled title="Annuler la dernière modification (Ctrl+Z)">Annuler</button>
       <span id="local-save-status" class="save-status" role="status" aria-live="polite">Projet local prêt</span>
-      <button id="draft-badge" class="draft-badge" type="button" hidden title="Essais en attente — aller à la section Projet"></button>
+      <button id="draft-badge" class="draft-badge" type="button" hidden title="Essais en attente — aller à la section Export &amp; sauvegarde"></button>
     </div>
     <span class="hint">molette = zoom · glisser le fond = déplacer la vue · pincer = zoom · deux doigts = déplacer la vue · pastille bleue = déplacer la sélection · Suppr = supprimer · Ctrl+D = dupliquer · [ ] = ordre</span>
   </header>
@@ -125,8 +125,8 @@
         </details>
       </section>
 
-      <section id="section-projet">
-        <h2>Projet</h2>
+      <details class="advanced" id="section-projet">
+        <summary>Export &amp; sauvegarde</summary>
         <div id="draft-summary" class="draft-summary" style="display:none">
           <span id="draft-count-label" class="note">0 essai en attente</span>
           <button id="btn-draft-apply-all" class="btn sm">Tout appliquer</button>
@@ -144,7 +144,7 @@
           <button id="btn-clear" class="btn sm danger">Tout effacer</button>
         </div>
         <p class="note">SVG = miroir vertical (gravure) ; PNG/JPEG = sens écran (aperçu/partage). Si des essais sont en attente, les deux avertissent avant export.</p>
-      </section>
+      </details>
     </aside>
 
     <div id="stage-wrap">

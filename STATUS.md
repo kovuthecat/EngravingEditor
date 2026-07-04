@@ -182,6 +182,13 @@ curseur dédié). `node test/run.js` vert (aucune géométrie nouvelle) + smoke 
 polygone non vide. Reste : validation visuelle iPad (`VALIDATION.md`, P9 · S12). **Plan P9 complet
 (T-126…T-140, T-139 abandonnée par gate no-go).**
 
+Ajustement post-P9 (2026-07-04) : la section « Projet » (épinglée en bas de sidebar depuis D-012 pt 7)
+prenait trop de place en sidebar tablette. Repassée en `<details class="advanced">` repliable comme
+« Avancé », renommée **« Export & sauvegarde »** (le nom « Projet » entrait en confusion avec l'historique/
+sauvegarde locale du header). Le badge essais en attente (`#draft-badge`) déplie désormais aussi la
+section avant de scroller vers elle. `node test/run.js` vert (aucune géométrie touchée) ; à valider
+visuellement (`VALIDATION.md`).
+
 ## Ce qui fonctionne
 
 - **Verrou global du décor** (bouton 🔒/🔓) : décor inerte au pointeur (sélection/déplacement/édition bloqués), clic traversant vers les motifs posés au-dessus, état persisté dans le projet JSON.

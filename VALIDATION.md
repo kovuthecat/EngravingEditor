@@ -3,6 +3,21 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## Fix — section « Export & sauvegarde » repliable (post-P9, 2026-07-04)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Section ex-« Projet » (sticky bas de sidebar, D-012 pt 7) repassée en `<details class="advanced">`
+repliable, renommée « Export & sauvegarde » — prenait trop de place en sidebar tablette. Le badge
+`#draft-badge` déplie désormais la section avant de scroller vers elle.
+
+- [ ] Sur tablette (sidebar ouverte), la section est repliée par défaut et n'occupe qu'une ligne
+  d'en-tête « Export & sauvegarde », comme la section « Avancé ».
+- [ ] Cliquer sur l'en-tête déplie/replie la section (chevron ▸/▾ cohérent avec « Avancé »).
+- [ ] Avec des essais en attente, taper le badge du header déplie la sidebar **et** la section, puis
+  scrolle jusqu'à elle (le contenu — DPI, boutons d'export, etc. — est visible sans clic supplémentaire).
+- [ ] Les boutons (Exporter SVG/PNG/JPEG, PDF A4, Enregistrer, Charger, Tout effacer) fonctionnent
+  normalement une fois la section dépliée.
+
 ## Fix — Import PNG décor à fond blanc opaque (D-009 extension, 2026-07-04)
 
 **Auto-validation :** ✅ `node test/run.js` vert + vérif pipeline hors navigateur sur `decor hybride.png`
