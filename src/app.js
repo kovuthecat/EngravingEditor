@@ -591,10 +591,13 @@
     // image au lieu de re-tracer le décor (potentiellement des milliers de contours) à chaque
     // frame. pixelRatio:2 = compromis net/mémoire vu la plage de zoom de l'app (molette 0.1-8x,
     // pinch) ; au-delà, le bitmap peut réapparaître flou (recache sur transformend, voir plus bas).
-    // Exception : le groupe en cours d'édition stylet reste non caché — startStroke() ajoute l'aperçu
-    // de trait comme enfant de ce groupe, et applyStroke() le re-rend ; un groupe caché afficherait
-    // un bitmap figé et ignorerait ces changements. NB : ce garde-fou ne couvre QUE le re-render
-    // pendant l'édition ; le décache initial à l'entrée se fait dans enterEdit() (g.clearCache()),
+    // Exception : le groupe en cours d'édition stylet reste non caché — le nœud est masqué
+    // (visible(false), enterEdit) pendant l'édition, mais rerenderMotif le retraverse quand on
+    // Applique PENDANT l'édition (applyMotifDraft) et a besoin qu'il ne soit pas figé en bitmap
+    // pour que fillGroupContent le repeuple ; un groupe caché ignorerait ce repeuplement. L'aperçu
+    // de trait en cours (editPreview) vit lui sur editLayer, pas sur ce groupe. NB : ce garde-fou ne
+    // couvre QUE le re-render pendant l'édition ; le décache initial à l'entrée se fait dans
+    // enterEdit() (g.clearCache()),
     // car à la création le groupe est caché alors que edit.active est encore false. exitEdit() recache.
     // `edit` est déclaré plus bas mais déjà initialisé au runtime (fillGroupContent n'est appelée qu'alors).
     if (!(edit.active && edit.node === g)) safeCache(g, 2);
@@ -1238,6 +1241,9 @@
     uiLayer.batchDraw();
     populateStyletEditor(motif);
     zoomToFitEdit(g);
+    // suite du fix 2026-07-04 : l'instance réelle est remplacée à l'écran par editLayer (sticker +
+    // brouillon) ; sans ça, la gomme sur le corps initial laisse voir l'instance intacte en dessous.
+    g.visible(false); mainLayer.batchDraw();
     document.getElementById("app").classList.add("editing");
     document.getElementById("edit-mode-banner-name").textContent = motif.name;
     document.getElementById("edit-mode-banner").hidden = false;
@@ -1287,8 +1293,11 @@
     document.getElementById("edit-mode-banner").hidden = true;
     restoreViewAfterEdit(prevView);
     uiLayer.batchDraw();
+    // restaure l'instance réelle masquée à l'entrée (suite du fix 2026-07-04) : rerenderMotif/safeCache
+    // ci-dessous redessinent ensuite son contenu.
+    if (editedNode) editedNode.visible(true);
     if (motif && wasDirty) rerenderMotif(motif); // une fois (recache inclus) : passe en vert si en attente
-    else if (editedNode) safeCache(editedNode, 2); // rien changé : juste recache (décaché à l'entrée)
+    else if (editedNode) { safeCache(editedNode, 2); mainLayer.batchDraw(); } // rien changé : juste recache (décaché à l'entrée)
     positionMoveHandle();
     refreshDraftCounter();
     if (motif) populateStyletEditor(motif);

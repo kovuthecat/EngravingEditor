@@ -213,6 +213,19 @@ parasite) réactivait donc le drag natif Konva du stage, qui captait aussi le st
 custom. Fix : `stage.draggable(!edit.active)` dans `endPinch`. `node test/run.js` vert (aucune
 géométrie touchée) ; à valider sur iPad par Thibault (`VALIDATION.md`).
 
+T-141 (2026-07-04) : suite du fix « gomme n'effaçait pas le corps initial » ci-dessus — celui-ci avait
+révélé le vrai problème : l'instance réelle du motif (`edit.node`, sur `mainLayer`) n'était jamais
+masquée pendant l'édition (seulement décachée), et le calque d'essai qui la recouvrait via le sticker
+blanc laisse désormais voir le motif intact en dessous dès que sticker+brouillon rétrécissent sous la
+gomme. Fix : `g.visible(false)` dans `enterEdit` (après `zoomToFitEdit`, pour ne pas fausser son bbox),
+restauré (`editedNode.visible(true)`) dans `exitEdit` avant le `rerenderMotif`/`safeCache` final
+(`mainLayer.batchDraw()` ajouté à la branche `safeCache`, qui ne redessinait pas). Comportement pendant
+« Appliquer » en édition live (`applyMotifDraft` → `rerenderMotif` → `fillGroupContent`) inchangé : ne
+touche pas `visible`, le nœud reste masqué tant qu'on est en édition. Commentaire périmé de
+`fillGroupContent` (qui attribuait l'exception de cache à l'aperçu de trait, en fait sur `editLayer`)
+corrigé au passage. `node test/run.js` vert (aucune géométrie touchée) ; à valider visuellement
+(`VALIDATION.md`, checklist T-141).
+
 ## Ce qui fonctionne
 
 - **Verrou global du décor** (bouton 🔒/🔓) : décor inerte au pointeur (sélection/déplacement/édition bloqués), clic traversant vers les motifs posés au-dessus, état persisté dans le projet JSON.

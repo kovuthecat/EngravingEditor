@@ -3,6 +3,23 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## T-141 — Gomme live sur le corps initial : masquer l'instance réelle (2026-07-04)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Suite du fix « gomme n'effaçait pas le corps initial » (voir plus bas) : l'instance réelle
+(`edit.node`) est maintenant masquée (`visible(false)`) à l'entrée en édition et restaurée à la
+sortie, pour ne plus se voir en dessous du calque d'essai pendant la gomme.
+
+- [ ] Entrer en édition sur un motif MOTIF (pas décor) → gommer une zone du corps initial → le trou
+  apparaît IMMÉDIATEMENT (fond de page visible, pas la couleur du motif).
+- [ ] Gommer un ajout vert → disparaît en live (non-régression).
+- [ ] Sortir de l'édition sans rien faire → le motif réapparaît normalement (pas d'instance restée
+  invisible).
+- [ ] Sortir avec brouillon modifié → motif rendu avec le vert « en attente » (non-régression).
+- [ ] « Appliquer » PENDANT l'édition → rester en édition, affichage cohérent ; puis sortir → motif
+  visible.
+- [ ] Autres instances du même motif : restent visibles pendant toute l'édition.
+
 ## Fix — section « Export & sauvegarde » repliable (post-P9, 2026-07-04)
 
 **Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).

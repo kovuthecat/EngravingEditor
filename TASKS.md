@@ -51,3 +51,4 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [x] T-138 — [Humain] Valider capacités Pencil Pro sur iPad (gate go/no-go Lot E) · modèle: — (humain) · plan: `plans/P9/` (S11, dépend T-137)
 - [x] T-139 — `twist` → angle de plume + hover atténué · abandonnée (no-go : twist non exposé par Safari sur cet iPad) · plan: `plans/P9/` (S11, dépend T-138)
 - [x] T-140 — Mode « ombrage » par inclinaison Pencil (variableStroke, si go) · modèle: Sonnet, effort: high · plan: `plans/P9/` (S12, dépend T-138)
+- [x] T-141 — Gomme live sur le corps initial : masquer `edit.node` pendant l'édition · modèle: Sonnet, effort: medium · plan: `plans/PLAN_T-141_gomme-live-corps-initial.md`
