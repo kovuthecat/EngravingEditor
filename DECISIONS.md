@@ -802,3 +802,90 @@ Plan d'exécution : `plans/P9/` (index + sessions `S<k>.md`, format `WORKFLOW.md
 `VALIDATION.md`) — jamais de Playwright/navigateur côté IA (les audits visuels restent le rôle de
 Codex, cf. `AGENTS.md`). Le volet Pencil Pro (T-139/T-140) est **bloqué** tant que la sonde étendue
 (T-137) n'a pas été validée sur matériel (gate humain T-138).
+
+---
+
+## 2026-07-07 — D-013 : Migration vers la nouvelle UI (maquette Claude Design, plan P10)
+
+### Décision
+Migrer l'éditeur vers la **nouvelle interface** maquettée avec Claude Design (bundle handoff
+`Maquette/handoff/am-lioration-ui-diteur-gravure/project/Editeur Gravure.dc.html`). Périmètre :
+refonte **visuelle et de réorganisation spatiale uniquement** — **zéro changement de fonction**,
+**aucune modification de la géométrie de cœur** (`geometry.js`/occlusion/export/packing/édition
+stylet). Chaque contrôle existant conserve son rôle ; il est déplacé, restylé et recâblé dans la
+nouvelle structure (barre supérieure + rail d'icônes + panneaux coulissants + incrustations canevas),
+en remplacement de la sidebar unique scrollable en `<details>`. **Le canevas reste Konva** : les
+motifs en masques CSS de la maquette ne sont que des mock-ups de rendu, pas une cible d'implémentation.
+
+Choix figés (l'exécutant ne reconçoit pas) :
+
+1. **Périmètre / rapport à P9** : P10 supersede les parties **chrome-global** encore ouvertes de P9
+   (S9 dialogue custom + badge essais, S10 sticky Projet + PWA/safe-area), ré-exprimées dans la
+   nouvelle structure. Le travail **mode édition** de P9 (S4 barre d'outils, S5 tiroir contextuel, S6
+   lasso/brouillon flottants — déjà livrés `[x]`) est **préservé intégralement**, jamais jeté.
+2. **Aucune fonction perdue** : tout contrôle de l'UI actuelle omis par la maquette est **conservé**
+   (cases « activer marge »/« activer cadre », second import décor PNG, etc.), au besoin dans un
+   tiroir ou un emplacement adapté — jamais supprimé silencieusement.
+3. **Couleur de gravure** : garder **uniquement** le sélecteur natif `<input type=color>` (`insp-color`,
+   handler inchangé). Les 6 pastilles de préréglage visibles dans la maquette **ne sont pas reprises**
+   (tranché par Thibault le 2026-07-07 — pas besoin de plus de choix de couleur).
+4. **Barre d'outils du mode édition** : « garder toutes les fonctions de la barre d'édition, suivre
+   seulement le style graphique » (tranché par Thibault le 2026-07-07). La structure P9 (barre niveau 1
+   toujours visible + tiroir ⚙ niveau 2 contextuel + mini-barres flottantes lasso/brouillon) est
+   **conservée telle quelle** ; seul l'habillage (tokens, rayons, ombres) change. Aucun outil (dont
+   Lasso, modes Rond/Pression/Plume/Ombrage, lissage, bascule doigt) n'est retiré ni masqué par défaut.
+5. **Annuler/Rétablir global** : la barre supérieure pilote l'historique **projet** existant
+   (`recordHistory`), étendu d'une **pile redo** symétrique (extension mineure, pas une nouvelle
+   logique d'état). Distinct de l'historique d'**édition** (`edit.history`/`edit.redo`), inchangé.
+6. **Typographie hors-ligne** : IBM Plex Sans/Mono **vendored** dans `vendor/fonts/` (`@font-face`
+   locaux, chemins relatifs) — l'app tourne en `file://`, aucun CDN Google Fonts. Repli = pile système
+   si le vendoring des `.woff2` est bloqué.
+7. **Palette de tokens** : les couleurs `oklch(...)` de la maquette sont adoptées telles quelles en
+   variables CSS `:root` (Safari iPad ≥ 15 les supporte).
+8. **Barre de sélection** : adopter la barre **sombre flottante centrée-bas** de la maquette
+   (Dupliquer/Descendre/Monter/Modifier/Supprimer), en remplacement du `#selection-palette` positionné.
+
+### Contexte
+Thibault a maquetté la refonte avec Claude Design (outil `claude.ai/design`) et exporté un bundle
+handoff HTML/CSS/JS de prototypage — non destiné à être copié tel quel, mais à servir de **spécification
+visuelle** (dimensions, couleurs, rayons, composants) pour une réimplémentation dans la stack réelle du
+projet (classic scripts + Konva, sans framework, sans build). Le prototype couvre : barre supérieure
+(60 px), bannière essais en attente, rail d'icônes (78 px, 5 entrées), panneau coulissant (336 px,
+un seul ouvert à la fois : Motifs/Contour/Guides/Sélection/Export), canevas avec zoom flottant/pastille
+d'aide/toast/barre contextuelle sombre, chrome de mode édition (pilule + barre d'outils bas re-skinnée).
+
+### Alternatives envisagées
+- **Reprendre les 6 pastilles couleur en plus du picker natif** : proposé initialement (accès rapide),
+  **écarté** par Thibault — le picker natif suffit, pas de besoin de préréglages supplémentaires.
+- **Simplifier la barre d'édition aux 5 outils visibles dans la maquette** (Pinceau/Gomme/Ligne/
+  Rectangle/Cercle) en reléguant Lasso/modes de trait/lissage ailleurs ou en option cachée : **écarté**
+  — Thibault a explicitement demandé de garder toutes les fonctions existantes, seul le style change.
+- **Réécrire le canevas motifs en DOM/CSS (masques)** comme le fait le prototype Claude Design :
+  **écarté** — le prototype est un mock-up de rendu, pas une cible technique ; Konva reste le moteur.
+
+### Raison du choix
+La demande initiale de Thibault est explicite : « refonte uniquement, aucun changement de fonction ».
+La maquette Claude Design sert de spec visuelle fidèle (dimensions/couleurs/composants) mais son medium
+(HTML/CSS/JS de prototypage) ne dicte ni l'architecture technique (Konva conservé) ni le périmètre
+fonctionnel (tout contrôle existant est un invariant, la maquette ne fait qu'proposer un habillage).
+
+### Conséquences
+- `index.html` : remplacement du `<header>` + `<aside id="sidebar">` par barre supérieure + rail +
+  panneaux coulissants + incrustations canevas ; re-skin du chrome de mode édition (structure P9
+  inchangée) ; ajout `vendor/fonts/`.
+- `src/style.css` : nouveaux tokens (`:root`), typographie IBM Plex, styles des nouveaux composants
+  (barre, rail, panneaux, barre sombre, zoom flottant, pilule/barre édition re-skinnée), passe
+  responsive/safe-area.
+- `src/app.js` : redo projet (pile miroir), recâblage de tous les handlers existants sur le nouveau DOM
+  (mêmes ids/fonctions dans la mesure du possible), aucune nouvelle logique métier.
+- **Aucune modification de `geometry.js` ni de `vendor/{konva,clipper,imagetracer,jspdf}`** ;
+  `node test/run.js` reste un garde-fou de non-régression (doit rester vert/inchangé partout).
+- Nettoyage final (S7) : suppression du DOM/CSS mort issu de l'ancienne sidebar une fois toutes les
+  fonctions confirmées migrées.
+
+### Impact IA
+Plan d'exécution : `plans/P10/` (index + sessions `S1`…`S8`, format `WORKFLOW.md §4`). Backlog :
+`TASKS.md` T-142…T-149. Validation **visuelle d'ensemble par Thibault sur iPad + Apple Pencil**
+(S8, report `VALIDATION.md`) — jamais de Playwright/navigateur côté IA. Point de vigilance critique :
+le mapping écran→local du trait d'édition ne doit subir **aucune régression** malgré le re-skin du
+chrome (S6).

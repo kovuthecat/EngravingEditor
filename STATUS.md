@@ -4,9 +4,117 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-04
+> **Dernière mise à jour :** 2026-07-07 (P10 · S6)
 
 ## Phase actuelle
+
+**Plan P10 lancé (2026-07-07)** : migration vers la nouvelle UI maquettée avec Claude Design
+(refonte visuelle/spatiale seule, aucun changement de fonction, D-013). 8 sessions / 8 tâches
+(T-142…T-149) : `plans/P10/index.md`. S1 (T-142, socle) codée : tokens CSS `:root` (couleurs oklch,
+rayons, `--shadow-*`) repris de la maquette + IBM Plex Sans/Mono vendorées hors-ligne
+(`vendor/fonts/`, aucune requête réseau). IBM Plex Sans servie par Google comme un seul fichier
+variable (`wght` 400-700) — un seul `.woff2` couvre les 4 poids déclarés ; Mono a 3 fichiers statiques
+distincts (400/500/600). Slider fusionné avec la règle P9·S1 (piste/pouce restylés, hit-area 44px
+conservée). `body` racine bascule sur les tokens ; le reste de l'UI garde son habillage sombre actuel
+jusqu'à S2-S7. `node test/run.js` vert (CSS/polices pur). Validation visuelle humaine restante
+(`VALIDATION.md`, P10 · S1).
+
+S2 (T-143, barre supérieure) codée : `<header>` remplacé par `.topbar` (60px, titre + Annuler/Rétablir
+48×48 + badge session décoratif + bouton Exporter) et `#pending-banner` pleine largeur sous la barre
+(visible si essais en attente, boutons Jeter/Appliquer). Historique **projet** étendu d'un Rétablir
+réel : `redoStack` en miroir de `undoStack`, vidée à chaque nouvelle action, Ctrl+Maj+Z ajouté à côté de
+Ctrl+Z (D-013 pt 4 — pas de nouvelle logique d'état, extension mineure de `recordHistory`/`undo`
+existants). `discardAllDrafts()` ajoutée pour la bannière (branchée sur `discardMotifDraft` par motif,
+même source `editDrafts` que `#draft-summary`, pas d'état dupliqué). Retirés du header :
+`#btn-sidebar-toggle` (rail S3 gère la nav — sidebar dépliée par défaut en attendant), `.hint`,
+`#draft-badge` (absorbé par la bannière) ; `#local-save-status` conservé masqué (`app.js` y écrit
+toujours). Le bouton Exporter ouvre pour l'instant `#section-projet` (câblage minimal, S5 le
+rebranchera sur le panneau Export). `node test/run.js` vert (aucune géométrie touchée). Reste :
+validation visuelle humaine (`VALIDATION.md`, P10 · S2), puis S3 (rail + panneaux).
+
+S3 (T-144, rail + panneaux) codée : sidebar unique remplacée par `#icon-rail` (78px, 5 boutons Motifs/
+Contour/Guides/Sélection/Export, icônes CSS/SVG `currentColor`) + `#panel` (336px, slide-over, un seul
+panneau ouvert à la fois via `activePanel`/`setPanel`, re-clic ferme). Panneaux **Motifs & décor**
+(onglets Personnages/Symboles + import + bloc Décor SVG/PNG + rafraîchir + verrou), **Contour**
+(dims + import SVG) et **Guides** (marge en slider, cadre W/H + nouveau slider rotation, zone
+interdite, packing avec échelles en sliders) remplis avec les mêmes ids/handlers qu'avant — aucun
+handler perdu (vérifié par script : 0 `getElementById` orphelin sur 143 ids). `#sidebar` réduit à
+`#inspector` + `#section-projet` (Sélection/Export, portée S4/S5, laissés en habillage sombre existant,
+pleinement fonctionnels — juste déplacés hors de l'ancien `<aside>` qui contenait tout). Rail
+Sélection/Export : câblage minimal (déplie `#sidebar` / réutilise `openExportMinimal` de S2) en
+attendant leurs panneaux dédiés. Écart maquette assumé et documenté (`plans/P10/S3.md`) : ajout d'un
+slider « Rotation du cadre » (`frame-rot`, -45..45°) absent de l'app actuelle en tant que contrôle
+dédié — alias pratique vers `frameNode.rotation()`, la fonction existait déjà via le Transformer/
+`insp-rot` génériques (S4). `node test/run.js` vert (aucune géométrie touchée). Point de vigilance pour
+S6 : le rail/panneau ne se replient pas encore en mode édition (seul l'ancien `#sidebar` résiduel le
+fait) — décision de chrome d'édition à trancher là-bas. Reste : validation visuelle humaine
+(`VALIDATION.md`, P10 · S3), puis S4 (panneau Sélection).
+
+S4 (T-145, panneau Sélection) codée : `#inspector` (sidebar sombre résiduelle) + `#selection-palette`
+supprimés, fusionnés dans `#panel-selection` (nouveau panneau coulissant du rail, `activePanel==
+"selection"`). État vide/rempli togglé dans `updateInspector()` ; contenu motif (couleur/rôle/marge)
+affiché seulement si le nœud sélectionné est un motif (zone/cadre en restent dépourvus, comme avant),
+Dupliquer/Supprimer/Position fine (rotation/échelle) applicables à tout type de nœud sélectionné.
+Écart tranché avec Thibault avant exécution : le plan `S4.md` se contredisait entre sa « Décision
+clé » (picker couleur natif seul, D-013 pt 3) et son étape 1 (réintroduisait les 6 pastilles) —
+confirmé : **picker natif seul**, pas de pastilles. `insp-margin`/`insp-rot`/`insp-scale` passés de
+`type=number` à `type=range` (mêmes handlers) + labels mono synchronisés. `#btn-up`/`#btn-down`
+(z-order pas-à-pas) retirés de l'UI (absents de la maquette), fonction conservée au clavier (`[`/`]`).
+`#btn-dup` (doublon) retiré, un seul Dupliquer désormais. Barre contextuelle sombre
+(`#selection-toolbar`, remplace `#selection-palette`) : Dupliquer/Descendre/Monter rebranchés sur
+`duplicateSel`/`zorder("back")`/`zorder("front")` (mêmes handlers que « Tout devant/derrière »),
+« ✎ Modifier » ouvre le panneau via `openSelectionPanel()` (ouverture forcée, pas un toggle) ;
+visible si sélection hors édition. `zone-editor`/`stylet-editor` déplacés tels quels (hors périmètre,
+chrome d'édition → S6, fonction préservée D-013 pt 2). Point de vigilance transmis à S6 (non traité
+ici) : le nouveau `#panel`/`#icon-rail` ne se replie pas encore à l'entrée en édition (seul l'ancien
+`#sidebar` résiduel le fait) — si le panneau Sélection est ouvert au moment d'entrer en édition, il
+reste affiché avec des champs figés. `node test/run.js` vert (aucune géométrie touchée). Reste :
+validation visuelle humaine (`VALIDATION.md`, P10 · S4), puis S5 (panneau Export).
+
+S5 (T-146, panneau Export) codée : dernier vestige de l'ancienne sidebar (`#sidebar`, ne contenait
+plus que la section « Export & sauvegarde » depuis S3/S4) **retiré** d'`index.html`, remplacé par
+`#panel-export` (nouveau panneau coulissant du rail, mêmes ids/handlers — `export-dpi`, les 4 boutons
+d'export, `btn-save`/`load-project`/`btn-clear`, `draft-summary` gardé discret pour
+`refreshDraftCounter`). DPI resté en `input number` habillé (pas de `select` 3 valeurs, plage réelle
+50-1200 conservée — branche « Si bloqué » retenue d'emblée). `openExportMinimal` (S2, câblage
+provisoire) remplacé par `openExport()` (ouverture forcée du panneau, même schéma que
+`openSelectionPanel` de S4) ; `rail-export` bascule désormais en toggle standard comme les autres
+rails. Zoom flottant (+/reset/−) ajouté en incrustation bas-droite du canevas : même mécanique que la
+molette/pinch existants (bornes 0.1-8, facteur 1.2/clic), centré sur le canevas ; label % synchronisé
+aussi sur molette/pinch. Pastille d'aide canevas (bandeau haut-centre, masquée en souris desktop via
+`pointer:fine`) et toast (`showToast`, nouveau helper minimal, 2.6 s) branché sur les 5 succès
+imports/exports (SVG/PNG/JPEG/PDF/Enregistrer/Charger) — sans toucher `local-save-status` (autosave)
+ni les dialogues custom de confirmation (`showDialog`). Ligne orpheline
+`document.getElementById("sidebar").addEventListener(...)` retirée d'`app.js` (aurait planté au
+chargement, `#sidebar` n'existant plus). `node test/run.js` vert (aucune géométrie touchée). Reste :
+validation visuelle humaine (`VALIDATION.md`, P10 · S5), puis S6 (chrome mode édition).
+
+S6 (T-147, chrome mode édition) codé : reskin **purement CSS/HTML** de `#edit-palette` — aucun id ni
+handler changé (seul ajout : un second bouton Terminer dans la pilule, câblé sur `exitEdit`). Pilule
+`#edit-mode-banner` reconstruite en bandeau fixe haut-centre (fond `--ink`, bouton Terminer accent),
+absorbe l'ancien bandeau bleu ; liseré du canevas édité (`#app.editing #stage`) passé de `#2563eb` figé
+à `var(--accent)`. Barre d'outils niveau 1 reskinée aux tokens (`--surface`/`--line`/rayon 16/
+`--shadow-pop`) ; les 6 boutons d'outil (Pinceau/Gomme/Ligne/Rectangle/Cercle **+ Lasso conservé**,
+D-013 pt 2) passés à 52×50 icône+label 9px, `?`/`⚙` laissés en icône seule 48×48. État actif unifié
+(`.tool-btn.on` = fond accent/0.14 + encre accent) appliqué à la fois à la barre et à tous les toggles
+du tiroir (modes de trait, lissage, pression, taille) — un doublon obsolète de cette règle (`#2563eb`
+plein, résidu P9) a été supprimé au passage, il aurait écrasé la nouvelle par cascade.
+`#btn-edit-exit` : « Sortir » → « Terminer » + style accent ; Annuler/Rétablir passés en boutons texte
+transparents (maquette l.406-409). Popover de taille laissé intact (D-013 pt 2 : le « cycle de taille »
+de la maquette = habillage de ce popover complet, pas un vrai cycle au clic), juste reskiné tokens/mono.
+Tiroir ⚙, mini-barres lasso/brouillon et overlay d'aide reskinés tokens sans changement de structure ni
+de logique ; `#stylet-draft-actions` repris dans la même famille verte que `.pending-banner` (S2).
+`node test/run.js` vert (aucune géométrie touchée). Reste : validation visuelle humaine (`VALIDATION.md`,
+P10 · S6), puis S7 (responsive/PWA/nettoyage).
+
+S7 (T-148, responsive/PWA/safe-area) codé : topbar, bannière d'essais, rail et shell protègent les
+zones sûres ; sous 900 px, le panneau 336 px flotte après le rail au-dessus du canevas au lieu de le
+comprimer. Les barres contextuelles Sélection/Édition défilent horizontalement si nécessaire, avec
+cibles tactiles inchangées. Le chrome supérieur se compacte aux petites largeurs et les aides tactiles
+redondantes sont masquées à la souris. `theme-color` et le manifest standalone sont alignés avec la
+nouvelle surface claire. CSS mort de l'ancien `#sidebar` supprimé ; DOM ancien déjà absent. Tous les
+inputs numériques conservent `inputmode="decimal"`. `node test/run.js`, parsing JSON du manifest et
+`git diff --check` verts. Reste : validation humaine P10 · S8 sur iPad réel et desktop.
 
 Plan P6 (verrou décor + rafraîchir depuis PNG Procreate) codé, T1/T2/T3 terminés (`node test/run.js` vert). Reste : validation visuelle par Thibault (cf. `VALIDATION.md`, sections P6 · T1/T2/T3).
 

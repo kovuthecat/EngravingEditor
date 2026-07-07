@@ -232,8 +232,10 @@ Aucune build, aucun serveur Node requis — l'app tourne en `file://` ou HTTP st
 ### Layout responsive
 
 - **Desktop** : sidebar (gauche, 270px) + canevas (droite, 100% flex).
-- **Tablette/Mobile portrait** (< 900px) : bouton **☰** (toggle) dans le header ; clic → sidebar se replie
-  (transitionne vers largeur 0) ; canevas s'agrandit au-dessus. Clic ☰ à nouveau → déplie.
+- **Tablette/Mobile portrait** (< 900px) : sidebar repliable (transitionne vers largeur 0, classe
+  `.collapsed` sur `#app`) ; canevas s'agrandit au-dessus. Le repli se déclenche automatiquement à
+  l'entrée en édition. *(Transitoire P10·S2 : le bouton **☰** manuel du header a été retiré ; P10·S3 le
+  remplacera par le rail d'icônes de la nouvelle UI.)*
 - Cibles tactiles agrandies : boutons ≥40px de haut, ancres Transformer ≥16px, moveHandle ≥20px.
 
 ## Export PNG/JPEG haute définition (T9)

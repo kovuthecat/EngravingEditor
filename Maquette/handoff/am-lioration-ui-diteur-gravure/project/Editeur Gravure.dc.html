@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin:0; padding:0; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    input[type=range]{ -webkit-appearance:none; appearance:none; background:transparent; width:100%; }
+    input[type=range]{ height:44px; }
+    input[type=range]::-webkit-slider-runnable-track{ height:6px; border-radius:3px; background: oklch(0.84 0.012 65); }
+    input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:30px; height:30px; border-radius:50%; background: oklch(0.66 0.17 45); margin-top:-12px; border:3px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.35); }
+    select, button, input { -webkit-touch-callout: none; }
+    img { -webkit-touch-callout: none; -webkit-user-drag: none; }
+    a { color: oklch(0.53 0.1 240); }
+    a:hover { color: oklch(0.66 0.17 45); }
+  </style>
+</helmet>
+<div style="position:fixed;inset:0;display:flex;flex-direction:column;background:oklch(0.965 0.008 75);font-family:'IBM Plex Sans',sans-serif;color:oklch(0.19 0.02 55);overflow:hidden;user-select:none;-webkit-touch-callout:none;padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);">
+
+  <input ref="{{ setContourInputRef }}" type="file" accept=".svg,image/svg+xml,.png,image/png" style="display:none" onChange="{{ importContour }}" />
+  <input ref="{{ setDecorInputRef }}" type="file" accept=".svg,image/svg+xml,.png,image/png" style="display:none" onChange="{{ importDecor }}" />
+  <input ref="{{ setPersonnagesInputRef }}" type="file" accept=".svg,image/svg+xml,.png,image/png" multiple style="display:none" onChange="{{ importPersonnages }}" />
+  <input ref="{{ setSymbolesInputRef }}" type="file" accept=".svg,image/svg+xml,.png,image/png" multiple style="display:none" onChange="{{ importSymboles }}" />
+
+  <!-- TOP BAR -->
+  <div style="flex:0 0 auto;height:60px;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid oklch(0.84 0.012 65);background:oklch(0.995 0.004 75);">
+    <div style="display:flex;flex-direction:column;line-height:1.15;">
+      <div style="font-size:17px;font-weight:600;">Motif Layout</div>
+      <div style="font-size:11px;color:oklch(0.46 0.02 60);letter-spacing:0.02em;">Atelier de gravure laser</div>
+    </div>
+
+    <div style="width:1px;height:28px;background:oklch(0.84 0.012 65);margin:0 2px;"></div>
+
+    <button onClick="{{ undo }}" disabled="{{ !canUndo }}" style="width:48px;height:48px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.995 0.004 75);font-size:19px;color:oklch(0.19 0.02 55);opacity:{{ undoOpacity }};cursor:pointer;">↶</button>
+    <button onClick="{{ redo }}" disabled="{{ !canRedo }}" style="width:48px;height:48px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.995 0.004 75);font-size:19px;color:oklch(0.19 0.02 55);opacity:{{ redoOpacity }};cursor:pointer;">↷</button>
+
+    <div style="flex:1;"></div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:oklch(0.62 0.14 150 / 0.12);color:oklch(0.3 0.08 150);font-size:12.5px;font-weight:500;">
+      <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.62 0.14 150);display:inline-block;"></span>
+      Session locale · iPad
+    </div>
+
+    <button onClick="{{ openExport }}" style="height:40px;padding:0 18px;border-radius:10px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:14px;font-weight:600;cursor:pointer;">Exporter</button>
+  </div>
+
+  <!-- PENDING TRIAL BANNER -->
+  <sc-if value="{{ hasPending }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:10px 20px;background:oklch(0.62 0.14 150 / 0.14);border-bottom:1px solid oklch(0.62 0.14 150 / 0.35);">
+      <span style="width:8px;height:8px;border-radius:50%;background:oklch(0.62 0.14 150);flex:0 0 auto;"></span>
+      <div style="font-size:13.5px;color:oklch(0.25 0.08 150);font-weight:500;">{{ pendingLabel }} — visible en vert sur le canevas, non appliqué</div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ discardAll }}" style="height:34px;padding:0 14px;border-radius:8px;border:1px solid oklch(0.62 0.14 150 / 0.5);background:transparent;color:oklch(0.3 0.08 150);font-size:13px;font-weight:500;cursor:pointer;">Jeter</button>
+      <button onClick="{{ applyAll }}" style="height:34px;padding:0 16px;border-radius:8px;border:none;background:oklch(0.62 0.14 150);color:white;font-size:13px;font-weight:600;cursor:pointer;">Appliquer</button>
+    </div>
+  </sc-if>
+
+  <!-- MAIN -->
+  <div style="flex:1;display:flex;min-height:0;">
+
+    <!-- ICON RAIL -->
+    <div style="flex:0 0 78px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-right:1px solid oklch(0.84 0.012 65);background:oklch(0.995 0.004 75);overflow-y:auto;">
+
+      <button onClick="{{ openLibrary }}" style="width:62px;height:62px;border-radius:14px;border:1px solid {{ railBorder.library }};background:{{ railBg.library }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+        <div style="display:grid;grid-template-columns:repeat(2,7px);grid-template-rows:repeat(2,7px);gap:3px;">
+          <div style="background:{{ railFg.library }};border-radius:2px;"></div><div style="background:{{ railFg.library }};border-radius:2px;"></div>
+          <div style="background:{{ railFg.library }};border-radius:2px;"></div><div style="background:{{ railFg.library }};border-radius:2px;"></div>
+        </div>
+        <span style="font-size:10px;font-weight:500;color:{{ railFg.library }};">Motifs</span>
+      </button>
+
+      <button onClick="{{ openContour }}" style="width:62px;height:62px;border-radius:14px;border:1px solid {{ railBorder.contour }};background:{{ railBg.contour }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+        <div style="width:26px;height:20px;background-color:{{ railFg.contour }};-webkit-mask-image:url({{ contourSrc }});mask-image:url({{ contourSrc }});-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;"></div>
+        <span style="font-size:10px;font-weight:500;color:{{ railFg.contour }};">Contour</span>
+      </button>
+
+      <button onClick="{{ openGuides }}" style="width:62px;height:62px;border-radius:14px;border:1px solid {{ railBorder.guides }};background:{{ railBg.guides }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+        <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
+          <div style="width:22px;height:2px;background:{{ railFg.guides }};"></div>
+          <div style="width:15px;height:2px;background:{{ railFg.guides }};"></div>
+          <div style="width:19px;height:2px;background:{{ railFg.guides }};"></div>
+        </div>
+        <span style="font-size:10px;font-weight:500;color:{{ railFg.guides }};">Guides</span>
+      </button>
+
+      <button onClick="{{ openSelection }}" style="width:62px;height:62px;border-radius:14px;border:1px solid {{ railBorder.selection }};background:{{ railBg.selection }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+        <div style="width:12px;height:12px;border-radius:50%;background:{{ railFg.selection }};"></div>
+        <span style="font-size:10px;font-weight:500;color:{{ railFg.selection }};">Sélection</span>
+      </button>
+
+      <div style="flex:1;"></div>
+
+      <button onClick="{{ openExport }}" style="width:62px;height:62px;border-radius:14px;border:1px solid {{ railBorder.export }};background:{{ railBg.export }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+        <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid {{ railFg.export }};"></div>
+        <div style="width:18px;height:2px;background:{{ railFg.export }};border-radius:1px;"></div>
+        <span style="font-size:10px;font-weight:500;color:{{ railFg.export }};">Export</span>
+      </button>
+    </div>
+
+    <!-- SLIDE-OVER PANEL -->
+    <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:0 0 336px;border-right:1px solid oklch(0.84 0.012 65);background:oklch(0.995 0.004 75);overflow-y:auto;padding:18px;">
+
+        <!-- LIBRARY PANEL -->
+        <sc-if value="{{ isLibraryPanel }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Motifs &amp; décor</div>
+
+          <div style="display:flex;background:oklch(0.93 0.01 75);border-radius:10px;padding:3px;margin-bottom:14px;">
+            <button onClick="{{ selectPersonnagesTab }}" style="flex:1;height:38px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:{{ tabBg.personnages }};color:{{ tabFg.personnages }};">Personnages</button>
+            <button onClick="{{ selectSymbolesTab }}" style="flex:1;height:38px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:{{ tabBg.symboles }};color:{{ tabFg.symboles }};">Symboles</button>
+          </div>
+
+          <sc-if value="{{ showPersonnages }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;">
+              <sc-for list="{{ personnagesRender }}" as="it" hint-placeholder-count="6">
+                <button onClick="{{ it.onClick }}" style="aspect-ratio:1;border-radius:12px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);display:flex;align-items:center;justify-content:center;padding:8px;cursor:pointer;">
+                  <div style="{{ it.thumbStyle }}"></div>
+                </button>
+              </sc-for>
+            </div>
+            <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:14px;">Personnages {{ personnagesCount }}</div>
+            <button onClick="{{ triggerPersonnagesImport }}" style="width:100%;height:46px;border-radius:10px;border:1px dashed oklch(0.66 0.17 45);background:oklch(0.66 0.17 45 / 0.08);color:oklch(0.4 0.14 45);font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:8px;">+ Importer des personnages (SVG/PNG)</button>
+          </sc-if>
+
+          <sc-if value="{{ showSymboles }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;">
+              <sc-for list="{{ symbolesRender }}" as="it" hint-placeholder-count="6">
+                <button onClick="{{ it.onClick }}" style="aspect-ratio:1;border-radius:12px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);display:flex;align-items:center;justify-content:center;padding:8px;cursor:pointer;">
+                  <div style="{{ it.thumbStyle }}"></div>
+                </button>
+              </sc-for>
+            </div>
+            <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:14px;">Symboles {{ symbolesCount }}</div>
+            <button onClick="{{ triggerSymbolesImport }}" style="width:100%;height:46px;border-radius:10px;border:1px dashed oklch(0.66 0.17 45);background:oklch(0.66 0.17 45 / 0.08);color:oklch(0.4 0.14 45);font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:8px;">+ Importer des symboles (SVG/PNG)</button>
+          </sc-if>
+
+          <button onClick="{{ restoreLibrary }}" style="width:100%;height:40px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:transparent;color:oklch(0.46 0.02 60);font-size:12.5px;cursor:pointer;margin-top:6px;">Restaurer la bibliothèque de base</button>
+
+          <div style="height:1px;background:oklch(0.84 0.012 65);margin:18px 0;"></div>
+
+          <div style="font-size:15px;font-weight:600;margin-bottom:12px;">Décor</div>
+          <div style="border-radius:12px;overflow:hidden;border:1px solid oklch(0.84 0.012 65);margin-bottom:12px;aspect-ratio:4/3;background:oklch(0.93 0.01 75);">
+            <img src="{{ decorSrc }}" style="width:100%;height:100%;object-fit:cover;" />
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button onClick="{{ triggerDecorImport }}" style="flex:1;height:44px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);color:oklch(0.19 0.02 55);font-size:13px;font-weight:600;cursor:pointer;">Importer un décor</button>
+            <button onClick="{{ refreshDecor }}" style="flex:0 0 44px;height:44px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);color:oklch(0.19 0.02 55);font-size:15px;cursor:pointer;">↻</button>
+          </div>
+          <button onClick="{{ toggleDecorLock }}" style="width:100%;height:44px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:{{ decorLockBg }};color:oklch(0.19 0.02 55);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <div style="width:12px;height:14px;border:2px solid currentColor;border-radius:3px;border-top-left-radius:{{ lockTopRadius }};border-top-right-radius:{{ lockTopRadius }};"></div>
+            {{ decorLockLabel }}
+          </button>
+        </sc-if>
+
+        <!-- CONTOUR PANEL -->
+        <sc-if value="{{ isContourPanel }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Contour</div>
+          <div style="border-radius:12px;overflow:hidden;border:1px solid oklch(0.84 0.012 65);margin-bottom:16px;aspect-ratio:4/3;background:oklch(0.93 0.01 75);display:flex;align-items:center;justify-content:center;">
+            <img src="{{ contourSrc }}" style="width:80%;height:80%;object-fit:contain;" />
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <label style="flex:1;">
+              <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Dim. longue (mm)</div>
+              <input type="number" value="{{ contourLong }}" onChange="{{ setLongDim }}" style="width:100%;height:48px;border-radius:8px;border:1px solid oklch(0.84 0.012 65);padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;" />
+            </label>
+            <label style="flex:1;">
+              <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Dim. courte (mm)</div>
+              <input type="number" value="{{ contourShort }}" onChange="{{ setShortDim }}" style="width:100%;height:48px;border-radius:8px;border:1px solid oklch(0.84 0.012 65);padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;" />
+            </label>
+          </div>
+
+          <button onClick="{{ triggerContourImport }}" style="width:100%;height:46px;border-radius:10px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:10px;">Charger un contour SVG — recommandé</button>
+          <div style="font-size:12px;line-height:1.5;color:oklch(0.46 0.02 60);">SVG « creusé » : corps plein + cavités auto-réservées (trous), à l'échelle réelle de l'instrument.</div>
+        </sc-if>
+
+        <!-- GUIDES PANEL -->
+        <sc-if value="{{ isGuidesPanel }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Guides de gravure</div>
+          <div style="margin-bottom:18px;">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;">
+              <span style="color:oklch(0.46 0.02 60);">Marge de sécurité</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ safetyMarginLabel }}</span>
+            </div>
+            <input type="range" min="0" max="15" step="0.5" value="{{ safetyMargin }}" onChange="{{ setSafetyMargin }}" />
+            <div style="font-size:11.5px;line-height:1.5;color:oklch(0.46 0.02 60);margin-top:8px;">Zone à éviter près du bord, en cas de calage imprécis de la pièce sous le laser.</div>
+          </div>
+
+          <div style="height:1px;background:oklch(0.84 0.012 65);margin:16px 0;"></div>
+
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Cadre laser <span style="font-weight:400;color:oklch(0.46 0.02 60);font-size:12px;">Falcon 2</span></div>
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <label style="flex:1;">
+              <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Largeur (mm)</div>
+              <input type="number" value="{{ frameW }}" onChange="{{ setFrameW }}" style="width:100%;height:48px;border-radius:8px;border:1px solid oklch(0.84 0.012 65);padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;" />
+            </label>
+            <label style="flex:1;">
+              <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Hauteur (mm)</div>
+              <input type="number" value="{{ frameH }}" onChange="{{ setFrameH }}" style="width:100%;height:48px;border-radius:8px;border:1px solid oklch(0.84 0.012 65);padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;" />
+            </label>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;">
+            <span style="color:oklch(0.46 0.02 60);">Rotation du cadre</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ frameRotationLabel }}</span>
+          </div>
+          <input type="range" min="-45" max="45" step="1" value="{{ frameRotation }}" onChange="{{ setFrameRotation }}" />
+          <div style="font-size:11.5px;line-height:1.5;color:oklch(0.46 0.02 60);margin-top:8px;">Glisser le cadre sur le canevas pour le repositionner ; vérifie ce qui rentre dans la zone de gravure.</div>
+
+          <div style="height:1px;background:oklch(0.84 0.012 65);margin:16px 0;"></div>
+
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Zone interdite</div>
+          <button onClick="{{ addForbiddenZone }}" style="width:100%;height:44px;border-radius:10px;border:1px dashed oklch(0.58 0.19 25);background:oklch(0.58 0.19 25 / 0.08);color:oklch(0.45 0.16 25);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;">+ Zone interdite (cavité manuelle)</button>
+          <div style="font-size:11.5px;line-height:1.5;color:oklch(0.46 0.02 60);">Rien n'y sera gravé ; le rangement automatique l'évite.</div>
+
+          <div style="height:1px;background:oklch(0.84 0.012 65);margin:16px 0;"></div>
+
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Rangement assisté</div>
+          <label style="display:block;margin-bottom:12px;">
+            <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Nombre de motifs : <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:oklch(0.19 0.02 55);">{{ packingCount }}</span></div>
+            <input type="range" min="1" max="24" step="1" value="{{ packingCount }}" onChange="{{ setPackingCount }}" />
+          </label>
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <label style="flex:1;">
+              <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Échelle min</div>
+              <input type="range" min="0.3" max="1.5" step="0.1" value="{{ packingScaleMin }}" onChange="{{ setPackingScaleMin }}" />
+            </label>
+            <label style="flex:1;">
+              <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">Échelle max</div>
+              <input type="range" min="0.5" max="2.5" step="0.1" value="{{ packingScaleMax }}" onChange="{{ setPackingScaleMax }}" />
+            </label>
+          </div>
+          <button onClick="{{ disperse }}" style="width:100%;height:46px;border-radius:10px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:13.5px;font-weight:600;cursor:pointer;">Disperser dans le contour</button>
+        </sc-if>
+
+        <!-- SELECTION PANEL -->
+        <sc-if value="{{ isSelectionPanel }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Sélection</div>
+
+          <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ enterEditSelected }}" style="width:100%;height:48px;border-radius:10px;border:none;background:oklch(0.19 0.02 55);color:white;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;">✎ Entrer en édition (zones REMPLI/VIDE)</button>
+
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+              <button onClick="{{ duplicateSelected }}" style="flex:1;height:44px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:13px;font-weight:600;cursor:pointer;">Dupliquer</button>
+              <button onClick="{{ deleteSelected }}" style="flex:1;height:44px;border-radius:10px;border:1px solid oklch(0.58 0.19 25 / 0.4);background:oklch(0.58 0.19 25 / 0.08);color:oklch(0.45 0.16 25);font-size:13px;font-weight:600;cursor:pointer;">Supprimer</button>
+            </div>
+
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Couleur de gravure</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+              <sc-for list="{{ colorSwatches }}" as="c" hint-placeholder-count="6">
+                <button onClick="{{ c.onClick }}" style="aspect-ratio:1;min-height:48px;border-radius:10px;border:{{ c.border }};background:{{ c.hex }};cursor:pointer;"></button>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;">
+              <span style="color:oklch(0.46 0.02 60);">Marge du motif (mm)</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ marginLabel }}</span>
+            </div>
+            <input type="range" min="0" max="6" step="0.5" value="{{ marginValue }}" onChange="{{ setMargin }}" style="margin-bottom:18px;" />
+
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Ordre (z)</div>
+            <div style="display:flex;gap:8px;margin-bottom:18px;">
+              <button onClick="{{ bringToFront }}" style="flex:1;height:42px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:12.5px;font-weight:600;cursor:pointer;">⏫ Tout devant</button>
+              <button onClick="{{ sendToBack }}" style="flex:1;height:42px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:12.5px;font-weight:600;cursor:pointer;">⏬ Tout derrière</button>
+            </div>
+
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Position fine</div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;">
+              <span style="color:oklch(0.46 0.02 60);">Rotation</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ rotationLabel }}</span>
+            </div>
+            <input type="range" min="-180" max="180" step="1" value="{{ rotationValue }}" onChange="{{ setRotation }}" style="margin-bottom:14px;" />
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;">
+              <span style="color:oklch(0.46 0.02 60);">Échelle</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ scaleLabel }}</span>
+            </div>
+            <input type="range" min="0.3" max="2.5" step="0.05" value="{{ scaleValue }}" onChange="{{ setScale }}" />
+          </sc-if>
+
+          <sc-if value="{{ noSelection }}" hint-placeholder-val="{{ true }}">
+            <div style="text-align:center;padding:40px 10px;color:oklch(0.46 0.02 60);font-size:13px;line-height:1.6;">Appuyez sur un motif du canevas pour afficher ses réglages ici.</div>
+          </sc-if>
+        </sc-if>
+
+        <!-- EXPORT PANEL -->
+        <sc-if value="{{ isExportPanel }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:15px;font-weight:600;margin-bottom:14px;">Export &amp; sauvegarde</div>
+
+          <label style="display:block;margin-bottom:16px;">
+            <div style="font-size:12px;color:oklch(0.46 0.02 60);margin-bottom:6px;">DPI (PNG / JPEG)</div>
+            <select value="{{ dpi }}" onChange="{{ setDpi }}" style="width:100%;height:44px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);padding:0 10px;font-size:14px;background:oklch(0.99 0.004 75);">
+              <option value="150">150 DPI — aperçu</option>
+              <option value="300">300 DPI — standard</option>
+              <option value="600">600 DPI — haute précision</option>
+            </select>
+          </label>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <button onClick="{{ exportSVG }}" style="height:46px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:13px;font-weight:600;cursor:pointer;">Exporter SVG</button>
+            <button onClick="{{ exportPNG }}" style="height:46px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:13px;font-weight:600;cursor:pointer;">Exporter PNG</button>
+            <button onClick="{{ exportJPEG }}" style="height:46px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:13px;font-weight:600;cursor:pointer;">Exporter JPEG</button>
+            <button onClick="{{ exportPDF }}" style="height:46px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:13px;font-weight:600;cursor:pointer;">PDF A4 1:1</button>
+          </div>
+          <div style="font-size:11.5px;line-height:1.5;color:oklch(0.46 0.02 60);margin-bottom:18px;">SVG = miroir vertical (gravure) · PNG/JPEG = sens écran (aperçu/partage).</div>
+
+          <div style="height:1px;background:oklch(0.84 0.012 65);margin:16px 0;"></div>
+
+          <button onClick="{{ save }}" style="width:100%;height:46px;border-radius:10px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:10px;">Enregistrer sur cet iPad</button>
+          <div style="display:flex;gap:8px;">
+            <button onClick="{{ load }}" style="flex:1;height:44px;border-radius:10px;border:1px solid oklch(0.84 0.012 65);background:oklch(0.99 0.004 75);font-size:13px;font-weight:600;cursor:pointer;">Charger</button>
+            <button onClick="{{ clearAll }}" style="flex:1;height:44px;border-radius:10px;border:1px solid oklch(0.58 0.19 25 / 0.4);background:oklch(0.58 0.19 25 / 0.08);color:oklch(0.45 0.16 25);font-size:13px;font-weight:600;cursor:pointer;">Tout effacer</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </sc-if>
+
+    <!-- CANVAS -->
+    <div style="flex:1;position:relative;background:oklch(0.93 0.01 75);overflow:auto;overscroll-behavior:contain;" onTouchStart="{{ onCanvasTouchStart }}" onTouchMove="{{ onCanvasTouchMove }}" onTouchEnd="{{ onCanvasTouchEnd }}">
+
+      <div style="position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:center;pointer-events:none;">
+        <div style="font-size:12px;color:oklch(0.46 0.02 60);background:oklch(0.995 0.004 75 / 0.85);padding:6px 14px;border-radius:999px;border:1px solid oklch(0.84 0.012 65);">Glisser un motif pour le déplacer · appuyer pour le sélectionner</div>
+      </div>
+
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:60px 30px;">
+        <div style="width:min(100%,900px);aspect-ratio:4/3;transform:scale({{ zoom }});transition:transform 0.15s ease;">
+          <div ref="{{ setStageRef }}" onPointerDown="{{ onStageBackgroundDown }}" style="position:relative;width:100%;height:100%;">
+
+            <!-- body plate -->
+            <div style="position:absolute;inset:0;background-color:oklch(0.82 0.05 70);-webkit-mask-image:url({{ contourSrc }});mask-image:url({{ contourSrc }});-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;pointer-events:none;"></div>
+
+            <!-- decor -->
+            <div style="position:absolute;inset:0;background-image:url({{ decorSrc }});background-size:cover;background-position:center;opacity:0.85;-webkit-mask-image:url({{ contourSrc }});mask-image:url({{ contourSrc }});-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;pointer-events:none;"></div>
+
+            <!-- safety margin -->
+            <div style="position:absolute;inset:{{ safetyMarginPct }}%;border:1.5px dashed oklch(0.53 0.1 240 / 0.55);border-radius:6px;pointer-events:none;"></div>
+
+            <!-- forbidden zones -->
+            <sc-for list="{{ zonesRender }}" as="z" hint-placeholder-count="0">
+              <div onPointerDown="{{ z.onDown }}" style="{{ z.style }}">
+                <button onClick="{{ z.onRemove }}" style="position:absolute;top:-12px;right:-12px;width:26px;height:26px;border-radius:50%;border:1px solid oklch(0.58 0.19 25);background:white;color:oklch(0.58 0.19 25);font-size:13px;line-height:1;cursor:pointer;">✕</button>
+              </div>
+            </sc-for>
+
+            <!-- laser frame -->
+            <div onPointerDown="{{ onFramePointerDown }}" style="{{ frameStyle }}">
+              <div style="position:absolute;left:6px;top:6px;font-size:11px;font-weight:600;color:oklch(0.53 0.1 240);background:white;padding:2px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;">Cadre laser · Falcon 2</div>
+            </div>
+
+            <!-- motifs -->
+            <sc-for list="{{ motifsRender }}" as="m" hint-placeholder-count="0">
+              <div onPointerDown="{{ m.onDown }}" style="{{ m.wrapStyle }}">
+                <div style="{{ m.maskStyle }}"></div>
+                <div style="{{ m.colorDotStyle }}"></div>
+                <div style="{{ m.ringStyle }}"></div>
+                <sc-if value="{{ m.showHandles }}" hint-placeholder-val="{{ false }}">
+                  <div onPointerDown="{{ m.onRotateDown }}" style="{{ m.rotateHandleStyle }}">↻</div>
+                  <div onPointerDown="{{ m.onScaleDown }}" style="{{ m.scaleHandleStyle }}"></div>
+                </sc-if>
+                <sc-if value="{{ m.isEditingThis }}" hint-placeholder-val="{{ false }}">
+                  <canvas ref="{{ setEditCanvasRef }}" width="384" height="384" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;border-radius:8px;box-shadow:0 0 0 2px oklch(0.66 0.17 45);"></canvas>
+                </sc-if>
+              </div>
+            </sc-for>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- zoom controls -->
+      <div style="position:absolute;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;background:oklch(0.995 0.004 75);border:1px solid oklch(0.84 0.012 65);border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.1);">
+        <button onClick="{{ zoomIn }}" style="width:48px;height:48px;border:none;background:transparent;font-size:19px;cursor:pointer;border-bottom:1px solid oklch(0.84 0.012 65);">+</button>
+        <button onClick="{{ zoomReset }}" style="width:48px;height:38px;border:none;background:transparent;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border-bottom:1px solid oklch(0.84 0.012 65);">{{ zoomLabel }}</button>
+        <button onClick="{{ zoomOut }}" style="width:48px;height:48px;border:none;background:transparent;font-size:19px;cursor:pointer;">−</button>
+      </div>
+
+      <!-- contextual bottom toolbar -->
+      <sc-if value="{{ showSelectionToolbar }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:oklch(0.19 0.02 55);border-radius:16px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.25);">
+          <button onClick="{{ duplicateSelected }}" style="height:48px;padding:0 16px;border-radius:12px;border:none;background:transparent;color:white;font-size:13px;font-weight:500;cursor:pointer;">⧉ Dupliquer</button>
+          <button onClick="{{ sendToBack }}" style="height:48px;padding:0 16px;border-radius:12px;border:none;background:transparent;color:white;font-size:13px;font-weight:500;cursor:pointer;">▼ Descendre</button>
+          <button onClick="{{ bringToFront }}" style="height:48px;padding:0 16px;border-radius:12px;border:none;background:transparent;color:white;font-size:13px;font-weight:500;cursor:pointer;">▲ Monter</button>
+          <div style="width:1px;height:28px;background:rgba(255,255,255,0.2);"></div>
+          <button onClick="{{ openSelection }}" style="height:48px;padding:0 16px;border-radius:12px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:13px;font-weight:600;cursor:pointer;">✎ Modifier</button>
+          <button onClick="{{ deleteSelected }}" style="height:48px;padding:0 16px;border-radius:12px;border:none;background:transparent;color:oklch(0.72 0.16 25);font-size:13px;font-weight:500;cursor:pointer;">Supprimer</button>
+        </div>
+      </sc-if>
+
+      <!-- edit-mode tools toolbar -->
+      <sc-if value="{{ isEditingMotif }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:flex-end;gap:4px;background:oklch(0.995 0.004 75);border:1px solid oklch(0.84 0.012 65);border-radius:16px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+          <button onClick="{{ setToolBrush }}" style="width:52px;height:50px;border-radius:12px;border:none;background:{{ editToolBg.brush }};color:{{ editToolFg.brush }};font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">🖌<span style="font-size:9px;font-weight:600;">Pinceau</span></button>
+          <button onClick="{{ setToolEraser }}" style="width:52px;height:50px;border-radius:12px;border:none;background:{{ editToolBg.eraser }};color:{{ editToolFg.eraser }};font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">⬜<span style="font-size:9px;font-weight:600;">Gomme</span></button>
+          <button onClick="{{ setToolLine }}" style="width:52px;height:50px;border-radius:12px;border:none;background:{{ editToolBg.line }};color:{{ editToolFg.line }};font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">╱<span style="font-size:9px;font-weight:600;">Ligne</span></button>
+          <button onClick="{{ setToolRect }}" style="width:52px;height:50px;border-radius:12px;border:none;background:{{ editToolBg.rect }};color:{{ editToolFg.rect }};font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">▭<span style="font-size:9px;font-weight:600;">Rectangle</span></button>
+          <button onClick="{{ setToolCircle }}" style="width:52px;height:50px;border-radius:12px;border:none;background:{{ editToolBg.circle }};color:{{ editToolFg.circle }};font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">◯<span style="font-size:9px;font-weight:600;">Cercle</span></button>
+          <div style="width:1px;height:34px;background:oklch(0.84 0.012 65);margin:0 4px;align-self:center;"></div>
+          <button onClick="{{ cycleStroke }}" style="height:50px;padding:0 12px;border-radius:12px;border:none;background:transparent;color:oklch(0.19 0.02 55);font-size:12.5px;font-family:'IBM Plex Mono',monospace;cursor:pointer;">{{ strokeLabel }}</button>
+          <button onClick="{{ editUndo }}" style="height:50px;padding:0 14px;border-radius:12px;border:none;background:transparent;color:oklch(0.19 0.02 55);font-size:12.5px;font-weight:500;cursor:pointer;">Annuler</button>
+          <button onClick="{{ editRedo }}" style="height:50px;padding:0 14px;border-radius:12px;border:none;background:transparent;color:oklch(0.19 0.02 55);font-size:12.5px;font-weight:500;cursor:pointer;">Rétablir</button>
+          <button onClick="{{ exitEditMode }}" style="height:50px;padding:0 18px;border-radius:12px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:13px;font-weight:600;cursor:pointer;">Terminer</button>
+        </div>
+      </sc-if>
+
+      <!-- toast -->
+      <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:50%;top:60px;transform:translateX(-50%);background:oklch(0.19 0.02 55);color:white;padding:10px 18px;border-radius:10px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,0.2);">{{ toast }}</div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- EDIT MODE BANNER (in-context, canvas stays visible) -->
+  <sc-if value="{{ isEditingMotif }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;background:oklch(0.19 0.02 55);color:white;padding:8px 8px 8px 16px;border-radius:999px;box-shadow:0 8px 20px rgba(0,0,0,0.25);">
+      <span style="font-size:12.5px;font-weight:500;">✎ Édition des zones — {{ editingMotifLabel }} · contour et décor restent visibles</span>
+      <button onClick="{{ exitEditMode }}" style="height:32px;padding:0 14px;border-radius:999px;border:none;background:oklch(0.66 0.17 45);color:white;font-size:12.5px;font-weight:600;cursor:pointer;">Terminer</button>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ACCENT = 'oklch(0.66 0.17 45)';
+const GREEN = 'oklch(0.62 0.14 150)';
+const INK = 'oklch(0.19 0.02 55)';
+const BLUE = 'oklch(0.53 0.1 240)';
+const RED = 'oklch(0.58 0.19 25)';
+const ZONE_RED = 'oklch(0.6 0.19 25)';
+const EDIT_SIZE = 640;
+const EDIT_TOOLS = ['brush', 'eraser', 'line', 'rect', 'circle'];
+
+const CONTOUR_SRC = encodeURI('uploads/Guitare sur fond blanc creusée.svg');
+const DECOR_SRC = encodeURI('uploads/decor hybride.svg');
+
+const REAL_PERSONNAGES = [
+  { id: 'astro', label: 'Astro Boy', src: encodeURI('uploads/astro boy.svg') },
+  { id: 'bb8', label: 'BB-8', src: encodeURI('uploads/BB8.svg') },
+  { id: 'totoro', label: 'Bébé Totoro', src: encodeURI('uploads/bébé totoro.svg') },
+  { id: 'boo', label: 'Boo', src: encodeURI('uploads/boo.svg') },
+  { id: 'chatbus', label: 'Chatbus', src: encodeURI('uploads/Chatbus.svg') }
+];
+
+const PALETTE = [
+  'oklch(0.25 0.02 50)',
+  'oklch(0.45 0.09 50)',
+  'oklch(0.55 0.16 35)',
+  'oklch(0.45 0.08 150)',
+  'oklch(0.4 0.07 220)',
+  'oklch(0.6 0.12 85)'
+];
+
+const PERSONNAGE_CROPS = [
+  { bgSize: '480% 480%', bgPos: '10% 15%' },
+  { bgSize: '520% 520%', bgPos: '70% 10%' },
+  { bgSize: '450% 450%', bgPos: '35% 55%' },
+  { bgSize: '500% 500%', bgPos: '85% 60%' },
+  { bgSize: '560% 560%', bgPos: '15% 80%' },
+  { bgSize: '470% 470%', bgPos: '60% 85%' }
+];
+
+const SYMBOLE_CROPS = [
+  { bgSize: '820% 820%', bgPos: '8% 20%' },
+  { bgSize: '900% 900%', bgPos: '40% 12%' },
+  { bgSize: '850% 850%', bgPos: '75% 25%' },
+  { bgSize: '880% 880%', bgPos: '22% 68%' },
+  { bgSize: '860% 860%', bgPos: '55% 72%' },
+  { bgSize: '900% 900%', bgPos: '88% 82%' }
+];
+
+function buildLibrary() {
+  return {
+    personnages: REAL_PERSONNAGES.map(p => ({
+      id: p.id, label: p.label, kind: 'personnage', src: p.src, mode: 'mask'
+    })),
+    symboles: SYMBOLE_CROPS.map((c, i) => ({
+      id: 's' + (i + 1), label: 'Symbole ' + String(i + 1).padStart(2, '0'),
+      kind: 'symbole', src: null, bgSize: c.bgSize, bgPos: c.bgPos, mode: 'medallion'
+    }))
+  };
+}
+
+class Component extends DCLogic {
+  stageRef = { current: null };
+  dragging = null;
+  nextId = 100;
+  history = [];
+  future = [];
+  toastTimer = null;
+
+  state = {
+    activePanel: null,
+    libraryTab: 'personnages',
+    contourSrc: CONTOUR_SRC,
+    decorSrc: DECOR_SRC,
+    decorLocked: false,
+    contourDims: { long: 480, short: 340 },
+    safetyMargin: 3,
+    laserFrame: { x: 50, y: 42, w: 220, h: 160, rotation: 0 },
+    forbiddenZones: [],
+    packing: { count: 8, scaleMin: 0.6, scaleMax: 1.3 },
+    library: buildLibrary(),
+    motifs: [
+      { id: 'm1', kind: 'personnage', src: REAL_PERSONNAGES[0].src, mode: 'mask', x: 26, y: 26, rotation: -8, scale: 1.1, color: PALETTE[0], margin: 1, source: 'manual' },
+      { id: 'm2', kind: 'personnage', src: REAL_PERSONNAGES[1].src, mode: 'mask', x: 70, y: 24, rotation: 12, scale: 0.95, color: PALETTE[2], margin: 1, source: 'manual' },
+      { id: 'm3', kind: 'personnage', src: REAL_PERSONNAGES[2].src, mode: 'mask', x: 24, y: 74, rotation: 4, scale: 1.15, color: PALETTE[4], margin: 1, source: 'manual' },
+      { id: 'm4', kind: 'personnage', src: REAL_PERSONNAGES[3].src, mode: 'mask', x: 74, y: 72, rotation: -14, scale: 0.9, color: PALETTE[5], margin: 1, source: 'manual' },
+      { id: 'm5', kind: 'personnage', src: REAL_PERSONNAGES[4].src, mode: 'mask', x: 50, y: 48, rotation: 0, scale: 1.3, color: PALETTE[1], margin: 1, source: 'manual' }
+    ],
+    selectedId: 'm2',
+    pendingEdits: { m2: { color: PALETTE[3], margin: 2 } },
+    zoom: 1,
+    dpi: 300,
+    toast: null,
+    motifEditId: null,
+    editTool: 'brush',
+    editStroke: 3
+  };
+
+  pushHistory() {
+    this.history.push(JSON.stringify(this.state.motifs));
+    this.future = [];
+    if (this.history.length > 30) this.history.shift();
+  }
+
+  undo = () => {
+    if (!this.history.length) return;
+    this.future.push(JSON.stringify(this.state.motifs));
+    const prev = JSON.parse(this.history.pop());
+    this.setState({ motifs: prev, selectedId: null });
+  };
+  redo = () => {
+    if (!this.future.length) return;
+    this.history.push(JSON.stringify(this.state.motifs));
+    const next = JSON.parse(this.future.pop());
+    this.setState({ motifs: next, selectedId: null });
+  };
+
+  showToast = (msg) => {
+    clearTimeout(this.toastTimer);
+    this.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  };
+
+  setPanel = (name) => this.setState(s => ({ activePanel: s.activePanel === name ? null : name }));
+  setLibraryTab = (tab) => this.setState({ libraryTab: tab });
+  openLibrary = () => this.setPanel('library');
+  openContour = () => this.setPanel('contour');
+  openGuides = () => this.setPanel('guides');
+  openSelection = () => this.setPanel('selection');
+  openExport = () => this.setPanel('export');
+  selectPersonnagesTab = () => this.setLibraryTab('personnages');
+  selectSymbolesTab = () => this.setLibraryTab('symboles');
+  exportSVG = () => this.exportAction('SVG');
+  exportPNG = () => this.exportAction('PNG');
+  exportJPEG = () => this.exportAction('JPEG');
+  exportPDF = () => this.exportAction('PDF A4 1:1');
+
+  setContourInputRef = (el) => { this.contourInputEl = el; };
+  setDecorInputRef = (el) => { this.decorInputEl = el; };
+  setPersonnagesInputRef = (el) => { this.personnagesInputEl = el; };
+  setSymbolesInputRef = (el) => { this.symbolesInputEl = el; };
+  triggerContourImport = () => this.contourInputEl && this.contourInputEl.click();
+  triggerDecorImport = () => this.decorInputEl && this.decorInputEl.click();
+  triggerPersonnagesImport = () => this.personnagesInputEl && this.personnagesInputEl.click();
+  triggerSymbolesImport = () => this.symbolesInputEl && this.symbolesInputEl.click();
+
+  importContour = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { this.setState({ contourSrc: reader.result }); this.showToast('Contour chargé : ' + f.name); };
+    reader.readAsDataURL(f);
+    e.target.value = '';
+  };
+  importDecor = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { this.setState({ decorSrc: reader.result }); this.showToast('Décor chargé : ' + f.name); };
+    reader.readAsDataURL(f);
+    e.target.value = '';
+  };
+  importMotifsGeneric = (e, key, kindLabel) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    let remaining = files.length;
+    const newItems = [];
+    files.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        newItems.push({ id: key + '-' + (this.nextId++), label: f.name.replace(/\.[^.]+$/, ''), kind: kindLabel, src: reader.result, mode: 'mask' });
+        remaining--;
+        if (remaining === 0) {
+          this.setState(s => ({ library: { ...s.library, [key]: [...s.library[key], ...newItems] } }));
+          this.showToast(files.length + ' motif(s) importé(s)');
+        }
+      };
+      reader.readAsDataURL(f);
+    });
+    e.target.value = '';
+  };
+  importPersonnages = (e) => this.importMotifsGeneric(e, 'personnages', 'personnage');
+  importSymboles = (e) => this.importMotifsGeneric(e, 'symboles', 'symbole');
+
+  restoreLibrary = () => { this.setState({ library: buildLibrary() }); this.showToast('Bibliothèque restaurée'); };
+  toggleDecorLock = () => this.setState(s => ({ decorLocked: !s.decorLocked }));
+  refreshDecor = () => this.showToast('Décor actualisé');
+
+  setLongDim = (e) => this.setState(s => ({ contourDims: { ...s.contourDims, long: Number(e.target.value) || s.contourDims.long } }));
+  setShortDim = (e) => this.setState(s => ({ contourDims: { ...s.contourDims, short: Number(e.target.value) || s.contourDims.short } }));
+  setSafetyMargin = (e) => this.setState({ safetyMargin: Number(e.target.value) });
+  setFrameW = (e) => this.setState(s => ({ laserFrame: { ...s.laserFrame, w: Number(e.target.value) || s.laserFrame.w } }));
+  setFrameH = (e) => this.setState(s => ({ laserFrame: { ...s.laserFrame, h: Number(e.target.value) || s.laserFrame.h } }));
+  setFrameRotation = (e) => this.setState(s => ({ laserFrame: { ...s.laserFrame, rotation: Number(e.target.value) } }));
+
+  addForbiddenZone = () => {
+    this.pushHistory();
+    this.setState(s => ({ forbiddenZones: [...s.forbiddenZones, { id: 'z' + (this.nextId++), x: 50, y: 50, w: 14, h: 12 }] }));
+  };
+  removeZone = (id) => (e) => {
+    e.stopPropagation();
+    this.pushHistory();
+    this.setState(s => ({ forbiddenZones: s.forbiddenZones.filter(z => z.id !== id) }));
+  };
+
+  setPackingCount = (e) => this.setState(s => ({ packing: { ...s.packing, count: Number(e.target.value) } }));
+  setPackingScaleMin = (e) => this.setState(s => ({ packing: { ...s.packing, scaleMin: Number(e.target.value) } }));
+  setPackingScaleMax = (e) => this.setState(s => ({ packing: { ...s.packing, scaleMax: Number(e.target.value) } }));
+
+  disperse = () => {
+    this.pushHistory();
+    const { count, scaleMin, scaleMax } = this.state.packing;
+    const pool = [...this.state.library.personnages, ...this.state.library.symboles];
+    if (!pool.length) return;
+    const newOnes = [];
+    for (let i = 0; i < count; i++) {
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      const scale = scaleMin + Math.random() * (scaleMax - scaleMin);
+      newOnes.push({
+        id: 'm' + (this.nextId++), kind: item.kind, src: item.src, mode: item.mode, bgSize: item.bgSize, bgPos: item.bgPos,
+        x: 18 + Math.random() * 64, y: 18 + Math.random() * 64,
+        rotation: Math.round(Math.random() * 360 - 180),
+        scale: Number(scale.toFixed(2)),
+        color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+        margin: 1, source: 'pack'
+      });
+    }
+    this.setState(s => ({ motifs: [...s.motifs.filter(m => m.source !== 'pack'), ...newOnes] }));
+    this.showToast(count + ' motifs dispersés');
+  };
+
+  addMotifFromLibrary = (item) => {
+    this.pushHistory();
+    const id = 'm' + (this.nextId++);
+    const newMotif = { id, kind: item.kind, src: item.src, mode: item.mode, bgSize: item.bgSize, bgPos: item.bgPos, x: 48 + (Math.random() * 10 - 5), y: 48 + (Math.random() * 10 - 5), rotation: 0, scale: 1, color: PALETTE[0], margin: 1, source: 'manual' };
+    this.setState(s => ({ motifs: [...s.motifs, newMotif], selectedId: id, activePanel: 'selection' }));
+  };
+
+  setStageRef = (el) => { this.stageRef.current = el; };
+
+  enterEditSelected = () => {
+    if (!this.state.selectedId) return;
+    this.editHistory = []; this.editFuture = [];
+    const id = this.state.selectedId;
+    const m = this.state.motifs.find(x => x.id === id);
+    this.prevRotation = m ? m.rotation : 0;
+    this.pushHistory();
+    this.setState(s => ({
+      motifEditId: id, editTool: 'brush', editStroke: 3,
+      motifs: s.motifs.map(x => x.id === id ? { ...x, rotation: 0 } : x)
+    }));
+  };
+  exitEditMode = () => {
+    const id = this.state.motifEditId;
+    if (this.canvasEl) {
+      const dataUrl = this.canvasEl.toDataURL('image/png');
+      this.setState(s => ({ motifs: s.motifs.map(m => m.id === id ? { ...m, zonesImg: dataUrl, rotation: this.prevRotation } : m), motifEditId: null }));
+      this.showToast('Zones du motif mises à jour');
+    } else {
+      this.setState(s => ({ motifs: s.motifs.map(m => m.id === id ? { ...m, rotation: this.prevRotation } : m), motifEditId: null }));
+    }
+  };
+  setToolBrush = () => this.setState({ editTool: 'brush' });
+  setToolEraser = () => this.setState({ editTool: 'eraser' });
+  setToolLine = () => this.setState({ editTool: 'line' });
+  setToolRect = () => this.setState({ editTool: 'rect' });
+  setToolCircle = () => this.setState({ editTool: 'circle' });
+  cycleStroke = () => this.setState(s => ({ editStroke: s.editStroke === 1 ? 3 : (s.editStroke === 3 ? 8 : 1) }));
+  editHelp = () => this.showToast('Peignez les zones VIDE (gomme) ou REMPLI (pinceau) directement sur le motif');
+  editSettings = () => this.showToast('Réglages avancés (démo)');
+
+  setEditCanvasRef = (el) => {
+    this.canvasEl = el;
+    if (!el) { this.editCtx = null; return; }
+    const ctx = el.getContext('2d');
+    this.editCtx = ctx;
+    ctx.clearRect(0, 0, el.width, el.height);
+    const m = this.state.motifs.find(x => x.id === this.state.motifEditId);
+    if (m && m.zonesImg) {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 0, 0, el.width, el.height); };
+      img.src = m.zonesImg;
+    }
+    el.addEventListener('pointerdown', this.onEditDown);
+  };
+
+  onEditDown = (e) => {
+    e.preventDefault();
+    const el = this.canvasEl; if (!el || !this.editCtx) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (el.width / rect.width);
+    const y = (e.clientY - rect.top) * (el.height / rect.height);
+    this.editHistory.push(this.editCtx.getImageData(0, 0, el.width, el.height));
+    if (this.editHistory.length > 25) this.editHistory.shift();
+    this.editFuture = [];
+    const tool = this.state.editTool;
+    if (tool === 'brush' || tool === 'eraser') {
+      this.editCtx.lineCap = 'round'; this.editCtx.lineJoin = 'round';
+      this.editCtx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+      this.editCtx.strokeStyle = ZONE_RED;
+      this.editCtx.lineWidth = this.state.editStroke * 4;
+      this.editCtx.beginPath();
+      this.editCtx.moveTo(x, y);
+      this.editCtx.lineTo(x + 0.01, y + 0.01);
+      this.editCtx.stroke();
+      this.editDrawing = { tool };
+    } else {
+      this.editBaseSnapshot = this.editCtx.getImageData(0, 0, el.width, el.height);
+      this.editDrawing = { tool, startX: x, startY: y };
+    }
+    window.addEventListener('pointermove', this.onEditMove);
+    window.addEventListener('pointerup', this.onEditUp);
+  };
+  onEditMove = (e) => {
+    if (!this.editDrawing || !this.editCtx || !this.canvasEl) return;
+    const el = this.canvasEl;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (el.width / rect.width);
+    const y = (e.clientY - rect.top) * (el.height / rect.height);
+    const { tool } = this.editDrawing;
+    if (tool === 'brush' || tool === 'eraser') {
+      this.editCtx.lineTo(x, y);
+      this.editCtx.stroke();
+    } else {
+      this.editCtx.putImageData(this.editBaseSnapshot, 0, 0);
+      this.editCtx.globalCompositeOperation = 'source-over';
+      this.editCtx.strokeStyle = ZONE_RED;
+      this.editCtx.lineWidth = this.state.editStroke * 4;
+      const { startX, startY } = this.editDrawing;
+      this.editCtx.beginPath();
+      if (tool === 'line') { this.editCtx.moveTo(startX, startY); this.editCtx.lineTo(x, y); this.editCtx.stroke(); }
+      else if (tool === 'rect') { this.editCtx.strokeRect(Math.min(startX, x), Math.min(startY, y), Math.abs(x - startX), Math.abs(y - startY)); }
+      else if (tool === 'circle') { const r = Math.hypot(x - startX, y - startY); this.editCtx.arc(startX, startY, r, 0, Math.PI * 2); this.editCtx.stroke(); }
+    }
+  };
+  onEditUp = () => {
+    this.editDrawing = null;
+    window.removeEventListener('pointermove', this.onEditMove);
+    window.removeEventListener('pointerup', this.onEditUp);
+  };
+  editUndo = () => {
+    if (!this.editCtx || !this.canvasEl || !this.editHistory.length) return;
+    this.editFuture.push(this.editCtx.getImageData(0, 0, this.canvasEl.width, this.canvasEl.height));
+    const prev = this.editHistory.pop();
+    this.editCtx.putImageData(prev, 0, 0);
+  };
+  editRedo = () => {
+    if (!this.editCtx || !this.canvasEl || !this.editFuture.length) return;
+    this.editHistory.push(this.editCtx.getImageData(0, 0, this.canvasEl.width, this.canvasEl.height));
+    const next = this.editFuture.pop();
+    this.editCtx.putImageData(next, 0, 0);
+  };
+
+  onStageBackgroundDown = (e) => {
+    if (this.state.motifEditId) return;
+    if (e.target === e.currentTarget) this.setState({ selectedId: null });
+  };
+
+  onMotifPointerDown = (id) => (e) => {
+    if (this.state.motifEditId) return;
+    e.stopPropagation(); e.preventDefault();
+    this.pushHistory();
+    this.dragging = { kind: 'motif', id };
+    this.setState({ selectedId: id, activePanel: 'selection' });
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+  };
+  onRotateHandleDown = (id) => (e) => {
+    e.stopPropagation(); e.preventDefault();
+    if (!this.stageRef.current) return;
+    this.pushHistory();
+    const rect = this.stageRef.current.getBoundingClientRect();
+    const m = this.state.motifs.find(x => x.id === id);
+    if (!m) return;
+    const centerX = rect.left + (m.x / 100) * rect.width;
+    const centerY = rect.top + (m.y / 100) * rect.height;
+    this.dragging = { kind: 'rotate', id, centerX, centerY };
+    this.setState({ selectedId: id, activePanel: 'selection' });
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+  };
+  onScaleHandleDown = (id) => (e) => {
+    e.stopPropagation(); e.preventDefault();
+    if (!this.stageRef.current) return;
+    this.pushHistory();
+    const rect = this.stageRef.current.getBoundingClientRect();
+    const m = this.state.motifs.find(x => x.id === id);
+    if (!m) return;
+    const centerX = rect.left + (m.x / 100) * rect.width;
+    const centerY = rect.top + (m.y / 100) * rect.height;
+    this.dragging = { kind: 'scale', id, centerX, centerY };
+    this.setState({ selectedId: id, activePanel: 'selection' });
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+  };
+  onFramePointerDown = (e) => {
+    if (this.state.motifEditId) return;
+    e.stopPropagation(); e.preventDefault();
+    this.pushHistory();
+    this.dragging = { kind: 'frame' };
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+  };
+  onZonePointerDownFor = (id) => (e) => {
+    e.stopPropagation(); e.preventDefault();
+    this.pushHistory();
+    this.dragging = { kind: 'zone', id };
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+  };
+  onPointerMove = (e) => {
+    if (!this.dragging || !this.stageRef.current) return;
+    const rect = this.stageRef.current.getBoundingClientRect();
+    let xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    let yPct = ((e.clientY - rect.top) / rect.height) * 100;
+    xPct = Math.max(2, Math.min(98, xPct));
+    yPct = Math.max(2, Math.min(98, yPct));
+    const { kind, id } = this.dragging;
+    if (kind === 'motif') {
+      this.setState(s => ({ motifs: s.motifs.map(m => m.id === id ? { ...m, x: xPct, y: yPct } : m) }));
+    } else if (kind === 'frame') {
+      this.setState(s => ({ laserFrame: { ...s.laserFrame, x: xPct, y: yPct } }));
+    } else if (kind === 'zone') {
+      this.setState(s => ({ forbiddenZones: s.forbiddenZones.map(z => z.id === id ? { ...z, x: xPct, y: yPct } : z) }));
+    } else if (kind === 'rotate') {
+      const { centerX, centerY } = this.dragging;
+      const dx = e.clientX - centerX, dy = e.clientY - centerY;
+      let angle = Math.round(Math.atan2(dy, dx) * 180 / Math.PI + 90);
+      if (angle > 180) angle -= 360;
+      if (angle < -180) angle += 360;
+      this.setState(s => ({ motifs: s.motifs.map(m => m.id === id ? { ...m, rotation: angle } : m) }));
+    } else if (kind === 'scale') {
+      const { centerX, centerY } = this.dragging;
+      const dx = e.clientX - centerX, dy = e.clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+      const scale = Math.max(0.3, Math.min(2.5, Number((dist / 48).toFixed(2))));
+      this.setState(s => ({ motifs: s.motifs.map(m => m.id === id ? { ...m, scale } : m) }));
+    }
+  };
+  onPointerUp = () => {
+    this.dragging = null;
+    window.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+  };
+
+  duplicateSelected = () => {
+    const { selectedId, motifs } = this.state;
+    if (!selectedId) return;
+    const m = motifs.find(x => x.id === selectedId);
+    if (!m) return;
+    this.pushHistory();
+    const copy = { ...m, id: 'm' + (this.nextId++), x: Math.min(96, m.x + 4), y: Math.min(96, m.y + 4) };
+    this.setState(s => ({ motifs: [...s.motifs, copy], selectedId: copy.id }));
+  };
+  deleteSelected = () => {
+    const { selectedId } = this.state;
+    if (!selectedId) return;
+    this.pushHistory();
+    this.setState(s => {
+      const p = { ...s.pendingEdits }; delete p[selectedId];
+      return { motifs: s.motifs.filter(m => m.id !== selectedId), selectedId: null, pendingEdits: p };
+    });
+  };
+  bringToFront = () => {
+    const { selectedId } = this.state;
+    if (!selectedId) return;
+    this.pushHistory();
+    this.setState(s => { const m = s.motifs.find(x => x.id === selectedId); if (!m) return {}; return { motifs: [...s.motifs.filter(x => x.id !== selectedId), m] }; });
+  };
+  sendToBack = () => {
+    const { selectedId } = this.state;
+    if (!selectedId) return;
+    this.pushHistory();
+    this.setState(s => { const m = s.motifs.find(x => x.id === selectedId); if (!m) return {}; return { motifs: [m, ...s.motifs.filter(x => x.id !== selectedId)] }; });
+  };
+
+  setRotation = (e) => {
+    const { selectedId } = this.state; if (!selectedId) return;
+    const val = Number(e.target.value);
+    this.setState(s => ({ motifs: s.motifs.map(m => m.id === selectedId ? { ...m, rotation: val } : m) }));
+  };
+  setScale = (e) => {
+    const { selectedId } = this.state; if (!selectedId) return;
+    const val = Number(e.target.value);
+    this.setState(s => ({ motifs: s.motifs.map(m => m.id === selectedId ? { ...m, scale: val } : m) }));
+  };
+  setColorFor = (color) => () => {
+    const { selectedId, motifs, pendingEdits } = this.state;
+    if (!selectedId) return;
+    const m = motifs.find(x => x.id === selectedId);
+    this.setState(s => ({ pendingEdits: { ...s.pendingEdits, [selectedId]: { color, margin: (pendingEdits[selectedId] ? pendingEdits[selectedId].margin : m.margin) } } }));
+  };
+  setMargin = (e) => {
+    const { selectedId, motifs, pendingEdits } = this.state;
+    if (!selectedId) return;
+    const val = Number(e.target.value);
+    const m = motifs.find(x => x.id === selectedId);
+    this.setState(s => ({ pendingEdits: { ...s.pendingEdits, [selectedId]: { color: (pendingEdits[selectedId] ? pendingEdits[selectedId].color : m.color), margin: val } } }));
+  };
+  applyAll = () => {
+    this.pushHistory();
+    this.setState(s => ({ motifs: s.motifs.map(m => s.pendingEdits[m.id] ? { ...m, ...s.pendingEdits[m.id] } : m), pendingEdits: {} }));
+  };
+  discardAll = () => this.setState({ pendingEdits: {} });
+
+  zoomIn = () => this.setState(s => ({ zoom: Math.min(2.4, Number((s.zoom + 0.15).toFixed(2))) }));
+  zoomOut = () => this.setState(s => ({ zoom: Math.max(0.5, Number((s.zoom - 0.15).toFixed(2))) }));
+  zoomReset = () => this.setState({ zoom: 1 });
+
+  onCanvasTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const [a, b] = e.touches;
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      this.pinchStart = { dist, zoom: this.state.zoom };
+    }
+  };
+  onCanvasTouchMove = (e) => {
+    if (e.touches.length === 2 && this.pinchStart) {
+      const [a, b] = e.touches;
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const ratio = dist / this.pinchStart.dist;
+      const newZoom = Math.max(0.5, Math.min(2.4, Number((this.pinchStart.zoom * ratio).toFixed(2))));
+      this.setState({ zoom: newZoom });
+    }
+  };
+  onCanvasTouchEnd = (e) => { if (e.touches.length < 2) this.pinchStart = null; };
+
+  save = () => {
+    try {
+      localStorage.setItem('motif-layout-project', JSON.stringify({
+        motifs: this.state.motifs, library: this.state.library, contourSrc: this.state.contourSrc,
+        decorSrc: this.state.decorSrc, safetyMargin: this.state.safetyMargin, laserFrame: this.state.laserFrame,
+        contourDims: this.state.contourDims, forbiddenZones: this.state.forbiddenZones
+      }));
+      this.showToast('Projet enregistré sur cet iPad');
+    } catch (err) { this.showToast('Échec de l\u2019enregistrement'); }
+  };
+  load = () => {
+    try {
+      const raw = localStorage.getItem('motif-layout-project');
+      if (!raw) { this.showToast('Aucun projet enregistré'); return; }
+      const data = JSON.parse(raw);
+      this.pushHistory();
+      this.setState({ ...data, selectedId: null, pendingEdits: {} });
+      this.showToast('Projet chargé');
+    } catch (err) { this.showToast('Échec du chargement'); }
+  };
+  clearAll = () => {
+    this.pushHistory();
+    this.setState({ motifs: [], selectedId: null, pendingEdits: {}, forbiddenZones: [] });
+    this.showToast('Canevas vidé');
+  };
+  exportAction = (label) => this.showToast(label + ' — export généré (démo)');
+  setDpi = (e) => this.setState({ dpi: Number(e.target.value) });
+
+  renderVals() {
+    const s = this.state;
+    const longMM = s.contourDims.long || 1;
+    const toPct = (mm) => (mm / longMM * 100);
+
+    const selected = s.motifs.find(m => m.id === s.selectedId) || null;
+    const pendingCount = Object.keys(s.pendingEdits).length;
+    const currentPending = s.selectedId ? s.pendingEdits[s.selectedId] : null;
+
+    const panels = ['library', 'contour', 'guides', 'selection', 'export'];
+    const railFg = {}, railBg = {}, railBorder = {};
+    panels.forEach(p => {
+      const active = s.activePanel === p;
+      railFg[p] = active ? ACCENT : INK;
+      railBg[p] = active ? 'oklch(0.66 0.17 45 / 0.1)' : 'transparent';
+      railBorder[p] = active ? ACCENT : 'transparent';
+    });
+
+    const motifsRender = s.motifs.map(m => {
+      const pending = s.pendingEdits[m.id];
+      const color = pending ? pending.color : m.color;
+      const isSelected = m.id === s.selectedId;
+      const isPending = !!pending;
+      const baseSize = 96;
+      return {
+        id: m.id,
+        onDown: this.onMotifPointerDown(m.id),
+        wrapStyle: {
+          position: 'absolute', left: m.x + '%', top: m.y + '%',
+          width: baseSize + 'px', height: baseSize + 'px',
+          transform: `translate(-50%, -50%) rotate(${m.rotation}deg) scale(${m.scale})`,
+          cursor: 'grab', touchAction: 'none'
+        },
+        maskStyle: m.mode === 'mask' ? {
+          width: '100%', height: '100%', backgroundColor: color,
+          WebkitMaskImage: `url(${m.src})`, maskImage: `url(${m.src})`,
+          WebkitMaskSize: 'contain', maskSize: 'contain',
+          WebkitMaskPosition: 'center', maskPosition: 'center',
+          WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+          filter: isSelected ? 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))' : 'none'
+        } : {
+          width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden',
+          backgroundImage: `url(${m.src || s.decorSrc})`,
+          backgroundSize: m.bgSize, backgroundPosition: m.bgPos, backgroundRepeat: 'no-repeat',
+          boxShadow: isSelected ? '0 3px 10px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.18)',
+          border: `3px solid ${color}`
+        },
+        colorDotStyle: m.mode === 'mask' ? { display: 'none' } : {
+          position: 'absolute', right: '-4px', bottom: '-4px', width: '20px', height: '20px',
+          borderRadius: '50%', background: color, border: '2px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+        },
+        ringStyle: {
+          position: 'absolute', inset: -8, borderRadius: '12px',
+          border: isSelected ? `2.5px solid ${ACCENT}` : (isPending ? `2px dashed ${GREEN}` : 'none'),
+          boxShadow: isSelected ? `0 0 0 4px oklch(0.66 0.17 45 / 0.15)` : 'none',
+          pointerEvents: 'none'
+        },
+        showHandles: isSelected && s.motifEditId !== m.id,
+        isEditingThis: s.motifEditId === m.id,
+        onRotateDown: this.onRotateHandleDown(m.id),
+        onScaleDown: this.onScaleHandleDown(m.id),
+        rotateHandleStyle: {
+          position: 'absolute', left: '50%', top: '-44px', width: '36px', height: '36px',
+          transform: `translateX(-50%) scale(${1 / m.scale})`,
+          borderRadius: '50%', background: ACCENT, border: '3px solid white',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'grab', touchAction: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '15px'
+        },
+        scaleHandleStyle: {
+          position: 'absolute', right: '-16px', bottom: '-16px', width: '32px', height: '32px',
+          transform: `scale(${1 / m.scale})`,
+          borderRadius: '8px', background: ACCENT, border: '3px solid white',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'nwse-resize', touchAction: 'none'
+        }
+      };
+    });
+
+    const zonesRender = s.forbiddenZones.map(z => ({
+      id: z.id,
+      onDown: this.onZonePointerDownFor(z.id),
+      onRemove: this.removeZone(z.id),
+      style: {
+        position: 'absolute', left: z.x + '%', top: z.y + '%',
+        width: toPct(z.w * (longMM / 100)) + '%', height: toPct(z.h * (longMM / 100)) + '%',
+        transform: 'translate(-50%, -50%)',
+        background: 'repeating-linear-gradient(45deg, oklch(0.58 0.19 25 / 0.18), oklch(0.58 0.19 25 / 0.18) 6px, transparent 6px, transparent 12px)',
+        border: `1.5px solid ${RED}`, borderRadius: '4px', cursor: 'grab', touchAction: 'none'
+      }
+    }));
+
+    const frameStyle = {
+      position: 'absolute', left: s.laserFrame.x + '%', top: s.laserFrame.y + '%',
+      width: toPct(s.laserFrame.w) + '%', height: toPct(s.laserFrame.h) + '%',
+      transform: `translate(-50%, -50%) rotate(${s.laserFrame.rotation}deg)`,
+      border: `2px solid ${BLUE}`, background: 'oklch(0.53 0.1 240 / 0.05)',
+      borderRadius: '4px', cursor: 'grab', touchAction: 'none'
+    };
+
+    const makeThumb = (item) => item.mode === 'mask' ? {
+      width: '100%', height: '100%', backgroundColor: INK,
+      WebkitMaskImage: `url(${item.src})`, maskImage: `url(${item.src})`,
+      WebkitMaskSize: 'contain', maskSize: 'contain',
+      WebkitMaskPosition: 'center', maskPosition: 'center',
+      WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat'
+    } : {
+      width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden',
+      backgroundImage: `url(${item.src || s.decorSrc})`,
+      backgroundSize: item.bgSize, backgroundPosition: item.bgPos, backgroundRepeat: 'no-repeat'
+    };
+
+    return {
+      canUndo: this.history.length > 0,
+      canRedo: this.future.length > 0,
+      undoOpacity: this.history.length > 0 ? 1 : 0.35,
+      redoOpacity: this.future.length > 0 ? 1 : 0.35,
+      undo: this.undo, redo: this.redo,
+
+      setPanel: this.setPanel,
+      openLibrary: this.openLibrary,
+      openContour: this.openContour,
+      openGuides: this.openGuides,
+      openSelection: this.openSelection,
+      openExport: this.openExport,
+      selectPersonnagesTab: this.selectPersonnagesTab,
+      selectSymbolesTab: this.selectSymbolesTab,
+      exportSVG: this.exportSVG,
+      exportPNG: this.exportPNG,
+      exportJPEG: this.exportJPEG,
+      exportPDF: this.exportPDF,
+      panelOpen: !!s.activePanel,
+      isLibraryPanel: s.activePanel === 'library',
+      isContourPanel: s.activePanel === 'contour',
+      isGuidesPanel: s.activePanel === 'guides',
+      isSelectionPanel: s.activePanel === 'selection',
+      isExportPanel: s.activePanel === 'export',
+      railFg, railBg, railBorder,
+
+      setLibraryTab: this.setLibraryTab,
+      showPersonnages: s.libraryTab === 'personnages',
+      showSymboles: s.libraryTab === 'symboles',
+      tabBg: { personnages: s.libraryTab === 'personnages' ? 'white' : 'transparent', symboles: s.libraryTab === 'symboles' ? 'white' : 'transparent' },
+      tabFg: { personnages: s.libraryTab === 'personnages' ? INK : 'oklch(0.46 0.02 60)', symboles: s.libraryTab === 'symboles' ? INK : 'oklch(0.46 0.02 60)' },
+      personnagesRender: s.library.personnages.map(it => ({ id: it.id, thumbStyle: makeThumb(it), onClick: () => this.addMotifFromLibrary(it) })),
+      symbolesRender: s.library.symboles.map(it => ({ id: it.id, thumbStyle: makeThumb(it), onClick: () => this.addMotifFromLibrary(it) })),
+      personnagesCount: s.library.personnages.length,
+      symbolesCount: s.library.symboles.length,
+      restoreLibrary: this.restoreLibrary,
+
+      contourSrc: s.contourSrc,
+      decorSrc: s.decorSrc,
+      decorLockBg: s.decorLocked ? 'oklch(0.58 0.19 25 / 0.08)' : 'oklch(0.62 0.14 150 / 0.1)',
+      decorLockLabel: s.decorLocked ? 'Décor verrouillé' : 'Décor déverrouillé',
+      lockTopRadius: s.decorLocked ? '2px' : '6px',
+      toggleDecorLock: this.toggleDecorLock,
+      triggerDecorImport: this.triggerDecorImport,
+      refreshDecor: this.refreshDecor,
+      triggerContourImport: this.triggerContourImport,
+      triggerPersonnagesImport: this.triggerPersonnagesImport,
+      triggerSymbolesImport: this.triggerSymbolesImport,
+      setContourInputRef: this.setContourInputRef,
+      setDecorInputRef: this.setDecorInputRef,
+      setPersonnagesInputRef: this.setPersonnagesInputRef,
+      setSymbolesInputRef: this.setSymbolesInputRef,
+      importContour: this.importContour,
+      importDecor: this.importDecor,
+      importPersonnages: this.importPersonnages,
+      importSymboles: this.importSymboles,
+
+      contourLong: s.contourDims.long,
+      contourShort: s.contourDims.short,
+      setLongDim: this.setLongDim,
+      setShortDim: this.setShortDim,
+
+      safetyMargin: s.safetyMargin,
+      safetyMarginLabel: s.safetyMargin + ' mm',
+      safetyMarginPct: toPct(s.safetyMargin),
+      setSafetyMargin: this.setSafetyMargin,
+      frameW: s.laserFrame.w, frameH: s.laserFrame.h,
+      frameRotation: s.laserFrame.rotation,
+      frameRotationLabel: s.laserFrame.rotation + '°',
+      setFrameW: this.setFrameW, setFrameH: this.setFrameH, setFrameRotation: this.setFrameRotation,
+      addForbiddenZone: this.addForbiddenZone,
+      packingCount: s.packing.count, packingScaleMin: s.packing.scaleMin, packingScaleMax: s.packing.scaleMax,
+      setPackingCount: this.setPackingCount, setPackingScaleMin: this.setPackingScaleMin, setPackingScaleMax: this.setPackingScaleMax,
+      disperse: this.disperse,
+
+      hasSelection: !!selected,
+      noSelection: !selected,
+      showSelectionToolbar: !!selected && !s.motifEditId,
+      duplicateSelected: this.duplicateSelected,
+      deleteSelected: this.deleteSelected,
+      bringToFront: this.bringToFront,
+      sendToBack: this.sendToBack,
+      colorSwatches: PALETTE.map(hex => ({
+        hex, onClick: this.setColorFor(hex),
+        border: (currentPending ? currentPending.color : (selected ? selected.color : null)) === hex ? `2px solid ${INK}` : '1px solid oklch(0.84 0.012 65)'
+      })),
+      marginValue: currentPending ? currentPending.margin : (selected ? selected.margin : 1),
+      marginLabel: (currentPending ? currentPending.margin : (selected ? selected.margin : 1)) + ' mm',
+      setMargin: this.setMargin,
+      rotationValue: selected ? selected.rotation : 0,
+      rotationLabel: (selected ? selected.rotation : 0) + '°',
+      scaleValue: selected ? selected.scale : 1,
+      scaleLabel: 'x' + (selected ? selected.scale.toFixed(2) : '1.00'),
+      setRotation: this.setRotation,
+      setScale: this.setScale,
+
+      dpi: s.dpi, setDpi: this.setDpi,
+      exportAction: this.exportAction,
+      save: this.save, load: this.load, clearAll: this.clearAll,
+
+      hasPending: pendingCount > 0,
+      pendingLabel: pendingCount + (pendingCount > 1 ? ' essais en attente' : ' essai en attente'),
+      applyAll: this.applyAll, discardAll: this.discardAll,
+
+      zoom: s.zoom, zoomLabel: Math.round(s.zoom * 100) + '%',
+      zoomIn: this.zoomIn, zoomOut: this.zoomOut, zoomReset: this.zoomReset,
+      onCanvasTouchStart: this.onCanvasTouchStart, onCanvasTouchMove: this.onCanvasTouchMove, onCanvasTouchEnd: this.onCanvasTouchEnd,
+
+      setStageRef: this.setStageRef,
+      onStageBackgroundDown: this.onStageBackgroundDown,
+      onFramePointerDown: this.onFramePointerDown,
+      frameStyle,
+      zonesRender,
+      motifsRender,
+
+      hasToast: !!s.toast,
+      toast: s.toast,
+
+      isEditingMotif: !!s.motifEditId,
+      enterEditSelected: this.enterEditSelected,
+      exitEditMode: this.exitEditMode,
+      editingMotifLabel: (() => {
+        const m = s.motifs.find(x => x.id === s.motifEditId);
+        return m ? (m.kind === 'personnage' ? 'Personnage' : 'Symbole') + ' · zones' : '';
+      })(),
+      editBgStyle: (() => {
+        const m = s.motifs.find(x => x.id === s.motifEditId);
+        if (!m) return {};
+        const pending = s.pendingEdits[m.id];
+        const color = pending ? pending.color : m.color;
+        return {
+          position: 'absolute', inset: 0, backgroundColor: color,
+          WebkitMaskImage: `url(${m.src || s.decorSrc})`, maskImage: `url(${m.src || s.decorSrc})`,
+          WebkitMaskSize: m.bgSize, maskSize: m.bgSize,
+          WebkitMaskPosition: m.bgPos, maskPosition: m.bgPos,
+          WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat'
+        };
+      })(),
+      setEditCanvasRef: this.setEditCanvasRef,
+      editToolBg: {
+        brush: s.editTool === 'brush' ? 'oklch(0.66 0.17 45 / 0.14)' : 'transparent',
+        eraser: s.editTool === 'eraser' ? 'oklch(0.66 0.17 45 / 0.14)' : 'transparent',
+        line: s.editTool === 'line' ? 'oklch(0.66 0.17 45 / 0.14)' : 'transparent',
+        rect: s.editTool === 'rect' ? 'oklch(0.66 0.17 45 / 0.14)' : 'transparent',
+        circle: s.editTool === 'circle' ? 'oklch(0.66 0.17 45 / 0.14)' : 'transparent'
+      },
+      editToolFg: {
+        brush: s.editTool === 'brush' ? ACCENT : INK,
+        eraser: s.editTool === 'eraser' ? ACCENT : INK,
+        line: s.editTool === 'line' ? ACCENT : INK,
+        rect: s.editTool === 'rect' ? ACCENT : INK,
+        circle: s.editTool === 'circle' ? ACCENT : INK
+      },
+      setToolBrush: this.setToolBrush, setToolEraser: this.setToolEraser,
+      setToolLine: this.setToolLine, setToolRect: this.setToolRect, setToolCircle: this.setToolCircle,
+      strokeLabel: s.editStroke + ' mm', cycleStroke: this.cycleStroke,
+      editHelp: this.editHelp, editSettings: this.editSettings,
+      editUndo: this.editUndo, editRedo: this.editRedo
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -52,3 +52,16 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [x] T-139 — `twist` → angle de plume + hover atténué · abandonnée (no-go : twist non exposé par Safari sur cet iPad) · plan: `plans/P9/` (S11, dépend T-138)
 - [x] T-140 — Mode « ombrage » par inclinaison Pencil (variableStroke, si go) · modèle: Sonnet, effort: high · plan: `plans/P9/` (S12, dépend T-138)
 - [x] T-141 — Gomme live sur le corps initial : masquer `edit.node` pendant l'édition · modèle: Sonnet, effort: medium · plan: `plans/PLAN_T-141_gomme-live-corps-initial.md`
+
+### P10 — Migration vers la nouvelle UI (maquette Claude Design, D-013 à ratifier)
+
+> Refonte **visuelle/spatiale seule**, aucun changement de fonction. Ratifier `DECISIONS.md §D-013` avant lancement. Absorbe les parties chrome-global encore ouvertes de P9 (S9/S10).
+
+- [x] T-142 — Tokens de design + typographie IBM Plex vendored (socle) · modèle: Sonnet, effort: medium · plan: `plans/P10/` (S1)
+- [x] T-143 — Barre supérieure + Annuler/Rétablir global + bannière « essais » · modèle: Sonnet, effort: high · plan: `plans/P10/` (S2, dépend S1)
+- [x] T-144 — Rail d'icônes + panneaux coulissants (Motifs/Contour/Guides) · modèle: Sonnet, effort: high · plan: `plans/P10/` (S3, dépend S2)
+- [x] T-145 — Panneau Sélection + barre contextuelle sombre · modèle: Sonnet, effort: high · plan: `plans/P10/` (S4, dépend S3)
+- [x] T-146 — Panneau Export + zoom flottant + pastille d'aide + toast · modèle: Sonnet, effort: medium · plan: `plans/P10/` (S5, dépend S3)
+- [x] T-147 — Chrome mode édition (pilule + barre re-skinnée, tiroir préservé) · modèle: Sonnet, effort: high · plan: `plans/P10/` (S6, dépend S3)
+- [x] T-148 — Passe responsive/PWA/safe-area + nettoyage DOM mort · modèle: Sonnet, effort: medium · plan: `plans/P10/` (S7, dépend S2-S6)
+- [ ] T-149 — [Humain] Validation visuelle d'ensemble sur iPad réel · modèle: — (humain) · plan: `plans/P10/` (S8, dépend S1-S7)

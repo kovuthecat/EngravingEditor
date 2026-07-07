@@ -3,6 +3,209 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## P10 · S1 — Tokens de design + typographie IBM Plex vendored (T-142, 2026-07-07)
+
+**Auto-validation :** ✅ `node test/run.js` vert (CSS/polices pur, aucune géométrie touchée).
+Socle visuel de la nouvelle UI (maquette Claude Design) : tokens `:root` (couleurs oklch, rayons,
+`--tap`, ombres) repris de la maquette, IBM Plex Sans/Mono vendorées dans `vendor/fonts/`. IBM Plex
+Sans est servie par Google comme un seul fichier **variable** (`wght` 400-700) — les 4 poids déclarés
+pointent donc vers le même `.woff2` (comportement navigateur normal). Le layout/DOM n'est pas encore
+touché (S2-S7) : seul le fond de `body` (racine, pas visible car couvert par header/#app) et le
+slider basculent sur les tokens à ce stade.
+
+- [ ] Ouvrir `index.html` en `file://` (double-clic) : l'app reste affichable normalement, aucune
+  erreur console liée aux polices.
+- [ ] Onglet réseau du navigateur : **aucune requête externe** (pas de `fonts.googleapis.com` ni
+  `fonts.gstatic.com`).
+- [ ] Un slider (ex. taille de trait en édition) a le nouveau look : piste fine claire, gros pouce
+  avec liseré blanc — comparer visuellement à la maquette (`Editeur Gravure.dc.html` l.17-20).
+- [ ] Zoomer sur un texte quelconque (ex. header, `body`) : si le rendu bascule vers IBM Plex, vérifier
+  que les caractères accentués français (é, è, à, ç, œ) s'affichent correctement.
+
+## P10 · S2 — Barre supérieure + Annuler/Rétablir global + bannière « essais » (T-143, 2026-07-07)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+`<header>` remplacé par la barre supérieure de la maquette (60px, titre/sous-titre, séparateur,
+Annuler/Rétablir, badge session décoratif, bouton Exporter) + bannière « essais en attente » pleine
+largeur. Historique **projet** étendu d'un Rétablir réel (pile redo miroir de l'undo existant).
+
+- [ ] Ouvrir `index.html` en `file://` : la barre supérieure ressemble à la maquette
+  (`Editeur Gravure.dc.html` l.34-54) — titre « Motif Layout » + sous-titre, séparateur, deux boutons
+  ronds 48×48, badge vert « Session locale · iPad », bouton orange « Exporter ».
+- [ ] Déplacer un motif → le bouton **Annuler** devient actif (opacité pleine) ; cliquer → le motif
+  revient à sa position précédente, et **Rétablir** devient actif à son tour.
+- [ ] Cliquer **Rétablir** → le motif reprend sa nouvelle position. Refaire une action après un Annuler
+  → **Rétablir** redevient grisé/inactif (la pile redo est vidée par une nouvelle action, normal).
+- [ ] Raccourcis clavier : Ctrl+Z annule, Ctrl+Maj+Z rétablit (hors mode édition).
+- [ ] Entrer en édition sur un motif, faire un ou plusieurs traits (essai en attente) → la **bannière
+  verte** apparaît sous la barre supérieure avec le bon décompte (« 1 essai en attente » /
+  « N essais en attente »).
+- [ ] Bouton **Jeter** de la bannière → l'essai disparaît (motif revient à son état réel), la bannière
+  se masque.
+- [ ] Refaire un essai, cliquer **Appliquer** dans la bannière → l'essai est appliqué au motif (plus de
+  surbrillance verte), la bannière se masque.
+- [ ] Bouton **Exporter** de la barre → ouvre/déplie la section « Export & sauvegarde » de la sidebar
+  actuelle (câblage minimal, sera remplacé par le panneau dédié en S5) — pas d'erreur console.
+- [ ] Entrer en édition sur un motif : la sidebar se replie automatiquement comme avant (non-régression
+  du repli auto `#app.collapsed`, le bouton ☰ manuel a été retiré du header en attendant le rail S3).
+
+## P10 · S3 — Rail d'icônes + panneaux coulissants (Motifs/Contour/Guides) (T-144, 2026-07-07)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée) ; script de vérification
+`getElementById` → 0 id orphelin sur 143.
+Sidebar unique remplacée par un rail d'icônes (78px, 5 boutons) + un panneau coulissant (336px, un seul
+ouvert à la fois). Contenu Motifs/Contour/Guides déplacé depuis l'ancienne sidebar, mêmes ids/handlers.
+Sélection/Export (hors périmètre, S4/S5) restent accessibles via l'ancien `#sidebar` résiduel
+(désormais réduit à ces deux sections). Écart maquette assumé : un slider « Rotation du cadre » a été
+ajouté au panneau Guides (absent de l'app comme contrôle dédié, la fonction existait déjà via la
+poignée de rotation du Transformer + le champ Rotation° du panneau Sélection) — à confirmer que ce
+double accès n'est pas déroutant, sinon signaler pour retrait en S4.
+
+- [ ] Ouvrir `index.html` en `file://` : rail de 5 boutons à gauche (Motifs, Contour, Guides,
+  Sélection, Export) — ressemble à la maquette (`Editeur Gravure.dc.html` l.67-107). Canevas pleine
+  largeur par défaut (aucun panneau ouvert au chargement).
+- [ ] Cliquer **Motifs** → le panneau s'ouvre (336px) avec les onglets Personnages/Symboles, les
+  grilles de vignettes (identiques à avant), le bloc Décor (aperçu, import SVG/PNG, rafraîchir,
+  verrou). Re-cliquer **Motifs** → le panneau se ferme.
+- [ ] Basculer l'onglet Symboles → la grille Symboles s'affiche (Personnages se masque) ; compteurs
+  corrects sous chaque grille.
+- [ ] Importer un personnage/symbole (SVG) depuis les tuiles pointillées du panneau → apparaît dans la
+  bonne grille, comme avant.
+- [ ] Cliquer **Contour** (le panneau Motifs se ferme, Contour s'ouvre — un seul panneau à la fois) :
+  dims longue/courte + bouton « Charger un contour SVG » fonctionnels comme avant.
+- [ ] Cliquer **Guides** : marge de sécurité (slider, la valeur mm affichée à droite suit le doigt),
+  case à cocher toujours présente ; cadre laser W/H + case à cocher + **slider rotation** (tourne le
+  cadre sur le canevas, la valeur ° suit) ; zone interdite (bouton +) ; rangement assisté (nombre +
+  sliders échelle min/max + Disperser) — tous opérants comme avant la migration.
+- [ ] Sélectionner le cadre laser sur le canevas et le faire pivoter via la poignée du Transformer →
+  revenir au panneau Guides, le slider Rotation du cadre reflète la nouvelle valeur (sync au moment où
+  la sélection se met à jour, pas en continu pendant le drag — comme le champ Rotation° existant).
+- [ ] Cliquer **Sélection** dans le rail (aucun motif sélectionné) → rien de visible ne casse. Avec un
+  motif sélectionné, l'inspecteur (ancienne sidebar résiduelle) doit rester accessible.
+- [ ] Cliquer **Export** dans le rail → ouvre la section « Export & sauvegarde » (même comportement
+  que le bouton Exporter de la barre supérieure, S2).
+- [ ] Décor : les deux boutons d'import (SVG et PNG) sont bien présents et fonctionnels côte à côte,
+  rafraîchir (↻) et verrou décor opérants.
+- [ ] Entrer en édition sur un motif : le rail/panneau restent visibles (pas de repli automatique,
+  différent de l'ancienne sidebar — attendu, cf. notes S3, à trancher en S6 si gênant sur iPad).
+
+## P10 · S4 — Panneau Sélection + barre contextuelle sombre (T-145, 2026-07-07)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+`#inspector` + `#selection-palette` remplacés par `#panel-selection` (panneau coulissant du rail,
+« Sélection ») et `#selection-toolbar` (barre sombre flottante bas-centrée du canevas). Couleur de
+gravure = picker natif seul, pas de pastilles (écart de plan tranché par Thibault le 2026-07-07,
+conforme à D-013 pt 3). Marge/Rotation/Échelle passés en sliders avec labels mono.
+
+- [ ] Ouvrir `index.html` en `file://`, sans sélection : cliquer **Sélection** dans le rail → le
+  panneau s'ouvre avec le message « Appuyez sur un motif du canevas pour afficher ses réglages ici. »
+  (pas de contenu vide/cassé).
+- [ ] Sélectionner un motif posé (personnage/symbole) : le panneau Sélection (s'il est ouvert)
+  affiche bouton sombre « ✎ Entrer en édition », Dupliquer/Supprimer, Couleur de gravure (picker
+  natif seul — pas de grille de pastilles), Rôle, Marge du motif (slider + valeur mm), Ordre (z)
+  Tout devant/derrière, Position fine (Rotation/Échelle en sliders + valeurs °/×) — comparer à la
+  maquette (`Editeur Gravure.dc.html` l.244-291, sans les pastilles).
+- [ ] En même temps, la **barre contextuelle sombre** apparaît centrée en bas du canevas (⧉
+  Dupliquer, ▼ Descendre, ▲ Monter, séparateur, ✎ Modifier en accent, Supprimer en rouge clair) —
+  comparer à la maquette (l.385-395).
+- [ ] Bouger le slider Marge/Rotation/Échelle (panneau) : la valeur mono à droite suit en direct, et
+  le motif se met à jour sur le canevas (marge/rotation/échelle) sans attendre le relâchement.
+- [ ] Bouton **✎ Modifier** de la barre sombre : si le panneau Sélection n'est pas déjà ouvert, il
+  s'ouvre ; s'il est déjà ouvert, il **reste ouvert** (pas de fermeture intempestive).
+- [ ] Dupliquer / Supprimer : fonctionnent identiquement depuis le panneau **et** depuis la barre
+  sombre (mêmes résultats qu'avant la migration).
+- [ ] ▼ Descendre / ▲ Monter (barre sombre) envoient bien le motif tout en bas / tout en haut de la
+  pile (même effet que « Tout devant »/« Tout derrière » du panneau, pas un pas-à-pas).
+- [ ] Cliquer « ✎ Entrer en édition » : la barre sombre disparaît (remplacée par le chrome d'édition
+  bas, S6) ; sortir de l'édition (bouton Sortir du chrome d'édition) → la barre sombre réapparaît si
+  le motif est toujours sélectionné.
+- [ ] Désélectionner (tap dans le vide du canevas) : le panneau Sélection (s'il est ouvert) repasse
+  au message vide, et la barre sombre disparaît.
+- [ ] Sélectionner une **zone interdite** ou le **cadre laser** (pas un motif) : Dupliquer/Supprimer/
+  Position fine restent disponibles, mais Couleur/Rôle/Marge/Entrer en édition sont absents (comme
+  avant la migration — ces réglages sont spécifiques aux motifs).
+- [ ] Point de vigilance (à noter, pas bloquant pour cette session, transmis à S6) : ouvrir le
+  panneau Sélection puis entrer en édition sur le motif sélectionné → vérifier ce qui se passe
+  visuellement (le panneau peut rester affiché avec des valeurs figées pendant que le chrome
+  d'édition prend le relais en bas) ; signaler si c'est gênant.
+
+## P10 · S6 — Chrome mode édition : pilule + barre re-skinnée, tiroir préservé (T-147, 2026-07-07)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée, CSS/HTML + un handler pur).
+Reskin **purement visuel** de `#edit-palette` — mêmes ids/handlers qu'avant P10, D-013 pt 2 (zéro
+fonction d'édition perdue) respecté : lasso, 4 modes de trait, lissage, bascule doigt et popover de
+taille restent tous accessibles (dans le tiroir ⚙ ou la barre selon leur emplacement P9).
+
+- [ ] Ouvrir `index.html` en `file://`, entrer en édition sur un motif (bouton ✎ ou « Entrer en
+  édition ») : une **pilule sombre** apparaît fixée en haut-centre (« ✎ Édition des zones — {nom du
+  motif} · contour et décor restent visibles » + bouton **Terminer** orange) — comparer à la maquette
+  (`Editeur Gravure.dc.html` l.421-427). Le liseré orange autour du canevas est bien visible (avant :
+  bleu).
+- [ ] En bas de l'écran, la **barre d'outils** a le nouveau look clair (fond blanc cassé, bord fin,
+  ombre portée, coins arrondis) — comparer à la maquette (l.397-411). Les 5 boutons **Pinceau / Gomme /
+  Ligne / Rectangle / Cercle** ont chacun une icône + un petit libellé sous l'icône.
+- [ ] Le bouton **Lasso** est bien présent dans la même barre (à droite des 5 précédents, absent de la
+  maquette mais requis — D-013 pt 2) : cliquer dessus l'active comme avant (tracé lasso fonctionnel).
+- [ ] Cliquer chaque outil : le bouton actif passe en fond orange clair + icône/texte orange (plus de
+  bleu plein) ; un seul actif à la fois.
+- [ ] Le bouton taille (ex. « 3 mm ») a le nouveau look (police mono, bordure fine) ; cliquer dessus
+  ouvre toujours le popover complet (slider + 1/3/8 mm) — aucune fonction retirée malgré le look
+  « cycle » de la maquette.
+- [ ] Boutons **?** (aide) et **⚙** (tiroir) toujours présents dans la barre, fonctionnels comme avant
+  (l'aide ouvre l'overlay reskiné ; ⚙ ouvre/ferme le tiroir, surligné en orange quand ouvert).
+- [ ] **Annuler** / **Rétablir** : boutons texte sans fond ; **Terminer** (ex-« Sortir ») : bouton plein
+  orange, à droite — cliquer ferme bien l'édition (identique au bouton Terminer de la pilule en haut).
+- [ ] Ouvrir le **tiroir ⚙** : fond clair reskiné, tous les contrôles P9 présents selon l'outil actif —
+  Pinceau : Rond/Pression/Plume/Ombrage + angle plume/dureté selon le mode + lissage ; Gomme : lissage
+  seul ; Formes/Lasso : rien (comme avant). Bascule **« Doigt : navigue/dessine »** toujours visible et
+  fonctionnelle en bas du tiroir, quel que soit l'outil.
+- [ ] Tracer un lasso sur une portion du brouillon : la **mini-barre flottante** (Déplacer/Dupliquer/
+  Effacer/✕) apparaît avec le nouveau look clair, toujours positionnée près de la sélection comme avant.
+- [ ] Modifier le brouillon (pinceau) : le **bandeau vert** « Essai en attente / Appliquer / Jeter
+  l'essai » apparaît en haut du canevas avec le nouveau style (vert cohérent avec la bannière « essais »
+  de la barre supérieure) — Appliquer/Jeter fonctionnent comme avant.
+- [ ] **Undo/redo d'édition** (bouton et geste 2/3 doigts iPad) : fonctionnent identiquement à avant la
+  migration.
+- [ ] **Mapping du trait à tout zoom** : zoomer/dézoomer pendant l'édition, tracer un trait au stylet à
+  plusieurs niveaux de zoom → le trait apparaît exactement sous la pointe, sans décalage (non-régression
+  du moteur de trait, non touché par cette session).
+- [ ] Sortir de l'édition (Terminer, pilule ou barre) : la pilule et la barre disparaissent proprement,
+  le canevas revient à son état normal (pas de résidu visuel).
+
+## P10 · S5 — Panneau Export + zoom flottant + pastille d'aide + toast (T-146, 2026-07-07)
+
+**Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
+Dernier vestige de l'ancienne sidebar (`#sidebar`, section « Export & sauvegarde » seule) remplacé par
+`#panel-export` (panneau coulissant du rail, mêmes ids/handlers). Zoom flottant (+/reset/−), pastille
+d'aide canevas et toast (nouveau, non bloquant) ajoutés en incrustations DOM du canevas.
+
+- [ ] Ouvrir `index.html` en `file://` : cliquer **Export** dans le rail (ou le bouton « Exporter » de
+  la barre supérieure) → le panneau s'ouvre avec DPI (input number 50-1200), grille 2×2 Exporter SVG/
+  PNG/JPEG/PDF A4, note d'orientation, séparateur, « Enregistrer sur cet iPad » (accent), Charger/Tout
+  effacer — comparer à la maquette (`Editeur Gravure.dc.html` l.293-321).
+- [ ] Exporter SVG/PNG/JPEG/PDF : chaque bouton télécharge bien le fichier attendu (comportement
+  identique à avant la migration) **et** un petit toast sombre apparaît brièvement en haut du canevas
+  (« SVG exporté », etc.), disparaît seul après ~2,5 s.
+- [ ] Enregistrer / Charger un projet `.json` / Tout effacer : fonctionnent comme avant ; Enregistrer
+  et Charger déclenchent aussi le toast.
+- [ ] Avec des essais en attente (édition stylet non appliquée) : le bandeau vert compact « N essai(s)
+  en attente » + « Tout appliquer » apparaît en haut du panneau Export (redondant avec la bannière
+  pleine largeur de S2, mais fonctionnel) ; « Tout appliquer » applique bien tous les essais.
+- [ ] Cliquer **Export** dans le rail alors que le panneau est déjà ouvert → il se referme (toggle
+  standard, comme Motifs/Contour/Guides/Sélection) ; re-cliquer le bouton **Exporter** de la barre
+  supérieure alors qu'un autre panneau est ouvert → force l'ouverture du panneau Export (comme
+  « ✎ Modifier » force Sélection en S4).
+- [ ] Zoom flottant bas-droite du canevas (+ / % / −) : **+** zoome, **−** dézoome, le label % au
+  centre reflète toujours le zoom courant. Cliquer sur le label (reset) → revient à 100 % centré.
+- [ ] Molette souris et pinch tactile (zoom existant) : toujours fonctionnels, **et** le label % du
+  zoom flottant se met à jour en même temps (pas seulement via les boutons +/−).
+- [ ] Pastille d'aide « Glisser un motif pour le déplacer · appuyer pour le sélectionner » visible en
+  haut du canevas **au doigt/tablette** ; sur desktop avec souris (`hover:hover` + `pointer:fine`),
+  elle doit être masquée (pas de doublon avec un éventuel comportement souris).
+- [ ] Aucune erreur console au chargement (en particulier, pas de `TypeError` lié à un `#sidebar`
+  disparu) ; le repli automatique de panneau à l'entrée en mode édition (comportement hérité,
+  point de vigilance transmis par S3/S4) n'est pas dégradé par ce retrait.
+
 ## T-141 — Gomme live sur le corps initial : masquer l'instance réelle (2026-07-04)
 
 **Auto-validation :** ✅ `node test/run.js` vert (aucune géométrie touchée).
@@ -352,6 +555,21 @@ confirmer :
   pas masqués par les zones sûres.
 - [ ] T-136 : ouverture normale en `file://` et via URL statique — aucune erreur console, comportement
   inchangé (manifest ignoré sans incidence).
+
+## P10 · S7 — Responsive / PWA / safe-area
+
+- [ ] iPad portrait : ouvrir chacun des cinq panneaux ; le panneau flotte après le rail, le canevas reste
+  visible et aucune commande ne sort de l'écran.
+- [ ] iPad paysage en mode standalone : topbar, rail, zoom, barre de sélection, barre d'édition, toast et
+  pilule d'édition restent hors encoche/coins arrondis/home indicator.
+- [ ] Barre Sélection puis barre Édition : faire défiler horizontalement jusqu'aux dernières actions ;
+  toutes les cibles restent au moins à 44 px et aucune action n'est inaccessible.
+- [ ] Desktop souris : panneaux, molette, raccourcis clavier et boutons Export restent fonctionnels ; la
+  pastille d'aide tactile et le badge iPad redondant ne sont pas affichés.
+- [ ] Ajouter à l'écran d'accueil : nom « Motif Layout », icône, surface claire au lancement et affichage
+  standalone cohérents.
+- [ ] Ouvrir directement `index.html` en `file://` : polices IBM Plex locales, application complète,
+  aucune requête réseau ni erreur console liée à un identifiant DOM retiré.
 
 ## Fix 2026-07-04 — Gomme n'efface pas le corps initial en direct
 

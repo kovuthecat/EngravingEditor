@@ -6,176 +6,304 @@
   <title>Motif Layout — pattern gravure laser</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#161922" />
+  <meta name="theme-color" content="#fdfcf9" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Motif Layout" />
   <link rel="stylesheet" href="src/style.css" />
 </head>
 <body>
-  <header>
-    <button id="btn-sidebar-toggle" class="btn sm" aria-label="Afficher/masquer le panneau">☰</button>
-    <h1>Motif Layout</h1>
-    <div class="project-history" aria-label="Historique et sauvegarde locale">
-      <button id="btn-undo" class="btn sm" type="button" disabled title="Annuler la dernière modification (Ctrl+Z)">Annuler</button>
-      <span id="local-save-status" class="save-status" role="status" aria-live="polite">Projet local prêt</span>
-      <button id="draft-badge" class="draft-badge" type="button" hidden title="Essais en attente — aller à la section Export &amp; sauvegarde"></button>
+  <header class="topbar">
+    <div class="topbar-title">
+      <div class="topbar-title-main">Motif Layout</div>
+      <div class="topbar-title-sub">Atelier de gravure laser</div>
     </div>
-    <span class="hint">molette = zoom · glisser le fond = déplacer la vue · pincer = zoom · deux doigts = déplacer la vue · pastille bleue = déplacer la sélection · Suppr = supprimer · Ctrl+D = dupliquer · [ ] = ordre</span>
+    <div class="topbar-sep" aria-hidden="true"></div>
+    <button id="btn-undo" class="topbar-icon-btn" type="button" disabled title="Annuler la dernière modification (Ctrl+Z)" aria-label="Annuler">↶</button>
+    <button id="btn-redo" class="topbar-icon-btn" type="button" disabled title="Rétablir (Ctrl+Maj+Z)" aria-label="Rétablir">↷</button>
+    <span id="local-save-status" class="save-status" role="status" aria-live="polite" hidden>Projet local prêt</span>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-session-badge"><span class="topbar-session-dot" aria-hidden="true"></span>Session locale · iPad</div>
+    <button id="btn-export-open" class="topbar-export-btn" type="button">Exporter</button>
   </header>
 
+  <div id="pending-banner" class="pending-banner" hidden>
+    <span class="pending-banner-dot" aria-hidden="true"></span>
+    <span id="pending-banner-label" class="pending-banner-label"></span>
+    <div class="topbar-spacer"></div>
+    <button id="btn-pending-discard" class="pending-banner-btn" type="button">Jeter</button>
+    <button id="btn-pending-apply" class="pending-banner-btn primary" type="button">Appliquer</button>
+  </div>
+
   <div id="app">
-    <aside id="sidebar">
-      <details class="advanced" id="lib-section" open>
-        <summary>Motifs &amp; import</summary>
-        <section>
-          <h2>Motifs</h2>
-          <label class="btn">Importer personnages (SVG)…
-            <input id="import-perso" type="file" accept=".svg" multiple hidden />
-          </label>
-          <label class="btn">Importer symboles (SVG)…
-            <input id="import-symbole" type="file" accept=".svg" multiple hidden />
-          </label>
-          <details class="lib-group" open>
-            <summary>Personnages <span class="lib-count" id="count-perso">0</span></summary>
-            <div id="library-perso" class="library-grid"></div>
-          </details>
-          <details class="lib-group" open>
-            <summary>Symboles <span class="lib-count" id="count-symbole">0</span></summary>
-            <div id="library-symbole" class="library-grid"></div>
-          </details>
-          <button id="btn-restore-builtins" class="btn sm" type="button">Restaurer la bibliothèque de base</button>
-        </section>
+    <nav id="icon-rail" aria-label="Panneaux">
+      <button id="rail-library" class="rail-btn" type="button" data-panel="library" title="Motifs &amp; décor">
+        <span class="rail-icon rail-icon-library"><span></span><span></span><span></span><span></span></span>
+        <span class="rail-label">Motifs</span>
+      </button>
+      <button id="rail-contour" class="rail-btn" type="button" data-panel="contour" title="Contour">
+        <svg class="rail-icon" viewBox="0 0 26 20" width="26" height="20" aria-hidden="true">
+          <path d="M2 14 C2 6 7 2 13 2 C19 2 24 6 24 12 C24 17 19 18 14 17 C9 16 6 18 2 14 Z" fill="none" stroke="currentColor" stroke-width="1.6" />
+        </svg>
+        <span class="rail-label">Contour</span>
+      </button>
+      <button id="rail-guides" class="rail-btn" type="button" data-panel="guides" title="Guides de gravure">
+        <span class="rail-icon rail-icon-guides"><span></span><span></span><span></span></span>
+        <span class="rail-label">Guides</span>
+      </button>
+      <button id="rail-selection" class="rail-btn" type="button" data-panel="selection" title="Sélection">
+        <span class="rail-icon rail-icon-selection"></span>
+        <span class="rail-label">Sélection</span>
+      </button>
+      <div class="rail-spacer"></div>
+      <button id="rail-export" class="rail-btn" type="button" data-panel="export" title="Exporter">
+        <span class="rail-icon rail-icon-export"><span class="rail-export-tri"></span><span class="rail-export-bar"></span></span>
+        <span class="rail-label">Export</span>
+      </button>
+    </nav>
 
-        <section>
-          <h2>Décor</h2>
-          <label class="btn">Importer décor (SVG)…
-            <input id="import-decor" type="file" accept=".svg" hidden />
-          </label>
-          <label class="btn">Importer décor (PNG)…
-            <input id="import-decor-png" type="file" accept="image/png,image/jpeg" hidden />
-          </label>
-          <button id="btn-refresh-decor" class="btn sm" type="button">Rafraîchir le décor…</button>
-          <input id="refresh-decor-file" type="file" accept="image/png,image/jpeg" hidden />
-          <div id="library-decor" class="library-grid"></div>
-          <button id="btn-lock-decor" class="btn sm" type="button" aria-pressed="false">🔓 Décor déverrouillé</button>
-        </section>
-      </details>
-
-      <details class="advanced">
-        <summary>Avancé</summary>
-
-        <h3>Contour</h3>
-        <div class="row"><label>Dim. longue (mm)</label><input id="dim-long" type="number" inputmode="decimal" value="440" /></div>
-        <div class="row"><label>Dim. courte (mm)</label><input id="dim-short" type="number" inputmode="decimal" value="325" /></div>
-        <label class="btn">Charger contour SVG… <span class="tag">recommandé</span>
-          <input id="import-svg" type="file" accept=".svg" hidden />
-        </label>
-        <p class="note">SVG « creusé » : corps en blanc + cavités auto-réservées, à l'échelle réelle.</p>
-
-        <h3>Guides de gravure</h3>
-        <div class="row-check"><label><input id="chk-margin" type="checkbox" checked /> Marge de sécurité</label></div>
-        <div class="row"><label>Marge (mm)</label><input id="margin-mm" type="number" inputmode="decimal" value="5" min="0" step="0.5" /></div>
-        <p class="note">Offset intérieur du contour : zone à éviter près du bord en cas de calage imprécis de la guitare sous le laser.</p>
-
-        <h3>Cadre laser</h3>
-        <div class="row-check"><label><input id="chk-frame" type="checkbox" /> Cadre laser (Falcon 2)</label></div>
-        <div class="row"><label>Largeur (mm)</label><input id="frame-w" type="number" inputmode="decimal" value="400" min="1" /></div>
-        <div class="row"><label>Hauteur (mm)</label><input id="frame-h" type="number" inputmode="decimal" value="415" min="1" /></div>
-        <p class="note">Cadre déplaçable (glisser) et orientable (poignée de rotation) : vérifie ce qui rentre dans la zone de gravure de la machine.</p>
-
-        <h3>Zone interdite</h3>
-        <button id="btn-zone" class="btn sm">+ Zone interdite (cavité)</button>
-        <p class="note">Zone manuelle : rien n'y sera gravé et le packing l'évite.</p>
-
-        <h3>Packing assisté</h3>
-        <div class="row"><label>Nombre</label><input id="pack-count" type="number" inputmode="decimal" value="30" min="1" /></div>
-        <div class="row"><label>Échelle min</label><input id="pack-smin" type="number" inputmode="decimal" value="0.6" step="0.1" /></div>
-        <div class="row"><label>Échelle max</label><input id="pack-smax" type="number" inputmode="decimal" value="1.2" step="0.1" /></div>
-        <button id="btn-pack" class="btn">Disperser dans le contour</button>
-      </details>
-
-      <section id="inspector" style="display:none">
-        <h2>Sélection</h2>
-        <button id="btn-dup" class="btn sm">Dupliquer</button>
-        <div id="motif-editor" style="display:none">
-          <p class="note">Motif (couleur / marge) :</p>
-          <div class="row"><label>Couleur</label><input id="insp-color" type="color" /></div>
-          <div class="row"><label>Marge (mm)</label><input id="insp-margin" type="number" inputmode="decimal" step="0.5" min="0" /></div>
+    <aside id="panel" class="side-panel" hidden>
+      <section id="panel-library" class="panel-section" hidden>
+        <div class="panel-title">Motifs &amp; décor</div>
+        <div class="tab-switch" role="tablist">
+          <button id="tab-perso" class="tab-btn active" type="button" role="tab" aria-selected="true">Personnages</button>
+          <button id="tab-symbole" class="tab-btn" type="button" role="tab" aria-selected="false">Symboles</button>
         </div>
-        <div id="stylet-editor" style="display:none">
-          <p class="note">Essai en attente (non appliqué) = affiché en <span class="draft-swatch"></span> vert sur ce motif, jusqu'à Appliquer/Jeter.</p>
+        <div id="tab-panel-perso">
+          <div id="library-perso" class="library-grid"></div>
+          <div class="panel-count">Personnages <span class="lib-count" id="count-perso">0</span></div>
+          <label class="btn-tile" for="import-perso">+ Importer des personnages (SVG)</label>
+          <input id="import-perso" type="file" accept=".svg" multiple hidden />
         </div>
-        <p class="note">Ordre (z) :</p>
-        <div class="grid2">
-          <button id="btn-front" class="btn sm">⏫ Tout devant</button>
-          <button id="btn-back" class="btn sm">⏬ Tout derrière</button>
+        <div id="tab-panel-symbole" hidden>
+          <div id="library-symbole" class="library-grid"></div>
+          <div class="panel-count">Symboles <span class="lib-count" id="count-symbole">0</span></div>
+          <label class="btn-tile" for="import-symbole">+ Importer des symboles (SVG)</label>
+          <input id="import-symbole" type="file" accept=".svg" multiple hidden />
         </div>
-        <details class="advanced">
-          <summary>Position fine</summary>
-          <div class="row"><label>Rotation°</label><input id="insp-rot" type="number" inputmode="decimal" /></div>
-          <div class="row"><label>Échelle</label><input id="insp-scale" type="number" inputmode="decimal" step="0.05" /></div>
-        </details>
-        <details class="advanced">
-          <summary>Avancé — zones (REMPLI / VIDE)</summary>
-          <div id="zone-editor" style="display:none">
-            <p class="note">Zones du motif (REMPLI / VIDE) :</p>
-            <div id="zone-list"></div>
-          </div>
-        </details>
+        <button id="btn-restore-builtins" class="panel-btn-ghost" type="button">Restaurer la bibliothèque de base</button>
+
+        <div class="panel-sep"></div>
+
+        <div class="panel-title sm">Décor</div>
+        <div id="library-decor" class="decor-preview"></div>
+        <div class="panel-row">
+          <label class="btn-outline" for="import-decor">Décor (SVG)</label>
+          <label class="btn-outline" for="import-decor-png">Décor (PNG)</label>
+          <button id="btn-refresh-decor" class="btn-icon-sq" type="button" title="Rafraîchir le décor">↻</button>
+        </div>
+        <input id="import-decor" type="file" accept=".svg" hidden />
+        <input id="import-decor-png" type="file" accept="image/png,image/jpeg" hidden />
+        <input id="refresh-decor-file" type="file" accept="image/png,image/jpeg" hidden />
+        <button id="btn-lock-decor" class="panel-btn-toggle" type="button" aria-pressed="false">🔓 Décor déverrouillé</button>
       </section>
 
-      <details class="advanced" id="section-projet">
-        <summary>Export &amp; sauvegarde</summary>
-        <div id="draft-summary" class="draft-summary" style="display:none">
-          <span id="draft-count-label" class="note">0 essai en attente</span>
-          <button id="btn-draft-apply-all" class="btn sm">Tout appliquer</button>
-        </div>
-        <div class="row"><label for="export-dpi">DPI (PNG/JPEG)</label><input id="export-dpi" type="number" inputmode="decimal" value="300" min="50" max="1200" step="50" /></div>
-        <div class="grid2">
-          <button id="btn-export" class="btn primary">Exporter SVG</button>
-          <button id="btn-export-png" class="btn sm">Exporter PNG</button>
-          <button id="btn-export-jpeg" class="btn sm">Exporter JPEG</button>
-          <button id="export-pdf" class="btn sm">PDF A4 1:1</button>
-          <button id="btn-save" class="btn sm">Enregistrer</button>
-          <label class="btn sm">Charger
-            <input id="load-project" type="file" accept=".json" hidden />
+      <section id="panel-contour" class="panel-section" hidden>
+        <div class="panel-title">Contour</div>
+        <div class="panel-row-2">
+          <label class="field"><span class="field-label">Dim. longue (mm)</span>
+            <input id="dim-long" type="number" inputmode="decimal" value="440" />
           </label>
-          <button id="btn-clear" class="btn sm danger">Tout effacer</button>
+          <label class="field"><span class="field-label">Dim. courte (mm)</span>
+            <input id="dim-short" type="number" inputmode="decimal" value="325" />
+          </label>
         </div>
-        <p class="note">SVG = miroir vertical (gravure) ; PNG/JPEG = sens écran (aperçu/partage). Si des essais sont en attente, les deux avertissent avant export.</p>
-      </details>
+        <label class="btn-cta" for="import-svg">Charger un contour SVG — recommandé</label>
+        <input id="import-svg" type="file" accept=".svg" hidden />
+        <p class="panel-note">SVG « creusé » : corps plein + cavités auto-réservées (trous), à l'échelle réelle de l'instrument.</p>
+      </section>
+
+      <section id="panel-guides" class="panel-section" hidden>
+        <div class="panel-title">Guides de gravure</div>
+
+        <div class="panel-block">
+          <div class="panel-block-head">
+            <span>Marge de sécurité</span>
+            <input id="chk-margin" type="checkbox" checked title="Activer la marge de sécurité" />
+          </div>
+          <div class="slider-row">
+            <input id="margin-mm" type="range" min="0" max="15" step="0.5" value="5" />
+            <span id="margin-mm-val" class="slider-val">5 mm</span>
+          </div>
+          <p class="panel-note">Zone à éviter près du bord, en cas de calage imprécis de la pièce sous le laser.</p>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="panel-block">
+          <div class="panel-block-head">
+            <span>Cadre laser <em>Falcon 2</em></span>
+            <input id="chk-frame" type="checkbox" title="Activer le cadre laser" />
+          </div>
+          <div class="panel-row-2">
+            <label class="field"><span class="field-label">Largeur (mm)</span>
+              <input id="frame-w" type="number" inputmode="decimal" value="400" min="1" />
+            </label>
+            <label class="field"><span class="field-label">Hauteur (mm)</span>
+              <input id="frame-h" type="number" inputmode="decimal" value="415" min="1" />
+            </label>
+          </div>
+          <div class="slider-row">
+            <span class="field-label">Rotation du cadre</span>
+            <span id="frame-rot-val" class="slider-val">0°</span>
+          </div>
+          <input id="frame-rot" type="range" min="-45" max="45" step="1" value="0" disabled />
+          <p class="panel-note">Glisser le cadre sur le canevas pour le repositionner ; vérifie ce qui rentre dans la zone de gravure de la machine.</p>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="panel-block">
+          <div class="panel-block-head"><span>Zone interdite</span></div>
+          <button id="btn-zone" class="btn-dashed" type="button">+ Zone interdite (cavité manuelle)</button>
+          <p class="panel-note">Zone manuelle : rien n'y sera gravé et le rangement automatique l'évite.</p>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <div class="panel-block">
+          <div class="panel-block-head"><span>Rangement assisté</span></div>
+          <label class="field block"><span class="field-label">Nombre de motifs</span>
+            <input id="pack-count" type="number" inputmode="decimal" value="30" min="1" />
+          </label>
+          <div class="panel-row-2">
+            <label class="field"><span class="field-label">Échelle min</span>
+              <input id="pack-smin" type="range" min="0.3" max="1.5" step="0.1" value="0.6" />
+            </label>
+            <label class="field"><span class="field-label">Échelle max</span>
+              <input id="pack-smax" type="range" min="0.5" max="2.5" step="0.1" value="1.2" />
+            </label>
+          </div>
+          <button id="btn-pack" class="btn-cta" type="button">Disperser dans le contour</button>
+        </div>
+      </section>
+
+      <section id="panel-selection" class="panel-section" hidden>
+        <div class="panel-title">Sélection</div>
+
+        <div id="selection-empty">Appuyez sur un motif du canevas pour afficher ses réglages ici.</div>
+
+        <div id="selection-has" style="display:none">
+          <button id="btn-edit" class="sel-edit-btn" type="button">✎ Entrer en édition (zones REMPLI/VIDE)</button>
+
+          <div class="sel-btn-row">
+            <button id="btn-dup-sel" type="button">Dupliquer</button>
+            <button id="btn-del" class="danger" type="button">Supprimer</button>
+          </div>
+
+          <div id="motif-editor" style="display:none">
+            <div class="panel-title sm">Couleur de gravure</div>
+            <label class="field block">
+              <input id="insp-color" type="color" />
+            </label>
+
+            <label class="field block" id="selection-role-row">
+              <span class="field-label">Rôle</span>
+              <select id="insp-role">
+                <option value="PERSONNAGE">Personnage</option>
+                <option value="SYMBOLE">Symbole</option>
+                <option value="DECOR">Décor</option>
+              </select>
+            </label>
+
+            <div class="sel-field">
+              <div class="sel-slider-label"><span class="field-label">Marge du motif (mm)</span><span id="insp-margin-val" class="slider-val">0 mm</span></div>
+              <input id="insp-margin" type="range" min="0" max="6" step="0.5" />
+            </div>
+          </div>
+
+          <div class="panel-title sm">Ordre (z)</div>
+          <div class="sel-btn-row zorder">
+            <button id="btn-front" type="button">⏫ Tout devant</button>
+            <button id="btn-back" type="button">⏬ Tout derrière</button>
+          </div>
+
+          <div class="panel-title sm">Position fine</div>
+          <div class="sel-field tight">
+            <div class="sel-slider-label"><span class="field-label">Rotation</span><span id="insp-rot-val" class="slider-val">0°</span></div>
+            <input id="insp-rot" type="range" min="-180" max="180" step="1" />
+          </div>
+          <div class="sel-field">
+            <div class="sel-slider-label"><span class="field-label">Échelle</span><span id="insp-scale-val" class="slider-val">1.00×</span></div>
+            <input id="insp-scale" type="range" min="0.3" max="2.5" step="0.05" />
+          </div>
+
+          <div id="stylet-editor" style="display:none">
+            <p class="note">Essai en attente (non appliqué) = affiché en <span class="draft-swatch"></span> vert sur ce motif, jusqu'à Appliquer/Jeter.</p>
+          </div>
+
+          <details class="advanced">
+            <summary>Avancé — zones (REMPLI / VIDE)</summary>
+            <div id="zone-editor" style="display:none">
+              <p class="note">Zones du motif (REMPLI / VIDE) :</p>
+              <div id="zone-list"></div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section id="panel-export" class="panel-section" hidden>
+        <div class="panel-title">Export &amp; sauvegarde</div>
+
+        <div id="draft-summary" class="export-draft-summary" style="display:none">
+          <span id="draft-count-label" class="note">0 essai en attente</span>
+          <button id="btn-draft-apply-all" type="button">Tout appliquer</button>
+        </div>
+
+        <label class="field block"><span class="field-label">DPI (PNG / JPEG)</span>
+          <input id="export-dpi" type="number" inputmode="decimal" value="300" min="50" max="1200" step="50" />
+        </label>
+
+        <div class="export-grid2">
+          <button id="btn-export" type="button">Exporter SVG</button>
+          <button id="btn-export-png" type="button">Exporter PNG</button>
+          <button id="btn-export-jpeg" type="button">Exporter JPEG</button>
+          <button id="export-pdf" type="button">PDF A4 1:1</button>
+        </div>
+        <p class="panel-note">SVG = miroir vertical (gravure) · PNG/JPEG = sens écran (aperçu/partage). Si des essais sont en attente, les deux avertissent avant export.</p>
+
+        <div class="panel-sep"></div>
+
+        <button id="btn-save" class="btn-cta" type="button">Enregistrer sur cet iPad</button>
+        <div class="panel-row">
+          <label class="btn-outline" for="load-project">Charger</label>
+          <input id="load-project" type="file" accept=".json" hidden />
+          <button id="btn-clear" class="btn-outline danger" type="button">Tout effacer</button>
+        </div>
+      </section>
     </aside>
 
     <div id="stage-wrap">
       <main id="stage"></main>
-      <div id="edit-mode-banner" hidden>✏️ <span id="edit-mode-banner-name"></span></div>
-      <div id="selection-palette" hidden>
-        <button id="btn-edit" class="btn sm">Entrer en édition</button>
-        <div class="row" id="selection-role-row"><label>Rôle</label>
-          <select id="insp-role">
-            <option value="PERSONNAGE">Personnage</option>
-            <option value="SYMBOLE">Symbole</option>
-            <option value="DECOR">Décor</option>
-          </select>
-        </div>
-        <div class="grid2">
-          <button id="btn-up" class="btn sm">▲ Monter</button>
-          <button id="btn-down" class="btn sm">▼ Descendre</button>
-        </div>
-        <button id="btn-dup-sel" class="btn sm">Dupliquer</button>
-        <button id="btn-del" class="btn sm danger">Supprimer</button>
+      <div id="canvas-hint" aria-hidden="true">Glisser un motif pour le déplacer · appuyer pour le sélectionner</div>
+      <div id="zoom-controls">
+        <button id="zoom-in" type="button" title="Zoom avant" aria-label="Zoom avant">+</button>
+        <button id="zoom-reset" type="button" title="Réinitialiser le zoom" aria-label="Réinitialiser le zoom"><span id="zoom-label">100%</span></button>
+        <button id="zoom-out" type="button" title="Zoom arrière" aria-label="Zoom arrière">−</button>
+      </div>
+      <div id="toast" hidden></div>
+      <div id="edit-mode-banner" hidden>
+        <span id="edit-mode-banner-text">✎ Édition des zones — <span id="edit-mode-banner-name"></span> · contour et décor restent visibles</span>
+        <button id="btn-edit-exit-pill" class="edit-mode-banner-btn" type="button">Terminer</button>
+      </div>
+      <div id="selection-toolbar" hidden>
+        <button id="sel-bar-dup" type="button">⧉ Dupliquer</button>
+        <button id="sel-bar-back" type="button">▼ Descendre</button>
+        <button id="sel-bar-front" type="button">▲ Monter</button>
+        <div class="selection-toolbar-sep"></div>
+        <button id="sel-bar-edit" class="accent" type="button">✎ Modifier</button>
+        <button id="sel-bar-del" type="button">Supprimer</button>
       </div>
       <div id="edit-palette" hidden>
         <!-- P9·S4 : niveau 1 toujours visible, non scrollable (T-129) -->
         <div id="edit-toolbar">
           <div id="edit-tools-row">
-            <button id="tool-brush" class="btn tool-btn icon-btn on" title="Pinceau" aria-label="Pinceau">🖌️</button>
-            <button id="tool-eraser" class="btn tool-btn icon-btn" title="Gomme" aria-label="Gomme">🧽</button>
-            <button id="tool-line" class="btn tool-btn icon-btn" title="Ligne" aria-label="Ligne">／</button>
-            <button id="tool-rect" class="btn tool-btn icon-btn" title="Rectangle" aria-label="Rectangle">▭</button>
-            <button id="tool-ellipse" class="btn tool-btn icon-btn" title="Ellipse" aria-label="Ellipse">◯</button>
-            <button id="tool-lasso" class="btn tool-btn icon-btn" title="Lasso" aria-label="Lasso">➰</button>
+            <button id="tool-brush" class="btn tool-btn icon-btn on" type="button" title="Pinceau" aria-label="Pinceau"><span class="tool-btn-icon">🖌️</span><span class="tool-btn-label">Pinceau</span></button>
+            <button id="tool-eraser" class="btn tool-btn icon-btn" type="button" title="Gomme" aria-label="Gomme"><span class="tool-btn-icon">🧽</span><span class="tool-btn-label">Gomme</span></button>
+            <button id="tool-line" class="btn tool-btn icon-btn" type="button" title="Ligne" aria-label="Ligne"><span class="tool-btn-icon">／</span><span class="tool-btn-label">Ligne</span></button>
+            <button id="tool-rect" class="btn tool-btn icon-btn" type="button" title="Rectangle" aria-label="Rectangle"><span class="tool-btn-icon">▭</span><span class="tool-btn-label">Rectangle</span></button>
+            <button id="tool-ellipse" class="btn tool-btn icon-btn" type="button" title="Ellipse" aria-label="Ellipse"><span class="tool-btn-icon">◯</span><span class="tool-btn-label">Cercle</span></button>
+            <button id="tool-lasso" class="btn tool-btn icon-btn" type="button" title="Lasso" aria-label="Lasso"><span class="tool-btn-icon">➰</span><span class="tool-btn-label">Lasso</span></button>
           </div>
           <details id="brush-size-popover" class="size-popover">
             <summary class="size-summary" title="Taille du trait" aria-label="Taille du trait">
@@ -190,12 +318,12 @@
               </div>
             </div>
           </details>
-          <button id="btn-edit-help" class="btn icon-btn" title="Aide" aria-label="Aide">?</button>
-          <button id="btn-edit-drawer-toggle" class="btn icon-btn" title="Réglages" aria-label="Réglages">⚙</button>
+          <button id="btn-edit-help" class="btn icon-btn" type="button" title="Aide" aria-label="Aide">?</button>
+          <button id="btn-edit-drawer-toggle" class="btn icon-btn" type="button" title="Réglages" aria-label="Réglages">⚙</button>
           <div class="edit-toolbar-actions">
-            <button id="btn-edit-undo" class="btn sm">Annuler</button>
-            <button id="btn-edit-redo" class="btn sm">Rétablir</button>
-            <button id="btn-edit-exit" class="btn sm">Sortir</button>
+            <button id="btn-edit-undo" class="btn sm" type="button">Annuler</button>
+            <button id="btn-edit-redo" class="btn sm" type="button">Rétablir</button>
+            <button id="btn-edit-exit" class="btn sm primary" type="button">Terminer</button>
           </div>
         </div>
         <!-- P9·S5 (T-130) : tiroir de réglages contextuel, ouvert via ⚙, contenu filtré par outil actif -->

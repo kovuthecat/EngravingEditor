@@ -110,7 +110,8 @@ Perf : **editStaticGroup** (fond en cache 1×) + **editDraftGroup** (brouillon r
 **recacheTimer** debounce ~150ms ; **overlay import** non bloquant ; **vignettes paresseuses** (IntersectionObserver,
 matérialisation au clic ou à la visibilité).
 Tactile (Lot 3 T2-T3) : pinch-to-zoom et pan deux doigts ; stage.draggable() mode ; cibles tactiles ≥40px.
-Responsive : sidebar repliable sous 900px via classe `.collapsed` + bouton toggle ☰.
+Responsive : sidebar repliable via classe `.collapsed` (auto en édition uniquement depuis P10·S2 — le
+bouton toggle ☰ manuel a été retiré du header, remplacé par le rail d'icônes prévu en P10·S3).
 Points de vigilance : `PX_PER_MM=4` (sans perte) ; garder le Transformer (uiLayer) au-dessus après
 z-order ; pas d'ES modules ; un motif chargé sans `zones` (ancien format) est ignoré, pas migré ;
 mapping écran→local doit être validé en navigateur réel pour éviter décalage du trait ; `state.motifs`

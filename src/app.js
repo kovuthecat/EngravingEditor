@@ -165,7 +165,34 @@
     stage.position({ x: pointer.x - to.x * ns, y: pointer.y - to.y * ns });
     stage.batchDraw();
     positionMoveHandle();
+    updateZoomLabel();
   });
+
+  // P10·S5 (T-146) : zoom flottant (+ / reset / −) — même mécanique que la molette (bornes 0.1-8,
+  // facteur 1.2 par clic), centré sur le centre du canevas plutôt que sur un pointeur.
+  function updateZoomLabel() {
+    document.getElementById("zoom-label").textContent = Math.round(stage.scaleX() * 100) + "%";
+  }
+  function zoomBy(factor) {
+    const cx = stage.width() / 2, cy = stage.height() / 2;
+    const old = stage.scaleX();
+    const to = { x: (cx - stage.x()) / old, y: (cy - stage.y()) / old };
+    const ns = Math.min(8, Math.max(0.1, old * factor));
+    stage.scale({ x: ns, y: ns });
+    stage.position({ x: cx - to.x * ns, y: cy - to.y * ns });
+    stage.batchDraw();
+    positionMoveHandle();
+    updateZoomLabel();
+  }
+  document.getElementById("zoom-in").onclick = () => zoomBy(1.2);
+  document.getElementById("zoom-out").onclick = () => zoomBy(1 / 1.2);
+  document.getElementById("zoom-reset").onclick = () => {
+    stage.scale({ x: 1, y: 1 });
+    stage.position({ x: 0, y: 0 });
+    stage.batchDraw();
+    positionMoveHandle();
+    updateZoomLabel();
+  };
 
   // pinch-zoom + pan deux doigts (tablette) : le pan un doigt reste le drag natif Konva du
   // stage ; on le désactive seulement pendant le geste deux doigts pour ne pas interférer.
@@ -199,6 +226,7 @@
       stage.position({ x: mid.x - to.x * ns, y: mid.y - to.y * ns });
       stage.batchDraw();
       positionMoveHandle();
+      updateZoomLabel();
       pinchDist = dist;
     }
   });
@@ -350,7 +378,7 @@
         drawThumb(cv, m);
         motifThumbs[m.id] = cv;
       }
-    }, { root: document.getElementById("sidebar") });
+    }, { root: document.getElementById("panel") }); // P10·S3 : vignettes rendues dans le panneau Motifs, plus dans #sidebar
     return builtinObserver;
   }
 
@@ -731,7 +759,17 @@
       frameNode.visible(false);
     }
     guideLayer.batchDraw();
+    syncFrameRotUI();
     markProjectChanged();
+  }
+  // P10·S3 (T-144) : slider "Rotation du cadre" du panneau Guides — reflète/pilote frameNode.rotation()
+  // (même valeur que la poignée de rotation du Transformer sur le cadre sélectionné, cf. insp-rot).
+  function syncFrameRotUI() {
+    const deg = frameNode ? Math.round(frameNode.rotation()) : 0;
+    const slider = document.getElementById("frame-rot");
+    slider.disabled = !frameNode;
+    slider.value = deg;
+    document.getElementById("frame-rot-val").textContent = deg + "°";
   }
   function resizeFrame() {
     if (!frameNode) return;
@@ -824,14 +862,21 @@
 
   // ─── inspecteur (instance sélectionnée) ─────────────────────────────────────
   function updateInspector() {
+    syncFrameRotUI(); // P10·S3 : le cadre se sélectionne/tourne via le Transformer générique, resynchronise le slider
     const g = selected();
-    const box = document.getElementById("inspector");
-    const selPalette = document.getElementById("selection-palette");
-    if (!g) { box.style.display = "none"; selPalette.hidden = true; hideZoneEditor(); hideMotifEditor(); hideStyletEditor(); return; }
-    box.style.display = "block";
-    selPalette.hidden = edit.active; // toute sélection -> palette flottante visible, sauf en édition (edit-palette prend le relais)
+    const empty = document.getElementById("selection-empty");
+    const has = document.getElementById("selection-has");
+    const toolbar = document.getElementById("selection-toolbar");
+    if (!g) {
+      empty.style.display = "block"; has.style.display = "none"; toolbar.hidden = true;
+      hideZoneEditor(); hideMotifEditor(); hideStyletEditor(); return;
+    }
+    empty.style.display = "none"; has.style.display = "block";
+    toolbar.hidden = edit.active; // toute sélection -> barre sombre visible, sauf en édition (edit-palette prend le relais)
     document.getElementById("insp-rot").value = Math.round(g.rotation());
+    document.getElementById("insp-rot-val").textContent = `${Math.round(g.rotation())}°`;
     document.getElementById("insp-scale").value = g.scaleX().toFixed(2);
+    document.getElementById("insp-scale-val").textContent = `${g.scaleX().toFixed(2)}×`;
     const motif = state.motifs.find((x) => x.id === g.getAttr("motifId"));
     if (motif) { populateZoneEditor(motif); populateMotifEditor(motif); populateStyletEditor(motif); } else { hideZoneEditor(); hideMotifEditor(); hideStyletEditor(); }
   }
@@ -846,9 +891,10 @@
     document.getElementById("insp-role").value = motif.role;
     document.getElementById("insp-color").value = motif.color;
     document.getElementById("insp-margin").value = motif.margin;
+    document.getElementById("insp-margin-val").textContent = `${motif.margin} mm`;
     document.getElementById("motif-editor").style.display = "block";
     document.getElementById("btn-edit").style.display = "";
-    document.getElementById("selection-role-row").style.display = "flex";
+    document.getElementById("selection-role-row").style.display = "block";
   }
   function selectedMotif() {
     const g = selected();
@@ -875,6 +921,7 @@
     const motif = selectedMotif(); if (!motif) return;
     promoteIfBuiltin(motif);
     motif.margin = parseFloat(e.target.value) || 0;
+    document.getElementById("insp-margin-val").textContent = `${motif.margin} mm`;
     scheduleLocalSave();
   };
 
@@ -921,8 +968,20 @@
     }
     document.getElementById("zone-editor").style.display = "block";
   }
-  document.getElementById("insp-rot").oninput = (e) => { const g = selected(); if (g) { g.rotation(parseFloat(e.target.value) || 0); mainLayer.batchDraw(); scheduleLocalSave(); } };
-  document.getElementById("insp-scale").oninput = (e) => { const g = selected(); if (g) { const s = parseFloat(e.target.value) || 1; g.scale({ x: s, y: s }); mainLayer.batchDraw(); scheduleLocalSave(); } };
+  document.getElementById("insp-rot").oninput = (e) => {
+    const g = selected(); if (!g) return;
+    const rot = parseFloat(e.target.value) || 0;
+    g.rotation(rot); mainLayer.batchDraw();
+    document.getElementById("insp-rot-val").textContent = `${Math.round(rot)}°`;
+    scheduleLocalSave();
+  };
+  document.getElementById("insp-scale").oninput = (e) => {
+    const g = selected(); if (!g) return;
+    const s = parseFloat(e.target.value) || 1;
+    g.scale({ x: s, y: s }); mainLayer.batchDraw();
+    document.getElementById("insp-scale-val").textContent = `${s.toFixed(2)}×`;
+    scheduleLocalSave();
+  };
 
   // ─── édition au stylet (D-006/D-007) : calque d'essai non destructif ────────────────────────
   // edit.node = instance Konva sur laquelle le tracé est capté (mappage écran->local). Les traits
@@ -1062,8 +1121,7 @@
   function populateStyletEditor(motif) {
     const inEdit = edit.active && edit.motifId === motif.id;
     document.getElementById("stylet-editor").style.display = "block";
-    document.getElementById("btn-edit").textContent = inEdit ? "Sortir de l'édition" : "Entrer en édition";
-    document.getElementById("selection-palette").hidden = inEdit;
+    document.getElementById("selection-toolbar").hidden = inEdit;
     document.getElementById("edit-palette").hidden = !inEdit;
     document.getElementById("stylet-tools").style.display = inEdit ? "block" : "none";
     document.getElementById("stylet-draft-actions").style.display = motifHasPendingWork(motif) ? "flex" : "none";
@@ -1377,6 +1435,16 @@
     const sel = selectedMotif();
     if (sel) populateStyletEditor(sel);
   }
+  // jette tous les essais en attente (bannière "Jeter", P10·S2/T-143) : réutilise discardMotifDraft
+  // par motif (live + rangés), pas de logique dupliquée.
+  function discardAllDrafts() {
+    const ids = new Set(editDrafts.keys());
+    if (edit.active && edit.dirty) ids.add(edit.motifId);
+    for (const motifId of ids) {
+      const motif = state.motifs.find((m) => m.id === motifId);
+      if (motif) discardMotifDraft(motif);
+    }
+  }
   // garde-fou export (SVG ici, PNG en T9) : prévient si des essais ne seraient pas reflétés
   // (l'export lit toujours motif.surface réel, jamais le brouillon vert display-only). D-012 pt 6 :
   // dialogue à 3 choix explicites (les deux confirm() imbriqués étaient illisibles en modale iPadOS).
@@ -1402,9 +1470,10 @@
     const box = document.getElementById("draft-summary");
     document.getElementById("draft-count-label").textContent = n === 1 ? "1 essai en attente" : `${n} essais en attente`;
     box.style.display = n > 0 ? "flex" : "none";
-    const badge = document.getElementById("draft-badge");
-    badge.textContent = n === 1 ? "1 essai" : `${n} essais`;
-    badge.hidden = n === 0;
+    // P10·S2 (T-143) : bannière pleine largeur, même source de vérité (editDrafts) que draft-summary.
+    document.getElementById("pending-banner").hidden = n === 0;
+    document.getElementById("pending-banner-label").textContent =
+      (n === 1 ? "1 essai en attente" : `${n} essais en attente`) + " — visible en vert sur le canevas, non appliqué";
   }
 
   // applique un trait terminé (déjà en coords locales du motif) au BROUILLON (pas motif.surface) :
@@ -2045,6 +2114,7 @@
   document.getElementById("btn-edit-undo").onclick = () => undoStroke();
   document.getElementById("btn-edit-redo").onclick = () => redoStroke();
   document.getElementById("btn-edit-exit").onclick = () => exitEdit();
+  document.getElementById("btn-edit-exit-pill").onclick = () => exitEdit();
   document.getElementById("btn-draft-apply-all").onclick = applyAllDrafts;
 
   // ─── actions clavier / boutons ──────────────────────────────────────────────
@@ -2079,7 +2149,7 @@
   window.addEventListener("keydown", (e) => {
     if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
     if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); if (edit.active) undoStroke(); else undo(); }
-    else if (e.key === "Z" && (e.ctrlKey || e.metaKey) && e.shiftKey && edit.active) { e.preventDefault(); redoStroke(); }
+    else if (e.key === "Z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); if (edit.active) redoStroke(); else redo(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSel(); }
     else if (e.key === "d" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); duplicateSel(); }
     else if (e.key === "]") zorder("up"); else if (e.key === "[") zorder("down");
@@ -2161,6 +2231,7 @@
     const allPts = mm.flatMap((p) => p.pts);
     const [, w] = minMax(allPts.map((p) => p[0])), [, h] = minMax(allPts.map((p) => p[1]));
     download("pattern.svg", ML.writeSVG(groupsMm, { w, h }), "image/svg+xml");
+    showToast("SVG exporté");
   }
 
   // ─── export PNG/JPEG haute déf, sens écran (T9) ─────────────────────────────
@@ -2222,6 +2293,7 @@
     canvas.toBlob((blob) => {
       if (!blob) { alert("Export impossible (toBlob indisponible sur ce navigateur)."); return; }
       downloadBlob(`pattern.${ext}`, blob);
+      showToast(format === "jpeg" ? "JPEG exporté" : "PNG exporté");
     }, mime, format === "jpeg" ? 0.92 : undefined);
   }
 
@@ -2252,6 +2324,7 @@
     const tiling = ML.computeTiling(scene.bbox);
     const doc = ML.renderPrintPdf(scene, tiling); // style "fill" par défaut : aplat opaque couleur calque (dessin au trait)
     doc.save("pattern-A4.pdf");
+    showToast("PDF exporté");
   }
 
   // ─── projet (save/load JSON) ────────────────────────────────────────────────
@@ -2279,6 +2352,7 @@
   }
   function saveProject() {
     download("projet.mlayout.json", JSON.stringify(projectData()), "application/json");
+    showToast("Projet enregistré");
   }
   function loadProject(data) {
     exitEdit();
@@ -2292,6 +2366,7 @@
     state.margin = data.margin || { show: true, mm: 5 };
     document.getElementById("chk-margin").checked = state.margin.show;
     document.getElementById("margin-mm").value = state.margin.mm;
+    document.getElementById("margin-mm-val").textContent = state.margin.mm + " mm";
     frameNode = null;
     for (const m of data.motifs) {
       if (!m.zones) { console.warn(`Motif "${m.name}" ignoré au chargement : ancien format (polylines, sans zones), pas de migration automatique.`); continue; }
@@ -2313,6 +2388,7 @@
       frameNode.visible(data.frame.visible !== false);
     }
     document.getElementById("chk-frame").checked = !!(frameNode && frameNode.visible());
+    syncFrameRotUI();
     guideLayer.batchDraw();
     for (const it of (data.instances || [])) {
       let m = state.motifs.find((x) => x.id === it.motifId);
@@ -2329,21 +2405,41 @@
   }
 
   // Historique par instantanés : robuste pour les mutations Konva et les géométries imbriquées.
+  // P10·S2 (T-143, D-013 pt 4) : redoStack en miroir, alimentée par undo/vidée par toute nouvelle action.
   const undoStack = [];
+  const redoStack = [];
   const HISTORY_LIMIT = 20;
   function projectSnapshot() { return JSON.stringify(projectData()); }
+  function updateHistoryButtons() {
+    const undoBtn = document.getElementById("btn-undo");
+    undoBtn.disabled = undoStack.length === 0;
+    undoBtn.style.opacity = undoStack.length ? "1" : "0.35";
+    const redoBtn = document.getElementById("btn-redo");
+    redoBtn.disabled = redoStack.length === 0;
+    redoBtn.style.opacity = redoStack.length ? "1" : "0.35";
+  }
   function pushHistorySnapshot(snapshot) {
     if (undoStack[undoStack.length - 1] === snapshot) return;
     undoStack.push(snapshot);
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-    document.getElementById("btn-undo").disabled = false;
+    redoStack.length = 0;
+    updateHistoryButtons();
   }
   function recordHistory() { pushHistorySnapshot(projectSnapshot()); }
   function undo() {
     if (!undoStack.length) return;
     const snapshot = undoStack.pop();
+    redoStack.push(projectSnapshot());
     loadProject(JSON.parse(snapshot));
-    document.getElementById("btn-undo").disabled = undoStack.length === 0;
+    updateHistoryButtons();
+    markProjectChanged();
+  }
+  function redo() {
+    if (!redoStack.length) return;
+    const snapshot = redoStack.pop();
+    undoStack.push(projectSnapshot());
+    loadProject(JSON.parse(snapshot));
+    updateHistoryButtons();
     markProjectChanged();
   }
 
@@ -2483,6 +2579,17 @@
   }
   function readFiles(files, cb) {
     [...files].forEach((f) => { const r = new FileReader(); r.onload = () => cb(f.name, r.result); r.readAsText(f); });
+  }
+
+  // P10·S5 (T-146) : toast non bloquant (imports/exports) — n'existait pas encore, distinct de
+  // local-save-status (statut permanent de l'autosave) et des dialogues custom (confirmations).
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
   }
 
   // ─── dialogue custom (P9/T-134) : remplace confirm()/alert() natifs, illisibles en modale
@@ -2674,10 +2781,23 @@
   };
   document.getElementById("btn-zone").onclick = addZone;
   document.getElementById("chk-margin").onchange = (e) => { state.margin.show = e.target.checked; drawBoundary(); };
-  document.getElementById("margin-mm").oninput = (e) => { state.margin.mm = parseFloat(e.target.value) || 0; drawBoundary(); };
+  document.getElementById("margin-mm").oninput = (e) => {
+    state.margin.mm = parseFloat(e.target.value) || 0;
+    document.getElementById("margin-mm-val").textContent = state.margin.mm + " mm";
+    drawBoundary();
+  };
   document.getElementById("chk-frame").onchange = (e) => setFrameVisible(e.target.checked);
   document.getElementById("frame-w").oninput = resizeFrame;
   document.getElementById("frame-h").oninput = resizeFrame;
+  document.getElementById("frame-rot").oninput = (e) => {
+    if (!frameNode) return;
+    const deg = parseFloat(e.target.value) || 0;
+    frameNode.rotation(deg);
+    document.getElementById("frame-rot-val").textContent = Math.round(deg) + "°";
+    guideLayer.batchDraw();
+    positionMoveHandle();
+    scheduleLocalSave();
+  };
   document.getElementById("btn-export").onclick = exportSVG;
   document.getElementById("btn-export-png").onclick = () => exportPNG("png");
   document.getElementById("btn-export-jpeg").onclick = () => exportPNG("jpeg");
@@ -2686,13 +2806,16 @@
     packing(parseInt(document.getElementById("pack-count").value) || 30,
       parseFloat(document.getElementById("pack-smin").value) || 0.6,
       parseFloat(document.getElementById("pack-smax").value) || 1.2);
-  document.getElementById("btn-dup").onclick = duplicateSel;
   document.getElementById("btn-dup-sel").onclick = duplicateSel;
   document.getElementById("btn-del").onclick = deleteSel;
-  document.getElementById("btn-up").onclick = () => zorder("up");
-  document.getElementById("btn-down").onclick = () => zorder("down");
   document.getElementById("btn-front").onclick = () => zorder("front");
   document.getElementById("btn-back").onclick = () => zorder("back");
+  // ─── P10·S4 (T-145) : barre contextuelle sombre flottante (remplace #selection-palette) ───────
+  document.getElementById("sel-bar-dup").onclick = duplicateSel;
+  document.getElementById("sel-bar-back").onclick = () => zorder("back");
+  document.getElementById("sel-bar-front").onclick = () => zorder("front");
+  document.getElementById("sel-bar-edit").onclick = openSelectionPanel;
+  document.getElementById("sel-bar-del").onclick = deleteSel;
   document.getElementById("btn-clear").onclick = () => {
     if (confirm("Tout effacer le plan ?")) {
       recordHistory(); exitEdit(); select(null); mainLayer.destroyChildren(); mainLayer.batchDraw(); markProjectChanged();
@@ -2700,23 +2823,64 @@
   };
   document.getElementById("btn-save").onclick = saveProject;
   document.getElementById("btn-undo").onclick = undo;
-  document.getElementById("btn-sidebar-toggle").onclick = () => {
-    document.getElementById("app").classList.toggle("collapsed");
+  document.getElementById("btn-redo").onclick = redo;
+
+  // ─── P10·S3 (T-144) : rail d'icônes + panneau coulissant (Motifs/Contour/Guides/Sélection/Export) ─
+  let activePanel = null; // null | "library" | "contour" | "guides" | "selection" | "export"
+  function renderPanel() {
+    document.getElementById("panel").hidden = !activePanel;
+    document.querySelectorAll(".panel-section").forEach((el) => {
+      el.hidden = el.id !== `panel-${activePanel}`;
+    });
+    document.querySelectorAll(".rail-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.panel === activePanel);
+    });
     syncStageSize();
-  };
-  document.getElementById("sidebar").addEventListener("transitionend", syncStageSize);
-  document.getElementById("draft-badge").onclick = () => {
-    document.getElementById("app").classList.remove("collapsed");
-    const projetSection = document.getElementById("section-projet");
-    projetSection.open = true;
-    projetSection.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  }
+  function setPanel(name) {
+    activePanel = activePanel === name ? null : name;
+    renderPanel();
+  }
+  // P10·S4 (T-145) : ouverture forcée (pas un toggle) du panneau Sélection depuis la barre sombre
+  // (« ✎ Modifier ») — contrairement au rail, cliquer alors que le panneau est déjà ouvert ne doit
+  // pas le refermer.
+  function openSelectionPanel() {
+    activePanel = "selection";
+    renderPanel();
+  }
+  // P10·S5 (T-146) : le bouton Exporter de la barre supérieure force l'ouverture du panneau Export
+  // (même logique que openSelectionPanel), sans le refermer si déjà ouvert.
+  function openExport() {
+    activePanel = "export";
+    renderPanel();
+  }
+  document.getElementById("rail-library").onclick = () => setPanel("library");
+  document.getElementById("rail-contour").onclick = () => setPanel("contour");
+  document.getElementById("rail-guides").onclick = () => setPanel("guides");
+  document.getElementById("rail-selection").onclick = () => setPanel("selection");
+  document.getElementById("rail-export").onclick = () => setPanel("export");
+  document.getElementById("btn-export-open").onclick = openExport;
+
+  function setLibraryTab(tab) {
+    document.getElementById("tab-perso").classList.toggle("active", tab === "perso");
+    document.getElementById("tab-perso").setAttribute("aria-selected", String(tab === "perso"));
+    document.getElementById("tab-symbole").classList.toggle("active", tab === "symbole");
+    document.getElementById("tab-symbole").setAttribute("aria-selected", String(tab === "symbole"));
+    document.getElementById("tab-panel-perso").hidden = tab !== "perso";
+    document.getElementById("tab-panel-symbole").hidden = tab !== "symbole";
+  }
+  document.getElementById("tab-perso").onclick = () => setLibraryTab("perso");
+  document.getElementById("tab-symbole").onclick = () => setLibraryTab("symbole");
+  document.getElementById("btn-pending-discard").onclick = discardAllDrafts;
+  document.getElementById("btn-pending-apply").onclick = applyAllDrafts;
   document.getElementById("load-project").onchange = (e) =>
     readFiles(e.target.files, (_n, text) => {
       recordHistory(); loadProject(JSON.parse(text)); markProjectChanged(); e.target.value = "";
+      showToast("Projet chargé");
     });
 
   updateInspector();
   refreshDraftCounter();
+  updateZoomLabel();
   restoreLocalProject();
 })();
