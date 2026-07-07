@@ -45,20 +45,44 @@
   }
 
   const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const ACCENT = "oklch(0.66 0.17 45)"; // = --accent (style.css), repris ici pour les poignées du Transformer (maquette Claude Design)
 
+  // Poignées re-skinnées façon maquette : une seule poignée d'échelle (coin bas-droit, carré arrondi)
+  // + rotateur circulaire (icône ↻ superposée, cf. rotateIcon plus bas), au lieu des 4 carrés génériques Konva.
   const tr = new Konva.Transformer({
     rotateEnabled: true, keepRatio: true,
-    enabledAnchors: ["top-left", "top-right", "bottom-left", "bottom-right"],
-    anchorSize: coarse ? 28 : 16, borderStroke: "#3b82f6", anchorStroke: "#3b82f6",
+    enabledAnchors: ["bottom-right"],
+    anchorSize: coarse ? 34 : 22, anchorFill: ACCENT, anchorStroke: "#fff", anchorStrokeWidth: 3,
+    borderStroke: ACCENT, borderStrokeWidth: 2.5, padding: 8,
+    rotateAnchorOffset: coarse ? 44 : 34,
+    anchorStyleFunc: (anchor) => {
+      anchor.cornerRadius(anchor.hasName("rotater") ? anchor.width() / 2 : 7); // rotateur rond, coin carré arrondi
+    },
   });
   uiLayer.add(tr);
+
+  // Icône ↻ superposée sur le rotateur : les anchors Konva sont de simples rects, sans glyphe possible
+  // dessus -> overlay repositionné à chaque render (cf. positionRotateIcon, appelé par positionMoveHandle).
+  const rotateIcon = new Konva.Text({
+    text: "↻", fontSize: coarse ? 20 : 16, fontStyle: "bold", fill: "#fff", listening: false, visible: false,
+  });
+  rotateIcon.offsetX(rotateIcon.width() / 2);
+  rotateIcon.offsetY(rotateIcon.height() / 2 + 1);
+  uiLayer.add(rotateIcon);
+  function positionRotateIcon() {
+    const rotater = tr.findOne(".rotater");
+    if (!rotater || !rotater.visible()) { rotateIcon.visible(false); return; }
+    rotateIcon.position(rotater.getAbsolutePosition());
+    rotateIcon.visible(true);
+    rotateIcon.moveToTop();
+  }
 
   // ─── poignée de déplacement (pastille au centre de la sélection) ─────────────
   // Pratique surtout pour le décor see-through, souvent vide en son centre : on attrape
   // la pastille au lieu de chercher un trait. mousedown -> startDrag du nœud sélectionné
   // (Konva gère le suivi pointeur, donc pas de saut ni de maths d'échelle).
   const moveHandle = new Konva.Group({ visible: false, name: "moveHandle" });
-  moveHandle.add(new Konva.Circle({ radius: 20, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }));
+  moveHandle.add(new Konva.Circle({ radius: 20, fill: ACCENT, stroke: "#fff", strokeWidth: 2 }));
   moveHandle.add(new Konva.Path({
     data: "M0,-8 L4,-4 L1.5,-4 L1.5,-1.5 L4,-1.5 L4,-4 L8,0 L4,4 L4,1.5 L1.5,1.5 L1.5,4 L4,4 L0,8 L-4,4 L-1.5,4 L-1.5,1.5 L-4,1.5 L-4,4 L-8,0 L-4,-4 L-4,-1.5 L-1.5,-1.5 L-1.5,-4 L-4,-4 Z",
     fill: "#fff",
@@ -73,13 +97,14 @@
   });
   function positionMoveHandle() {
     const n = selected();
-    if (!n) { moveHandle.visible(false); uiLayer.batchDraw(); return; }
+    if (!n) { moveHandle.visible(false); rotateIcon.visible(false); uiLayer.batchDraw(); return; }
     const box = n.getClientRect(); // px écran (transform stage inclus)
     moveHandle.absolutePosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     const s = (coarse ? 1.4 : 1) / stage.scaleX();
     moveHandle.scale({ x: s, y: s });
     moveHandle.visible(true);
     moveHandle.moveToTop();
+    positionRotateIcon();
     uiLayer.batchDraw();
   }
 
@@ -101,7 +126,7 @@
     } else {
       tr.resizeEnabled(true);
       tr.keepRatio(true);
-      tr.enabledAnchors(["top-left", "top-right", "bottom-left", "bottom-right"]);
+      tr.enabledAnchors(["bottom-right"]); // une seule poignée d'échelle (maquette) : mise à l'échelle uniforme
     }
     tr.nodes(node ? [node] : []);
     uiLayer.batchDraw(); updateInspector(); positionMoveHandle();
