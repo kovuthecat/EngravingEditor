@@ -27,7 +27,7 @@
   const guideLayer = new Konva.Layer();   // cadre laser déplaçable/orientable (repère zone de gravure machine)
   const uiLayer = new Konva.Layer();
   stage.add(boundaryLayer, mainLayer, zonesLayer, guideLayer, uiLayer);
-  const BG = "#1c1f27"; // couleur de fond (= hors zone à graver)
+  const BG = "oklch(0.995 0.004 75)"; // fond clair (maquette) = --surface (style.css)
 
   // Safari iOS/iPadOS plafonne la taille d'un <canvas> (aire ≈ 16,7 M px ≈ 4096², et un côté max) ;
   // au-delà il renvoie SILENCIEUSEMENT un canvas vide. node.cache({pixelRatio:2}) sur un grand décor
@@ -98,12 +98,11 @@
   function positionMoveHandle() {
     const n = selected();
     if (!n) { moveHandle.visible(false); rotateIcon.visible(false); uiLayer.batchDraw(); return; }
-    const box = n.getClientRect(); // px écran (transform stage inclus)
+    const box = n.getClientRect();
     moveHandle.absolutePosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     const s = (coarse ? 1.4 : 1) / stage.scaleX();
     moveHandle.scale({ x: s, y: s });
-    moveHandle.visible(true);
-    moveHandle.moveToTop();
+    moveHandle.visible(false); // masqué pour ne pas couvrir le motif (maquette)
     positionRotateIcon();
     uiLayer.batchDraw();
   }
@@ -841,9 +840,9 @@
       sceneFunc: (ctx) => {
         const c = ctx._context;
         c.beginPath(); tracePoly(c, state.boundary); for (const h of holes) tracePoly(c, h);
-        c.fillStyle = "#ffffff"; c.fill("evenodd");
-        c.lineWidth = 1.5; c.strokeStyle = "#3b82f6"; c.stroke();
-        c.strokeStyle = "#ef4444"; c.lineWidth = 1; for (const h of holes) { c.beginPath(); tracePoly(c, h); c.stroke(); }
+        c.fillStyle = "oklch(0.82 0.05 70)"; c.fill("evenodd"); // beige clair (maquette)
+        c.lineWidth = 1.5; c.strokeStyle = "oklch(0.53 0.1 240)"; c.stroke(); // contour bleu plus discret (maquette = --blue)
+        c.strokeStyle = "oklch(0.58 0.19 25)"; c.lineWidth = 1; for (const h of holes) { c.beginPath(); tracePoly(c, h); c.stroke(); } // rouge cavités
       },
     }));
     // référence grise (contour brut additionnel, inutilisé depuis le retrait du DXF — conservé pour compat projets sauvegardés)
