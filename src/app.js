@@ -2838,7 +2838,9 @@
   document.getElementById("sel-bar-dup").onclick = duplicateSel;
   document.getElementById("sel-bar-back").onclick = () => zorder("back");
   document.getElementById("sel-bar-front").onclick = () => zorder("front");
-  document.getElementById("sel-bar-edit").onclick = openSelectionPanel;
+  // le bouton « Éditer » de la barre sombre entre directement en édition du motif sélectionné
+  // (avant : ouvrait le panneau Sélection latéral — cf. panneau toujours accessible via le rail).
+  document.getElementById("sel-bar-edit").onclick = () => { if (selectedMotif()) enterEdit(); };
   document.getElementById("sel-bar-del").onclick = deleteSel;
   document.getElementById("btn-clear").onclick = () => {
     if (confirm("Tout effacer le plan ?")) {
@@ -2865,15 +2867,8 @@
     activePanel = activePanel === name ? null : name;
     renderPanel();
   }
-  // P10·S4 (T-145) : ouverture forcée (pas un toggle) du panneau Sélection depuis la barre sombre
-  // (« ✎ Modifier ») — contrairement au rail, cliquer alors que le panneau est déjà ouvert ne doit
-  // pas le refermer.
-  function openSelectionPanel() {
-    activePanel = "selection";
-    renderPanel();
-  }
   // P10·S5 (T-146) : le bouton Exporter de la barre supérieure force l'ouverture du panneau Export
-  // (même logique que openSelectionPanel), sans le refermer si déjà ouvert.
+  // (pas un toggle, contrairement au rail) : cliquer alors qu'il est déjà ouvert ne doit pas le refermer.
   function openExport() {
     activePanel = "export";
     renderPanel();
