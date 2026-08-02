@@ -1309,8 +1309,13 @@
     activeTouchPointers.clear();
     edit.panAnchor = null;
     edit.tapGesture = null;
-    setEditMode("draw"); // chaque entrée en édition démarre en Dessin (le Générateur se rechoisit)
-    if (window.GeneratorUI) window.GeneratorUI.onEnterEdit(); // scène de travail neuve (cf. §7 rapport)
+    /* Le mode Dessin et le Générateur sont des ADDITIONS : si l'un d'eux échoue, l'édition
+       doit quand même s'ouvrir. Sans cette garde, une erreur ici laissait `edit.active` à true
+       sans que la palette s'affiche — l'édition devenait inaccessible, y compris pour un motif
+       ordinaire, et le clic suivant sur « Éditer » appelait exitEdit(). */
+    try { setEditMode("draw"); } catch (e) { console.error("bascule de mode :", e); }
+    try { if (window.GeneratorUI) window.GeneratorUI.onEnterEdit(); }
+    catch (e) { console.error("générateur (entrée en édition) :", e); }
     editContainer.addEventListener("pointerdown", editPointerDown, { passive: false });
     editContainer.addEventListener("pointermove", editPointerMove, { passive: false });
     editContainer.addEventListener("pointerup", editPointerUp, { passive: false });
@@ -1363,7 +1368,8 @@
     edit.tapGesture = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
-    if (window.GeneratorUI) window.GeneratorUI.onExitEdit(); // libère la scène de travail (cf. §7 rapport)
+    try { if (window.GeneratorUI) window.GeneratorUI.onExitEdit(); }
+    catch (e) { console.error("générateur (sortie d'édition) :", e); }
     editLayer.visible(false);
     editStaticGroup.clearCache();
     editDraftGroup.clearCache();
@@ -2913,6 +2919,36 @@
   document.getElementById("rail-selection").onclick = () => setPanel("selection");
   document.getElementById("rail-export").onclick = () => setPanel("export");
   document.getElementById("btn-export-open").onclick = openExport;
+
+  /* PORTE D'ENTRÉE DU GÉNÉRATEUR. Le mode Générateur vit dans l'édition d'un motif de rôle
+     DÉCOR — mais sans décor importé, il n'y avait rien à sélectionner, donc aucun moyen d'y
+     entrer. On fabrique ici un décor VIERGE (aucune zone), on le pose sur le plan de travail
+     et on ouvre l'édition directement du côté Générateur. Le contour de la table sert de
+     cadre : le générateur y découpe ce qu'il produit. */
+  function nouveauDecor() {
+    const existant = state.motifs.find((m) => m.role === "DECOR");
+    let motif = existant;
+    if (!motif) {
+      recordHistory();
+      motif = { id: "m" + ++state.seq, name: "Décor", zones: [], silhouette: [],
+                role: "DECOR", color: ROLE_DEFAULTS.DECOR.color, margin: ROLE_DEFAULTS.DECOR.margin };
+      addMotifToLibrary(motif);
+      markProjectChanged();
+    }
+    // une instance déjà posée ? on la reprend plutôt que d'en empiler une seconde
+    let g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0];
+    if (!g) { addInstance(motif); g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0]; }
+    if (!g) return;
+    if (state.decorLocked) {           // sinon l'édition refuse d'entrer, sans le dire
+      state.decorLocked = false;
+      updateDecorLockButton();
+      applyDecorLock();
+    }
+    select(g);
+    if (!edit.active) enterEdit();
+    setEditMode("generate");
+  }
+  document.getElementById("btn-new-decor").onclick = nouveauDecor;
 
   document.getElementById("btn-pending-discard").onclick = discardAllDrafts;
   document.getElementById("btn-pending-apply").onclick = applyAllDrafts;

@@ -886,3 +886,26 @@ dans le motif) — cf. rapport pour le détail et le compromis assumé.
       zooment sans dessiner pendant un tracé Générateur en cours.
 - [ ] Pas de gel perceptible en traçant une branche longue, ni en glissant une poignée Éditer sur
       une scène avec plusieurs branches déjà posées.
+
+## 2026-08-02 — Porte d'entrée du Générateur (correctif)
+
+**Défaut : sans décor, le mode Générateur était inatteignable.** Il vit dans l'édition d'un motif
+de rôle DÉCOR ; sans décor importé, il n'y avait rien à sélectionner, donc aucun moyen d'y entrer.
+C'est un manque du cahier des charges d'intégration, pas une faute du code livré.
+
+Un bouton **« 🌿 Dessiner un décor (générateur) »** est ajouté au panneau Décor. Il fabrique un
+décor vierge (aucune zone), le pose sur le plan de travail, déverrouille le décor si besoin,
+sélectionne l'instance et ouvre l'édition directement côté Générateur.
+
+- [ ] Projet neuf, aucun décor : le bouton ouvre l'édition en mode Générateur, prêt à tracer.
+- [ ] Un décor existe déjà : le bouton le reprend au lieu d'en empiler un second.
+- [ ] Décor verrouillé : le bouton le déverrouille (sinon l'édition refusait d'entrer sans rien dire).
+- [ ] Le décor produit se découpe bien au contour de la table.
+
+**Robustesse : l'édition ne dépend plus du Générateur.** Les crochets `setEditMode` et
+`GeneratorUI.onEnterEdit/onExitEdit` sont sous garde. Sans elle, une erreur dans l'un d'eux
+laissait `edit.active` à vrai *sans* que la palette s'ouvre : l'édition devenait inaccessible,
+y compris pour un motif ordinaire, et le clic suivant sur « Éditer » appelait `exitEdit()`.
+
+- [ ] Entrer en édition sur un personnage : la palette s'ouvre, mode Dessin actif.
+- [ ] En cas d'erreur du générateur, la console la signale mais l'édition s'ouvre quand même.
