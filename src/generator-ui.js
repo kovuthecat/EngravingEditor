@@ -95,20 +95,30 @@
     c.closePath();
   }
 
-  // silhouette du motif REND (edit.realFill = dernier fond réellement appliqué), en unité BE : la
-  // « zone de la table » du générateur, cf. constrainte n°6. Le moteur ne connaît pas le corps de
-  // la guitare (state.boundary) — on lui donne à la place la silhouette du motif DECOR en cours
-  // d'édition, qui est en pratique calée sur ce corps (ou sur la zone que l'utilisateur a choisi de
-  // décorer) : c'est elle qui borne la pousse des branches (BE.buildGeometry, `st.zone`).
+  /* « Zone de la table » du générateur (BE.buildGeometry, `st.zone`) : le CORPS DE LA GUITARE,
+     défonces comprises, servi par host.getZoneLocal() en px locaux du motif édité puis converti en
+     unité BE. Ce fut d'abord la silhouette de l'encre déjà posée (edit.realFill) — un contresens :
+     un décor vierge n'en a AUCUNE (plus rien ne bornait la pousse) et celle d'un décor importé est
+     le trait lui-même (tout ce qui ne recouvrait pas un trait existant était coupé). Mémoïsé pour
+     la session : ni le contour ni la transformation de l'exemplaire ne bougent pendant l'édition
+     (le nœud est verrouillé), alors que rebuild() est appelé à chaque frame d'un glissé. */
+  let zoneBE = null;
   function currentZoneBE() {
-    const sil = ML.silhouetteFromSurface(host.edit.realFill || []); // -> [[ [x,y].. ], ...] en px app
-    return scalePolys(sil, k);
+    if (!zoneBE) zoneBE = scalePolys(host.getZoneLocal().map((c) => c.pts), k);
+    return zoneBE;
   }
 
   function rebuild() {
     st.zone = currentZoneBE();
     return BE.buildGeometry(scene, st);
   }
+
+  // taille ÉCRAN constante pour l'aperçu (poignées, bornes, tracé) : `editLayer` suit le zoom du
+  // stage et l'échelle de l'exemplaire, donc un rayon fixe en unités locales fond à 2-3 px au zoom
+  // d'ensemble — injouable au doigt. Même compensation que les ancres du Transformer (T-127).
+  function ecran(px) { return px / host.editScale(); }
+  // idem pour les tolérances de saisie, exprimées côté moteur en unité BE.
+  function tolBE(pxEcran) { return ecran(pxEcran) * k; }
 
   function isGesturing() { return raw.length > 0 || !!dragging; }
 
@@ -134,16 +144,21 @@
     const added = ML.surfaceDifference(newContours, lastMerged);   // absent avant, présent maintenant
     if (!removed.length && !added.length) { renderOverlay(); return; }
     const edit = host.edit;
+    // UN geste = UNE entrée d'historique, même quand il retire ET rajoute de la matière (glissé de
+    // poignée, semis qui bouscule un voisin) : sinon Annuler s'arrêtait à mi-chemin, sur un état
+    // que l'utilisateur n'a jamais vu. `ops` est rejoué dans l'ordre par rebuildDraftFrom (app.js).
+    const ops = [];
     if (removed.length) {
       edit.draft = ML.surfaceDifferenceLocal(edit.draft, removed);
       edit.added = ML.surfaceDifferenceLocal(edit.added, removed);
-      host.pushEditEntry({ kind: "op", op: "sub", poly: removed });
+      ops.push({ op: "sub", poly: removed });
     }
     if (added.length) {
       edit.draft = ML.surfaceUnionLocal(edit.draft, added);
       edit.added = ML.surfaceUnionLocal(edit.added, ML.surfaceDifference(added, edit.realFill));
-      host.pushEditEntry({ kind: "op", op: "add", poly: added });
+      ops.push({ op: "add", poly: added });
     }
+    host.pushEditEntry(ops.length === 1 ? { kind: "op", ...ops[0] } : { kind: "op", ops });
     lastMerged = newContours;
     edit.dirty = true;
     host.redrawEditLayer(motif);
@@ -161,12 +176,12 @@
     if (previewGroup) { previewGroup.destroyChildren(); previewGroup.visible(false); }
     if (handlesGroup) handlesGroup.destroyChildren();
     traceLine = null; anchorDot = null;
-    if (host.editLayer) host.editLayer.batchDraw();
+    if (host.editLayer) host.redrawOverlay();
   }
   function hideOverlay() {
     if (previewGroup) previewGroup.visible(false);
     if (handlesGroup) handlesGroup.destroyChildren();
-    if (host.editLayer) host.editLayer.batchDraw();
+    if (host.editLayer) host.redrawOverlay();
   }
 
   // rendu approximatif d'une scène BE (silhouette blanche « autocollant » + contour encré + détail
@@ -218,10 +233,10 @@
       if (genTool !== "semer") {
         for (const b of BE.freePorts(scene, st)) {
           const p = scalePts([b.p], invK)[0];
-          handlesGroup.add(new Konva.Circle({ x: p[0], y: p[1], radius: 5, stroke: "#4caf7d", strokeWidth: 1.5, listening: false }));
+          handlesGroup.add(new Konva.Circle({ x: p[0], y: p[1], radius: ecran(7), stroke: "#4caf7d", strokeWidth: ecran(2), listening: false }));
         }
       }
-      host.editLayer.batchDraw();
+      host.redrawOverlay();
       return;
     }
     for (const b of scene.branches) {
@@ -230,8 +245,8 @@
         const p = scalePts([cp], invK)[0];
         const on = sel && sel.kind === "ctrl" && sel.id === b.id && sel.index === i;
         handlesGroup.add(new Konva.Circle({
-          x: p[0], y: p[1], radius: on ? 9 : 6,
-          fill: on ? "#e0433f" : "#fff", stroke: "#e0433f", strokeWidth: 2, listening: false,
+          x: p[0], y: p[1], radius: ecran(on ? 14 : 11),
+          fill: on ? "#e0433f" : "#fff", stroke: "#e0433f", strokeWidth: ecran(2), listening: false,
         }));
       });
     }
@@ -240,12 +255,12 @@
       const h = BE.stampHandles(scene, s0, st);
       if (h) {
         const pied = scalePts([h.pied], invK)[0], pointe = scalePts([h.pointe], invK)[0];
-        handlesGroup.add(new Konva.Line({ points: [pied[0], pied[1], pointe[0], pointe[1]], stroke: "#e0433f", strokeWidth: 1.5, listening: false }));
-        handlesGroup.add(new Konva.Circle({ x: pied[0], y: pied[1], radius: 11, fill: "#fff", stroke: "#e0433f", strokeWidth: 2.5, listening: false }));
-        handlesGroup.add(new Konva.Circle({ x: pointe[0], y: pointe[1], radius: 11, fill: "#e0433f", stroke: "#e0433f", strokeWidth: 2.5, listening: false }));
+        handlesGroup.add(new Konva.Line({ points: [pied[0], pied[1], pointe[0], pointe[1]], stroke: "#e0433f", strokeWidth: ecran(1.5), listening: false }));
+        handlesGroup.add(new Konva.Circle({ x: pied[0], y: pied[1], radius: ecran(16), fill: "#fff", stroke: "#e0433f", strokeWidth: ecran(2.5), listening: false }));
+        handlesGroup.add(new Konva.Circle({ x: pointe[0], y: pointe[1], radius: ecran(16), fill: "#e0433f", stroke: "#e0433f", strokeWidth: ecran(2.5), listening: false }));
       }
     }
-    host.editLayer.batchDraw();
+    host.redrawOverlay();
   }
 
   function renderOverlay() {
@@ -256,20 +271,22 @@
     if (showInk) paintPreview(trees); else { const s = previewGroup.findOne(".gen-ink"); if (s) s.destroy(); }
     drawHandles(trees);
     previewGroup.visible(true);
-    host.editLayer.batchDraw();
+    host.redrawOverlay();
   }
 
   function drawTracePreview() {
     ensureOverlay();
-    if (!traceLine) { traceLine = new Konva.Line({ stroke: "#4caf7d", strokeWidth: 2, listening: false }); previewGroup.add(traceLine); }
+    if (!traceLine) { traceLine = new Konva.Line({ stroke: "#4caf7d", listening: false }); previewGroup.add(traceLine); }
+    traceLine.strokeWidth(ecran(2.5));
     traceLine.points(scalePts(raw, invK).flat());
     traceLine.visible(raw.length > 1);
     drawAnchorDot();
     previewGroup.visible(true);
-    host.editLayer.batchDraw();
+    host.redrawOverlay();
   }
   function drawAnchorDot() {
-    if (!anchorDot) { anchorDot = new Konva.Circle({ stroke: "#e0a33f", strokeWidth: 2, listening: false }); previewGroup.add(anchorDot); }
+    if (!anchorDot) { anchorDot = new Konva.Circle({ stroke: "#e0a33f", listening: false }); previewGroup.add(anchorDot); }
+    anchorDot.strokeWidth(ecran(2));
     const active = portVise || anchor;
     if (!active) { anchorDot.visible(false); return; }
     const centerBE = portVise ? portVise.p : anchor.point;
@@ -279,14 +296,16 @@
       : genTool === "liane" ? st.lianeWidth
       : anchor ? BE.childWidth(anchor, st) : st.rootWidth;
     anchorDot.position({ x: p[0], y: p[1] });
-    anchorDot.radius(Math.max(5, (wBE * invK) / 2));
+    // rayon = la vraie demi-largeur de ce qui sera créé (repère de taille), avec un plancher à
+    // l'écran pour rester visible quand on est dézoomé sur toute la table.
+    anchorDot.radius(Math.max(ecran(6), (wBE * invK) / 2));
     anchorDot.stroke(portVise ? "#4caf7d" : "#e0a33f");
     anchorDot.visible(true);
   }
   function clearTracePreview() {
     if (traceLine) traceLine.visible(false);
     if (anchorDot) anchorDot.visible(false);
-    if (previewGroup) host.editLayer.batchDraw();
+    if (previewGroup) host.redrawOverlay();
   }
 
   // ─── pointeur (miroir de test/branches.html, adapté aux coordonnées/évènements de l'app) ────
@@ -298,9 +317,12 @@
     if (genTool === "editer") {
       const cur = sel && sel.kind === "stamp" ? scene.stamps.find((x) => x.id === sel.id) : null;
       const h = cur && BE.stampHandles(scene, cur, st);
-      if (h && dist(p, h.pointe) < 22) dragging = { kind: "tip", id: cur.id };
-      else if (h && dist(p, h.pied) < 22) dragging = { kind: "stamp", id: cur.id };
-      else { sel = BE.editHit(scene, p, st, 30); dragging = sel; }
+      // tolérances de saisie : jamais plus serrées qu'avant, mais élargies quand on est dézoomé,
+      // pour rester attrapables au doigt (la cible visée à l'écran suit `ecran()`, cf. drawHandles).
+      const tPoignee = Math.max(22, tolBE(26)), tAxe = Math.max(30, tolBE(30));
+      if (h && dist(p, h.pointe) < tPoignee) dragging = { kind: "tip", id: cur.id };
+      else if (h && dist(p, h.pied) < tPoignee) dragging = { kind: "stamp", id: cur.id };
+      else { sel = BE.editHit(scene, p, st, tAxe); dragging = sel; }
       updateSelInfo();
       renderOverlay();
       return;
@@ -480,11 +502,15 @@
   }
   function openGallery() {
     document.getElementById("gen-gallery").hidden = false;
+    // pas de .focus() sur le champ de recherche : sur iPad il fait monter le clavier logiciel par
+    // -dessus la grille, alors qu'on vient d'ouvrir un choix VISUEL. On tape dans le champ si on
+    // en a besoin. Le bandeau « Édition des zones » (z-index 60) est masqué le temps de la galerie.
+    document.body.classList.add("gen-gallery-open");
     renderGallery();
-    document.getElementById("gen-gal-q").focus();
   }
   function closeGallery() {
     document.getElementById("gen-gallery").hidden = true;
+    document.body.classList.remove("gen-gallery-open");
     updatePickerPreview();
   }
 
@@ -523,6 +549,7 @@
   function onEnterEdit() {
     scene = BE.createScene();
     lastMerged = [];
+    zoneBE = null;   // le cadre dépend de l'exemplaire édité : recalculé à la 1re construction
     warnedNoToContours = false;
     sel = null; dragging = null; raw = []; anchor = headAnchor = null; portVise = null;
     clearOverlay();
@@ -530,6 +557,7 @@
   function onExitEdit() {
     clearOverlay();
     scene = null;
+    zoneBE = null;
   }
   // Annuler/Rétablir (edit.history) et Jeter (discardMotifDraft) ne rejouent QUE edit.draft — la
   // scène BE (branches/stamps éditables) ne les suit pas. Après un tel saut, `lastMerged` ne
@@ -583,13 +611,19 @@
     updateSelInfo();
   }
 
-  window.GeneratorUI = {
-    pointerDown, pointerMove, pointerUp, cancelGesture,
-    onEnterEdit, onExitEdit, onHistoryJump, onModeEnter, onModeLeave,
-    refreshDrawer,
-  };
-
-  // app.js s'exécute avant ce script (ordre des <script> dans index.html) et expose déjà
-  // window.EditHost à la fin de son IIFE -> DOM déjà prêt, init() peut tourner tout de suite.
-  init(window.EditHost);
+  /* app.js s'exécute avant ce script (ordre des <script> dans index.html) et expose déjà
+     window.EditHost à la fin de son IIFE -> DOM déjà prêt, init() peut tourner tout de suite.
+     `window.GeneratorUI` n'est publié qu'APRÈS un init réussi : app.js n'appelle ses hooks que
+     derrière `if (window.GeneratorUI)`, donc un générateur qui n'a pas pu se brancher se désactive
+     proprement au lieu de faire échouer chaque geste d'édition (y compris en mode Dessin). */
+  try {
+    init(window.EditHost);
+    window.GeneratorUI = {
+      pointerDown, pointerMove, pointerUp, cancelGesture,
+      onEnterEdit, onExitEdit, onHistoryJump, onModeEnter, onModeLeave,
+      refreshDrawer,
+    };
+  } catch (e) {
+    console.error("Générateur de décor désactivé (init) :", e);
+  }
 })();

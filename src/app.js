@@ -38,6 +38,9 @@
   const MAX_CACHE_AREA = 16777216;     // aire max d'un canvas iOS (4096²)
   function safeCache(node, desiredPR) {
     const r = node.getClientRect({ skipTransform: true, skipShadow: true, skipStroke: true });
+    // rien à mettre en cache (décor vierge du Générateur, groupe sans forme) : Konva refuserait de
+    // toute façon, en écrivant une erreur dans la console à CHAQUE appel — bruit qui masque les vraies.
+    if (!r.width || !r.height) return;
     const w = Math.max(1, r.width), h = Math.max(1, r.height);
     let pr = Math.min(desiredPR || 1, MAX_CACHE_DIM / w, MAX_CACHE_DIM / h, Math.sqrt(MAX_CACHE_AREA / (w * h)));
     if (!isFinite(pr) || pr <= 0) pr = 1;
@@ -113,7 +116,10 @@
     const motif = state.motifs.find((m) => m.id === node.getAttr("motifId"));
     return !!motif && motif.role === "DECOR";
   }
-  function selected() { return tr.nodes()[0] || null; }
+  // sélection d'un nœud VIDE (boîte 0×0) : gardée à part, le Transformer n'y est pas attaché (cf.
+  // select) — sans quoi il écraserait sa position par des NaN.
+  let selectedEmpty = null;
+  function selected() { return tr.nodes()[0] || selectedEmpty || null; }
   function select(node) {
     if (state.decorLocked && isDecorGroup(node)) return;
     if (node && node.getAttr("isZone")) {
@@ -127,7 +133,16 @@
       tr.keepRatio(true);
       tr.enabledAnchors(["bottom-right"]); // une seule poignée d'échelle (maquette) : mise à l'échelle uniforme
     }
-    tr.nodes(node ? [node] : []);
+    /* Un nœud de taille NULLE (décor vierge du Générateur : groupe sans aucune forme) fait calculer
+       au Transformer une boîte 0×0, et son `update()` RÉÉCRIT alors x/y en NaN sur le nœud attaché.
+       Position NaN -> `localPoint()` ne rend plus que des NaN -> plus rien ne peut être tracé, sans
+       la moindre erreur. Il n'y a de toute façon rien à redimensionner sur une boîte vide : on ne
+       l'attache pas. (`selected()` lit tr.nodes() — cf. plus bas — donc la sélection réelle suit ;
+       dès que le motif a de la matière, le Transformer revient tout seul au prochain select.) */
+    const boite = node ? node.getClientRect() : null;
+    const vide = !!boite && (!boite.width || !boite.height);
+    tr.nodes(node && !vide ? [node] : []);
+    if (vide) selectedEmpty = node; else selectedEmpty = null;
     uiLayer.batchDraw(); updateInspector(); positionMoveHandle();
   }
 
@@ -663,6 +678,12 @@
     if (cv) drawThumb(cv, motif);
   }
   function makeGroup(motif, x, y, rotation, scale) {
+    // filet de sécurité : une position non finie rend `localPoint()` inutilisable (plus rien ne
+    // peut être tracé, sans erreur) et n'est pas rattrapable à la main. Couvre aussi le
+    // rechargement d'un projet déjà enregistré avec un exemplaire corrompu.
+    if (!Number.isFinite(x)) x = 0;
+    if (!Number.isFinite(y)) y = 0;
+    if (!Number.isFinite(scale) || scale === 0) scale = 1;
     const g = new Konva.Group({ x, y, rotation: rotation || 0, scaleX: scale || 1, scaleY: scale || 1, draggable: true });
     g.setAttr("motifId", motif.id);
     fillGroupContent(g, motif); // peuple + cache (voir fillGroupContent)
@@ -679,6 +700,10 @@
   // et peut déborder largement (svg.js ignore <g transform>).
   function fitScale(motif, fraction) {
     const allPts = asContours(motif.silhouette).flat();
+    // motif VIDE (décor vierge du Générateur, cf. nouveauDecor) : minMax([]) rend [Infinity,
+    // -Infinity], donc un centre NaN et une position NaN pour l'exemplaire — après quoi
+    // `localPoint()` ne rend plus que des NaN et plus rien ne peut être tracé, sans erreur.
+    if (!allPts.length) return { scale: 1, x: 0, y: 0 };
     const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
     const [mnx, mxx] = minMax(xs), [mny, mxy] = minMax(ys);
     const mw = (mxx - mnx) || 1, mh = (mxy - mny) || 1, mcx = (mnx + mxx) / 2, mcy = (mny + mxy) / 2;
@@ -1063,7 +1088,11 @@
     let draft = deepCopyContours(history[i].draft);
     for (let j = i + 1; j < history.length; j++) {
       const entry = history[j];
-      draft = entry.op === "add" ? ML.surfaceUnionLocal(draft, entry.poly) : ML.surfaceDifferenceLocal(draft, entry.poly);
+      // `ops` = plusieurs opérations dans UNE entrée, donc UN seul Annuler (le Générateur retire et
+      // rajoute de la matière au même geste : sans ça, un glissé de poignée demandait deux Annuler
+      // et l'état intermédiaire n'avait aucun sens). Une entrée simple reste {op, poly}.
+      for (const o of entry.ops || [entry])
+        draft = o.op === "add" ? ML.surfaceUnionLocal(draft, o.poly) : ML.surfaceDifferenceLocal(draft, o.poly);
     }
     return draft;
   }
@@ -1255,7 +1284,15 @@
   // de chaque côté), animé (Tween stage court). bbox pris relatif à mainLayer (non affecté par le
   // pan/zoom courant du stage) pour calculer directement la nouvelle transform du stage.
   function zoomToFitEdit(node) {
-    const rect = node.getClientRect({ relativeTo: mainLayer });
+    let rect = node.getClientRect({ relativeTo: mainLayer });
+    // motif VIDE (décor vierge du Générateur) : rien à cadrer sur le nœud lui-même. On cadre alors
+    // le CONTOUR DE LA TABLE, qui est justement la surface à décorer — sinon on ouvre l'édition
+    // face à une zone vide, au zoom précédent, sans rien pour se repérer.
+    if ((!rect.width || !rect.height) && state.boundary) {
+      const [bnx, bxx] = minMax(state.boundary.map((p) => p[0]));
+      const [bny, bxy] = minMax(state.boundary.map((p) => p[1]));
+      rect = { x: bnx, y: bny, width: bxx - bnx, height: bxy - bny };
+    }
     if (!rect.width || !rect.height) return;
     const margin = 0.9; // fraction de la fenêtre effectivement utilisée (marge ~10 % de chaque côté)
     const ns = Math.min(8, Math.max(0.1, Math.min((stage.width() * margin) / rect.width, (stage.height() * margin) / rect.height)));
@@ -2077,6 +2114,12 @@
   // quelle rangée d'outils/tiroir est visible ; la scène du Générateur (branches en cours) vit dans
   // generator-ui.js et survit à la bascule (réinitialisée seulement par enterEdit/onHistoryJump).
   function setEditMode(mode) {
+    // le générateur ne s'est pas branché (cf. fin de src/generator-ui.js) : basculer dessus
+    // n'afficherait qu'une barre d'outils inerte. On reste en Dessin et on le dit.
+    if (mode === "generate" && !window.GeneratorUI) {
+      showToast("Générateur indisponible (voir la console)");
+      mode = "draw";
+    }
     const changed = edit.mode !== mode;
     edit.mode = mode;
     document.getElementById("edit-mode-draw").classList.toggle("on", mode === "draw");
@@ -2935,9 +2978,15 @@
       addMotifToLibrary(motif);
       markProjectChanged();
     }
-    // une instance déjà posée ? on la reprend plutôt que d'en empiler une seconde
+    // une instance déjà posée ? on la reprend plutôt que d'en empiler une seconde.
+    // Pose explicite en (0,0) à l'échelle 1 : un décor vierge n'a pas de silhouette à cadrer, et
+    // ce calage fait coïncider ses px LOCAUX avec les px de conception — donc avec le repère du
+    // contour de la table (`state.boundary`), que le Générateur prend pour cadre (getZoneLocal).
     let g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0];
-    if (!g) { addInstance(motif); g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0]; }
+    if (!g) {
+      addInstance(motif, (motif.zones || []).length ? undefined : { x: 0, y: 0, scale: 1 });
+      g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0];
+    }
     if (!g) return;
     if (state.decorLocked) {           // sinon l'édition refuse d'entrer, sans le dire
       state.decorLocked = false;
@@ -2978,5 +3027,26 @@
     redrawEditLayer,
     getEditedMotif: () => state.motifs.find((m) => m.id === edit.motifId),
     showToast,
+    // `editLayer` est un Konva.Group (l. 1043), pas un Layer : il n'a PAS de batchDraw(). C'est
+    // le calque qui le porte qu'il faut redessiner — d'où ce pont plutôt qu'un appel direct.
+    redrawOverlay: () => uiLayer.batchDraw(),
+    // échelle absolue du repère de `editLayer` (zoom du stage × échelle de l'exemplaire édité) :
+    // permet à l'aperçu du Générateur de dessiner ses poignées à taille ÉCRAN constante, comme
+    // les ancres du Transformer (T-127) — sans quoi elles fondent à 2-3 px au zoom d'ensemble.
+    editScale: () => editLayer.getAbsoluteScale().x || 1,
+    /* ZONE DESSINABLE du Générateur, en px LOCAUX du motif édité (mêmes coordonnées que
+       `localPoint`). Le cadre de travail est le CORPS DE LA GUITARE — `state.boundary` moins les
+       défonces `state.holes` — et non la silhouette de l'encre déjà posée : un décor vierge n'en a
+       aucune (rien ne bornerait la pousse) et celle d'un décor importé est le trait lui-même
+       (générer dedans ne laisserait passer que ce qui recouvre un trait existant). Sans contour
+       chargé, renvoie [] : le moteur ne coupe alors rien (cf. `st.zone` dans branch-engine.js). */
+    getZoneLocal: () => {
+      if (!state.boundary || !edit.node) return [];
+      const inv = edit.node.getTransform().copy().invert();
+      const toLocal = (pts) => pts.map(([x, y]) => { const p = inv.point({ x, y }); return [p.x, p.y]; });
+      const corps = [{ pts: toLocal(state.boundary), closed: true }];
+      const trous = (state.holes || []).map((h) => ({ pts: toLocal(h), closed: true }));
+      return trous.length ? ML.surfaceDifference(corps, trous) : corps;
+    },
   };
 })();

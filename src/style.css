@@ -188,12 +188,16 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-body); 
 #edit-tools-row .icon-btn, #gen-tools-row .icon-btn { width: 52px; height: 50px; min-height: 50px; flex-direction: column; gap: 3px; font-size: 16px; }
 
 /* bascule Dessin/Générateur : même habillage carte que #edit-toolbar, en tête de la palette
-   (cf. index.html #edit-mode-switch, dernier enfant -> rendu en haut via column-reverse). */
-#edit-mode-switch { display: flex; gap: 6px; padding: 8px; background: var(--surface);
+   (cf. index.html #edit-mode-switch, dernier enfant -> rendu en haut via column-reverse).
+   COMPACTE et alignée à gauche : deux boutons pleine largeur (2 × 351 px mesurés en portrait)
+   pour un choix binaire mangeaient une rangée entière au-dessus de la barre d'outils, là où la
+   hauteur est la plus rare sur iPad. */
+#edit-mode-switch { display: flex; gap: 4px; padding: 6px; align-self: flex-start; background: var(--surface);
   border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-pop); }
-#edit-mode-switch button { flex: 1; height: 48px; min-height: 48px; border-radius: var(--r-md);
+#edit-mode-switch button { flex: none; height: var(--tap); min-height: var(--tap); padding: 0 16px;
+  border-radius: var(--r-md);
   border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 14px;
-  font-weight: 600; cursor: pointer; }
+  font-weight: 600; cursor: pointer; white-space: nowrap; }
 #edit-mode-switch button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tool-btn-label { font-size: 9px; font-weight: 600; }
 .edit-toolbar-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
@@ -240,14 +244,20 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-body); 
 /* galerie de motifs plein écran (portée de test/branches.html #galerie) : recherche + puces
    famille/état + grille de vignettes tracées depuis les axes du motif (aucun asset à charger). */
 #gen-gallery { position: fixed; inset: 0; z-index: 45; background: rgba(15,17,21,.6);
-  display: flex; flex-direction: column; padding: 16px; gap: 10px; touch-action: manipulation; }
+  display: flex; flex-direction: column; gap: 10px; touch-action: manipulation;
+  padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+           calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); }
 #gen-gallery[hidden] { display: none; }
+/* le bandeau de mode (z-index 60, fixe en haut) passerait par-dessus le champ de recherche. */
+body.gen-gallery-open #edit-mode-banner { display: none; }
 #gen-gal-head { display: flex; gap: 8px; flex: none; }
 #gen-gal-q { flex: 1; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-md);
   font: inherit; font-size: 14px; background: var(--surface); color: var(--ink); }
 .gen-puces { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
-.gen-puce { padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface);
-  color: var(--muted); font-size: 12px; cursor: pointer; }
+/* cible tactile : min-height --tap (44 px, D-012 pt 1) — 28 px au doigt sur iPad, c'est raté une
+   fois sur trois, et il y a 12 puces en ligne. */
+.gen-puce { padding: 6px 14px; min-height: var(--tap); border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--muted); font-size: 13px; cursor: pointer; }
 .gen-puce.on { border-color: var(--accent); color: var(--accent); background: oklch(0.66 0.17 45 / 0.1); }
 #gen-gal-grid { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; gap: 10px;
   align-content: start; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); padding-bottom: 12px; }
