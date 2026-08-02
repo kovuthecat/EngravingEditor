@@ -12,7 +12,7 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [ ] T-102 — Supporter `<g transform>` dans `src/svg.js` (échelle d'import correcte) · modèle: Sonnet, effort: medium · plan: —
 - [ ] T-103 — Profiler/optimiser `ML.motifSilhouette` + `ML.motifFill` sur gros décors · modèle: Sonnet, effort: high · plan: —
 - [ ] T-104 — Points d'ancrage : faire dialoguer un motif avec un bouton (œil / centre de vinyle) · modèle: Opus→Sonnet, effort: high · plan: —
-- [ ] T-105 — Magnétisme/alignement ; marge « sticker » optionnelle ; densité de packing réglable · modèle: Sonnet, effort: medium · plan: —
+- [ ] T-105 — Magnétisme/alignement ; marge « sticker » optionnelle · modèle: Sonnet, effort: medium · plan: — (volet packing caduc : dispersion retirée le 2026-08-02)
 - [x] T-106 — Nettoyer l'export CommonJS non gardé de `vendor/clipper.js:6986` (sans casser l'UMD) · modèle: Haiku, effort: minimal · plan: `plans/P7/` (T1)
 - [x] T-107 — Verrou global du décor (non sélectionnable/déplaçable/éditable) · modèle: Sonnet, effort: medium · plan: `plans/P6/` (T1)
 - [x] T-108 — Vectoriseur PNG→SVG (ImageTracer vendored) + import décor PNG · modèle: Sonnet, effort: medium · plan: `plans/P6/` (T2)

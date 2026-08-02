@@ -2,7 +2,7 @@
 
 ## Objectif du projet
 
-Outil de **mise en page de motifs SVG** sur une surface (d'abord la table d'une guitare électrique), en vue d'une **gravure laser**. Il combine un **packing assisté** (remplir une forme) et une **édition manuelle** fine (déplacer / tourner / redimensionner / ordre / rôles de zones), avec un modèle d'occlusion **« autocollant »** par surfaces : un motif au-dessus masque ce qui est dessous (pas de transparence). Sortie = un SVG couleur en mm (`fill-rule="evenodd"`), ne contenant que les surfaces réellement visibles. Le DXF (entrée et sortie) a été retiré le 2026-06-22 (`DECISIONS.md §D-004`).
+Outil de **mise en page de motifs SVG** sur une surface (d'abord la table d'une guitare électrique), en vue d'une **gravure laser**. Il combine un **générateur de décor** (branches, lianes, pistes et semis de motifs, poussés le long d'un tracé et coupés au contour de la pièce) et une **édition manuelle** fine (déplacer / tourner / redimensionner / ordre / rôles de zones), avec un modèle d'occlusion **« autocollant »** par surfaces : un motif au-dessus masque ce qui est dessous (pas de transparence). Sortie = un SVG couleur en mm (`fill-rule="evenodd"`), ne contenant que les surfaces réellement visibles. Le DXF (entrée et sortie) a été retiré le 2026-06-22 (`DECISIONS.md §D-004`).
 
 Contexte créatif : pattern dense de doodles geek N&B, sans répétition, épousant la forme de la table. Voir le projet parent (assets + banque de motifs) dans `#Archives/Laser project/Gravure guitare/` (`MOTIFS.md`).
 
@@ -17,7 +17,7 @@ Contexte créatif : pattern dense de doodles geek N&B, sans répétition, épous
 
 1. Importer des motifs SVG → bibliothèque (zones REMPLI/VIDE détectées automatiquement) ; charger un contour SVG (zone de travail + clip).
 2. Édition manuelle : sélection, rotation/échelle (poignées), déplacement, duplication, suppression, z-order, rôles de zones (REMPLI↔VIDE).
-3. Packing assisté : dispersion de N motifs dans le contour (point de départ).
+3. Générateur de décor : brancher/enrouler/tirer au tracé, semer des motifs le long, découpe au contour. (Remplace la dispersion aléatoire de N motifs, retirée le 2026-08-02.)
 4. Export SVG en mm avec **occlusion par surfaces** (seules les surfaces visibles, couleur + `evenodd`).
 5. Enregistrer / charger un projet (JSON).
 
@@ -69,13 +69,13 @@ Un éditeur léger et réutilisable pour composer des patterns de gravure laser 
 
 - [x] Import DXF motifs + contour, bibliothèque *(superseded 2026-06-22 par l'import SVG + zones, `DECISIONS.md §D-004`)*
 - [x] Édition manuelle (déplacer/tourner/redim/z-order, dup/suppr)
-- [x] Packing assisté (dispersion)
+- [x] Packing assisté (dispersion) *(retiré le 2026-08-02 : obsolète depuis le générateur de décor, et il posait des motifs jusqu'à 2,4× plus grands que la table)*
 - [x] Export DXF mm avec occlusion *(superseded 2026-06-22 par l'export SVG couleur avec occlusion par surfaces, `DECISIONS.md §D-004`)*
 - [x] Save/load projet
 
 ### Version 1
 
-- [ ] Packing **cohérent** tenant compte des éléments physiques de la table (boutons/micros/sélecteur/jack) : zones interdites + points d'ancrage.
+- [ ] Composition **cohérente** tenant compte des éléments physiques de la table (boutons/micros/sélecteur/jack) : zones interdites + points d'ancrage pour le générateur.
 - [ ] Magnétisme / alignement, marge blanche « sticker » optionnelle.
 
 ### Version 2 / idées futures

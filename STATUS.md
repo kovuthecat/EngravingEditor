@@ -6,6 +6,37 @@
 >
 > **Dernière mise à jour :** 2026-08-02 (audit d'intégration du Générateur)
 
+## Suites de l'audit naïf (2026-08-02)
+
+Un agent a parcouru l'app sans jamais lire le code ni la doc. Trois de ses constats ont été
+reproduits et mesurés par moi avant correction ; deux de ses conclusions étaient fausses et ne sont
+PAS reprises (le curseur d'échelle ne ment pas — c'était un symptôme de la dispersion ; le cadre
+d'export n'est pas figé — c'est la boîte englobante de l'encre).
+
+1. **iPad portrait : taper « 🌳 Branche » ajoutait un personnage.** Le panneau du rail
+   (`.side-panel`, z-index 40) reste ouvert par-dessus la palette d'édition (z-index 20) et
+   interceptait les taps : `elementFromPoint` au centre de Branche et Semer renvoyait `lib-item`
+   (→ ajoute un motif au plan), celui de Piste `lib-del` (→ masque un motif de la bibliothèque).
+   `enterEdit` referme désormais le panneau et `exitEdit` le rouvre tel quel, comme la sidebar.
+   Vérifié : les trois outils reçoivent leur propre tap.
+2. **« Disperser dans le contour » supprimé** (décision de Thibault : obsolète depuis le
+   Générateur). Il était en prime faux — 22 objets sur 33 plus grands que la guitare entière, le
+   plus grand à 1051 × 1400 mm sur une table de 440 × 325, 22 en coordonnées négatives. Cause :
+   il passait son échelle directement à `addInstance`, sans le plafond appliqué à une pose
+   manuelle. Retirés : `packing`, `pointInPoly` local (sans autre appelant), le bloc « Rangement
+   assisté » et ses 4 identifiants.
+3. **Le décor passe en tête du panneau.** « 🌿 Dessiner un décor » était à y=1752 dans un panneau
+   de 1794 px — la façon normale de commencer était le dernier bouton du dernier écran. Il est
+   maintenant à y=111, visible sans dérouler ; les personnages passent dessous. Rail renommé
+   « Décor ».
+4. **Le générateur dit enfin quoi faire.** Le bandeau de mode annonçait « ✎ Édition des zones »
+   jusque dans le Générateur, où ni « zone » ni les rôles REMPLI/VIDE n'ont cours, et rien à
+   l'écran ne disait qu'il fallait TRACER (l'information n'existait que dans le « ? »). Il porte
+   maintenant la consigne de l'outil actif (`setModeHint`, une par outil).
+
+Non traités, faute d'arbitrage : la taille réelle absente de l'export et du canevas, et le
+« Ajuster à la pièce » manquant à côté du zoom.
+
 ## Audit d'intégration du mode Générateur (2026-08-02)
 
 Le mode Générateur (commits `97314b7`/`f907926`) **ne fonctionnait sur aucun chemin** : bugs trouvés
@@ -400,7 +431,7 @@ réel (voir `VALIDATION.md`, P8 · rendu aplat).
 - **Import contour** calibré en mm réels (corps blanc à graver + cavités auto) ; zones interdites manuelles ; guides de gravure (marge offset, cadre Falcon).
 - **Occlusion par surfaces** à l'export (`ML.occludeSurfaces`, règle `maskFor` décor/perso) ; **export SVG mm** multi-couleur `evenodd`.
 - **Édition** : sélection/rotation/échelle/glisser, z-order, zoom/pan, pinch tactile ; **édition stylet non destructive** (calques d'essai, pinceau/gomme/formes/lasso, pression + plume calligraphique) ; **export PNG** (sens écran).
-- **Packing** assisté ; save/load projet JSON.
+- **Générateur de décor** (branches/lianes/pistes/semis au tracé, découpe au contour) ; save/load projet JSON.
 - **Validé headless** : `node test/run.js` (parse → zones → occlusion par surfaces → writeSVG).
 
 ## Ce qui casse / n'est pas testé
@@ -413,6 +444,5 @@ réel (voir `VALIDATION.md`, P8 · rendu aplat).
 
 ## Dette technique
 
-- Packing = dispersion naïve (pas de contrôle densité/recouvrement).
 - `motifSilhouette`/`motifFill` coûteux sur gros décors (~8 s + ~6 s sur 3936 sous-chemins) — à profiler (T-103).
 - Perf occlusion par surfaces non re-mesurée depuis D-004.

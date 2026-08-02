@@ -8,7 +8,7 @@ Carte synthétique du projet. Détail technique complet : voir `SPEC.md` (ne pas
 
 - **Type** : app web mono-page, sans build, sans framework (classic scripts globaux). Tourne en `file://`.
 - **Zones fonctionnelles** : (1) I/O SVG, (2) géométrie/zones/occlusion, (3) UI + édition + état (Konva).
-- **Flux principal** : importer motifs SVG (zones REMPLI/VIDE auto-détectées) → poser/éditer (ou packing) sur un contour SVG → exporter un SVG couleur des surfaces visibles (occlusion) en mm.
+- **Flux principal** : charger un contour SVG → générer le décor au tracé (`generator-ui.js` + `branch-engine.js`) et/ou poser des motifs SVG (zones REMPLI/VIDE auto-détectées) → retoucher au stylet → exporter un SVG couleur des surfaces visibles (occlusion) en mm.
 - **Dépendances structurantes** : `Konva` (canevas/édition), `ClipperLib` (booléen), vendored dans `vendor/`.
 
 ---
@@ -22,7 +22,7 @@ motif-layout/
     svg.js          # parse SVG (<path>) -> sous-chemins + couleur -> window.ML.parseSVG
     geometry.js      # zones (parent/depth/role), régions, occlusion par surfaces, écriture SVG, px<->mm
                       #   -> window.ML.buildZones / motifFill / motifSilhouette / occludeSurfaces / writeSVG / ...
-    app.js           # état, Konva, édition (zones + transform), packing, export, projet, édition stylet
+    app.js           # état, Konva, édition (zones + transform), export, projet, édition stylet
     builtin-motifs.js # généré : window.ML_BUILTIN_MOTIFS = [{id,name,role,svg},...] (Lot 5)
     style.css
   tools/
@@ -75,7 +75,7 @@ sa zone parente (ne pas le déplacer seul) ; toute modif géométrique doit pass
 ### Feature 3 — UI / édition / état (`src/app.js`, `index.html`, `src/style.css`, `src/builtin-motifs.js`)
 
 Rôle : bibliothèque de motifs (motifs locaux importés + **motifs de base inlinés**, matérialisés paresseusement),
-instances Konva éditables (dont l'éditeur de rôles de zones), packing, export, persistance projet, édition stylet.
+instances Konva éditables (dont l'éditeur de rôles de zones), export, persistance projet, édition stylet.
 Lots 1-4 enrichissent la perf (simplif décor, fond en cache, debounce), le rendu (vert=delta), l'UX (palette flottante,
 reorg sidebar, undo trait) et les outils (pression+plume). Lot 5 ajoute la **bibliothèque de base** (motifs Personnage
 et Symbole embarqués dans `src/builtin-motifs.js`, masquage local persistant `state.hiddenBuiltins`, promotion locale

@@ -1,6 +1,6 @@
 # Motif Layout
 
-Mise en page de motifs SVG (gravure laser) avec packing assisté, édition manuelle (zones REMPLI/VIDE, déplacement, rotation, échelle), **édition au stylet** (pinceau/gomme) et occlusion « autocollant » par surfaces.
+Mise en page de motifs SVG (gravure laser) : **générateur de décor** (branches, lianes, pistes, semis de motifs), édition manuelle (zones REMPLI/VIDE, déplacement, rotation, échelle), **édition au stylet** (pinceau/gomme) et occlusion « autocollant » par surfaces.
 
 ## Lancer
 
@@ -10,10 +10,10 @@ Mise en page de motifs SVG (gravure laser) avec packing assisté, édition manue
 
 ## Utilisation rapide
 
-1. **Importer motifs SVG…** : charge tes motifs vectorisés à la bibliothèque (gauche, par rôle : personnages / symboles / décor). Clique une vignette pour en poser une instance.
-2. **Charger contour SVG…** : la forme de la table. Le corps sert de zone de travail + clip ; les cavités/trous sont auto-détectés et réservés (affichés en fond gris).
-3. **+ Zone interdite** : pose des rectangles sur les cavités/boutons (micros, électronique, etc). Rien n'y sera gravé et le packing les évite.
-4. **Packing assisté** : disperse des motifs dans le contour pour démarrer.
+1. **Charger contour SVG…** : la forme de la table, à faire en premier. Le corps sert de zone de travail + clip ; les cavités/trous sont auto-détectés et réservés (affichés en fond gris).
+2. **🌿 Dessiner un décor** : ouvre le générateur. On trace un trait, il en fait pousser une branche, une liane ou une piste ; on sème des motifs dessus, on retouche les poignées. Le décor est coupé au contour de la table.
+3. **Personnages à poser** : clique une vignette de la bibliothèque pour en poser une instance par-dessus le décor.
+4. **+ Zone interdite** : pose des rectangles sur les cavités/boutons (micros, électronique, etc). Rien n'y sera gravé, et l'export les épargne.
 5. **Édition manuelle** : clic = sélection (motif ou zone) ; poignées = rotation/échelle ; glisser = déplacer.
    - `Suppr` supprime · `Ctrl+D` duplique · `[` / `]` change l'ordre (z) · molette = zoom · glisser le fond = déplacer la vue.
 6. **Édition au stylet** (optionnel) : sélectionner un motif → bouton « Entrer » (mode verrouillé) → pinceau/gomme pour retoucher la surface → bouton « Sortir » pour restaurer l'édition normale.
