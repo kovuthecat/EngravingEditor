@@ -532,6 +532,22 @@
     document.querySelectorAll("#generator-tools [data-genfor]").forEach((el) => {
       el.style.display = el.dataset.genfor.split(" ").includes(genTool) ? "" : "none";
     });
+    afficheConsigne();
+  }
+
+  // Consigne permanente dans le bandeau de mode : rien à l'écran ne disait qu'il fallait TRACER,
+  // l'information n'existait que dans le « ? ». Un testeur découvrant l'outil a tapé sans rien
+  // obtenir et sans le moindre message.
+  const CONSIGNES = {
+    branche: "trace un trait pour faire pousser une branche · pars du bord d'une branche existante pour la prolonger",
+    liane: "trace un trait pour poser une liane · elle s'enroule autour du bois qu'elle croise",
+    piste: "trace un trait pour tirer une piste · démarre sur une borne verte pour l'y raccorder",
+    semer: "touche une branche pour y poser le motif choisi · glisse le long pour en semer plusieurs",
+    editer: "touche une branche ou un motif posé, puis glisse ses poignées",
+  };
+  function afficheConsigne() {
+    if (!host.setModeHint || !host.edit.active || host.edit.mode !== "generate") return;
+    host.setModeHint(CONSIGNES[genTool] || "");
   }
 
   function bindSlider(id, key, factor) {
@@ -574,7 +590,7 @@
     clearTracePreview();
     renderOverlay();
   }
-  function onModeEnter() { renderOverlay(); }
+  function onModeEnter() { afficheConsigne(); renderOverlay(); }
   function onModeLeave() { cancelGesture(); clearOverlay(); }
 
   function init(hostObj) {

@@ -1,4 +1,4 @@
-/* app.js — Motif Layout. Édition + packing + export SVG avec occlusion par surfaces.
+/* app.js — Motif Layout. Édition + export SVG avec occlusion par surfaces.
    Dépend de: Konva (global), ClipperLib (global), ML.parseSVG (svg.js), ML.buildZones/motifFill/occludeSurfaces/writeSVG (geometry.js). */
 (function () {
   const ML = window.ML;
@@ -769,7 +769,7 @@
     select(z);
     markProjectChanged();
   }
-  // polygones (design px) des zones, pour soustraction export + évitement packing
+  // polygones (design px) des zones, pour soustraction à l'export
   function getZonePolys() {
     return zonesLayer.getChildren((n) => n.getAttr("isZone")).map((z) => {
       const t = z.getAbsoluteTransform(zonesLayer);
@@ -1041,7 +1041,7 @@
   // doigts restent le pan (T2).
   // mode ("draw"|"generate") : bascule Dessin/Générateur de la palette d'édition (src/generator-ui.js,
   // branché via window.EditHost/window.GeneratorUI plus bas) — deux façons de peupler le MÊME edit.draft.
-  const edit = { active: false, motifId: null, node: null, mode: "draw", tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], altitudes: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
+  const edit = { active: false, motifId: null, node: null, mode: "draw", tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], altitudes: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, reopenPanel: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
@@ -1335,6 +1335,13 @@
       document.getElementById("app").classList.add("collapsed");
       syncStageSize();
     }
+    /* (2026-08-02) Refermer aussi le PANNEAU du rail. En portrait il flotte AU-DESSUS du canevas
+       (`.side-panel` z-index 40 contre 20 pour `#edit-palette`) : laissé ouvert, il recouvrait la
+       barre d'outils, et taper « 🌳 Branche » atteignait en réalité une vignette de la bibliothèque
+       — donc AJOUTAIT un personnage —, « ⚡ Piste » tombant, lui, sur un « × » de suppression.
+       Mémorisé pour être rouvert tel quel à la sortie, comme la sidebar juste au-dessus. */
+    edit.reopenPanel = activePanel;
+    if (activePanel) { activePanel = null; renderPanel(); }
     const stashed = editDrafts.get(motif.id);
     edit.draft = deepCopyContours(stashed ? Object.values(stashed.surfaceByColor)[0] : exportFill(motif)[motif.color]);
     edit.realFill = exportFill(motif)[motif.color] || [];
@@ -1378,7 +1385,7 @@
     // brouillon) ; sans ça, la gomme sur le corps initial laisse voir l'instance intacte en dessous.
     g.visible(false); mainLayer.batchDraw();
     document.getElementById("app").classList.add("editing");
-    document.getElementById("edit-mode-banner-name").textContent = motif.name;
+    setModeHint(null);
     document.getElementById("edit-mode-banner").hidden = false;
   }
   function exitEdit() {
@@ -1424,6 +1431,8 @@
     }
     (edit.reopenDetails || []).forEach((d) => { d.open = true; });
     edit.reopenDetails = null;
+    if (edit.reopenPanel) { activePanel = edit.reopenPanel; renderPanel(); } // cf. enterEdit
+    edit.reopenPanel = null;
     document.getElementById("app").classList.remove("editing");
     document.getElementById("edit-mode-banner").hidden = true;
     restoreViewAfterEdit(prevView);
@@ -2113,6 +2122,19 @@
   // on peut alterner librement, rien n'est perdu (cf. rapport). Chaque bascule resynchronise juste
   // quelle rangée d'outils/tiroir est visible ; la scène du Générateur (branches en cours) vit dans
   // generator-ui.js et survit à la bascule (réinitialisée seulement par enterEdit/onHistoryJump).
+  /* Bandeau de mode : seul endroit permanent où écrire QUOI FAIRE sans poser un élément flottant
+     de plus sur le canevas. Le générateur n'affichait rien — il fallait ouvrir le « ? » pour
+     apprendre que Branche/Liane/Piste partent d'un tracé — et ce bandeau annonçait « Édition des
+     zones » jusque dans le Générateur, où ni le mot « zone » ni les rôles REMPLI/VIDE n'ont cours.
+     `texte` null = mode Dessin. textContent (pas innerHTML) : le nom du motif vient d'un nom de
+     fichier importé. */
+  function setModeHint(texte) {
+    const motif = state.motifs.find((m) => m.id === edit.motifId);
+    const nom = motif ? motif.name : "";
+    document.getElementById("edit-mode-banner-text").textContent = texte
+      ? `🌿 ${nom} — ${texte}`
+      : `✎ Édition des zones — ${nom} · contour et décor restent visibles`;
+  }
   function setEditMode(mode) {
     // le générateur ne s'est pas branché (cf. fin de src/generator-ui.js) : basculer dessus
     // n'afficherait qu'une barre d'outils inerte. On reste en Dessin et on le dit.
@@ -2129,8 +2151,8 @@
     document.getElementById("brush-size-popover").hidden = mode !== "draw";
     document.getElementById("stylet-tools").style.display = mode === "draw" ? "" : "none";
     document.getElementById("generator-tools").style.display = mode === "generate" ? "" : "none";
-    if (mode === "draw") refreshDrawerForTool();
-    else if (window.GeneratorUI) window.GeneratorUI.refreshDrawer();
+    if (mode === "draw") { refreshDrawerForTool(); if (edit.active) setModeHint(null); }
+    else if (window.GeneratorUI) window.GeneratorUI.refreshDrawer(); // pose sa propre consigne
     if (changed) {
       clearLassoSelection(); // pas de sélection lasso résiduelle en changeant de mode
       if (window.GeneratorUI) { if (mode === "generate") window.GeneratorUI.onModeEnter(); else window.GeneratorUI.onModeLeave(); }
@@ -2273,37 +2295,13 @@
     else if (e.key === "Escape" && edit.lasso) { e.preventDefault(); clearLassoSelection(); }
   });
 
-  // ─── packing assisté (Phase 1 : dispersion dans le contour) ──────────────────
-  function pointInPoly(pt, poly) {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const [xi, yi] = poly[i], [xj, yj] = poly[j];
-      if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) inside = !inside;
-    }
-    return inside;
-  }
-  function packing(count, sMin, sMax) {
-    if (!state.boundary) { alert("Charge d'abord un contour."); return; }
-    if (!state.motifs.length) { alert("Importe d'abord des motifs."); return; }
-    recordHistory();
-    const xs = state.boundary.map((p) => p[0]), ys = state.boundary.map((p) => p[1]);
-    const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
-    const zones = reservedPolys();
-    let placed = 0, tries = 0;
-    while (placed < count && tries < count * 40) {
-      tries++;
-      const x = minx + Math.random() * (maxx - minx), y = miny + Math.random() * (maxy - miny);
-      if (!pointInPoly([x, y], state.boundary)) continue;
-      if (zones.some((h) => pointInPoly([x, y], h))) continue;
-      const m = state.motifs[Math.floor(Math.random() * state.motifs.length)];
-      const scale = sMin + Math.random() * (sMax - sMin);
-      const rot = (Math.random() - 0.5) * 50;
-      addInstance(m, { x, y, rotation: rot, scale, silent: true, history: false });
-      placed++;
-    }
-    mainLayer.batchDraw();
-    if (placed) markProjectChanged();
-  }
+  /* « Rangement assisté » (packing) retiré le 2026-08-02. Obsolète : composer le décor est
+     désormais le travail du Générateur (src/generator-ui.js), qui pousse le long d'un tracé au
+     lieu de tirer des positions au hasard. Il était en prime faux — il passait son échelle
+     directement à `addInstance`, sans le plafond que celui-ci applique à une pose manuelle, d'où
+     des motifs jusqu'à 2,4 fois plus grands que la table, en majorité hors du contour.
+     `pointInPoly` local disparaît avec lui (il n'avait pas d'autre appelant ; `ML.pointInPoly`,
+     dans geometry.js, est une autre fonction et reste utilisée). */
 
   // ─── export SVG (occlusion par surfaces, règle décor D-005) ─────────────────
   // occluder = ce qui masque ce qui est dessous (silhouette pour un motif, surface réelle
@@ -2909,10 +2907,6 @@
   document.getElementById("btn-export-png").onclick = () => exportPNG("png");
   document.getElementById("btn-export-jpeg").onclick = () => exportPNG("jpeg");
   document.getElementById("export-pdf").onclick = exportPdfA4;
-  document.getElementById("btn-pack").onclick = () =>
-    packing(parseInt(document.getElementById("pack-count").value) || 30,
-      parseFloat(document.getElementById("pack-smin").value) || 0.6,
-      parseFloat(document.getElementById("pack-smax").value) || 1.2);
   document.getElementById("btn-dup-sel").onclick = duplicateSel;
   document.getElementById("btn-del").onclick = deleteSel;
   document.getElementById("btn-front").onclick = () => zorder("front");
@@ -3027,6 +3021,7 @@
     redrawEditLayer,
     getEditedMotif: () => state.motifs.find((m) => m.id === edit.motifId),
     showToast,
+    setModeHint,
     // `editLayer` est un Konva.Group (l. 1043), pas un Layer : il n'a PAS de batchDraw(). C'est
     // le calque qui le porte qu'il faut redessiner — d'où ce pont plutôt qu'un appel direct.
     redrawOverlay: () => uiLayer.batchDraw(),

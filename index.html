@@ -37,9 +37,9 @@
 
   <div id="app">
     <nav id="icon-rail" aria-label="Panneaux">
-      <button id="rail-library" class="rail-btn" type="button" data-panel="library" title="Motifs &amp; décor">
+      <button id="rail-library" class="rail-btn" type="button" data-panel="library" title="Décor &amp; motifs">
         <span class="rail-icon rail-icon-library"><span></span><span></span><span></span><span></span></span>
-        <span class="rail-label">Motifs</span>
+        <span class="rail-label">Décor</span>
       </button>
       <button id="rail-contour" class="rail-btn" type="button" data-panel="contour" title="Contour">
         <svg class="rail-icon" viewBox="0 0 26 20" width="26" height="20" aria-hidden="true">
@@ -64,20 +64,12 @@
 
     <aside id="panel" class="side-panel" hidden>
       <section id="panel-library" class="panel-section" hidden>
-        <div class="panel-title">Motifs &amp; décor</div>
-        <!-- Une seule famille depuis le 2026-08-02 : kodama et korok, seuls habitants du
-             décor. La catégorie Symboles a été retirée du projet. -->
-        <div id="tab-panel-perso">
-          <div id="library-perso" class="library-grid"></div>
-          <div class="panel-count">Personnages <span class="lib-count" id="count-perso">0</span></div>
-          <label class="btn-tile" for="import-perso">+ Importer des personnages (SVG)</label>
-          <input id="import-perso" type="file" accept=".svg" multiple hidden />
-        </div>
-        <button id="btn-restore-builtins" class="panel-btn-ghost" type="button">Restaurer la bibliothèque de base</button>
-
-        <div class="panel-sep"></div>
-
-        <div class="panel-title sm">Décor</div>
+        <div class="panel-title">Décor &amp; motifs</div>
+        <!-- DÉCOR EN PREMIER (2026-08-02). Il était sous les 20 vignettes de personnages, soit
+             950 px sous la ligne de flottaison : la porte d'entrée du Générateur — la façon
+             normale de commencer un pattern — était le dernier bouton du dernier écran. -->
+        <button id="btn-new-decor" class="btn-cta" type="button">🌿 Dessiner un décor</button>
+        <p class="panel-note">Fait pousser branches, lianes et pistes sur la table, au tracé. C'est par là qu'on commence.</p>
         <div id="library-decor" class="decor-preview"></div>
         <div class="panel-row">
           <label class="btn-outline" for="import-decor">Décor (SVG)</label>
@@ -87,11 +79,20 @@
         <input id="import-decor" type="file" accept=".svg" hidden />
         <input id="import-decor-png" type="file" accept="image/png,image/jpeg" hidden />
         <input id="refresh-decor-file" type="file" accept="image/png,image/jpeg" hidden />
-        <!-- Sans décor importé, rien n'était sélectionnable : le mode Générateur, greffé sur
-             l'édition d'un décor, restait donc inatteignable. Ce bouton crée le décor vierge
-             et ouvre directement le Générateur dedans. -->
-        <button id="btn-new-decor" class="panel-btn-ghost" type="button">🌿 Dessiner un décor (générateur)</button>
         <button id="btn-lock-decor" class="panel-btn-toggle" type="button" aria-pressed="false">🔓 Décor déverrouillé</button>
+
+        <div class="panel-sep"></div>
+
+        <!-- Une seule famille depuis le 2026-08-02 : kodama et korok, seuls habitants du
+             décor. La catégorie Symboles a été retirée du projet. -->
+        <div class="panel-title sm">Personnages à poser</div>
+        <div id="tab-panel-perso">
+          <div id="library-perso" class="library-grid"></div>
+          <div class="panel-count">Personnages <span class="lib-count" id="count-perso">0</span></div>
+          <label class="btn-tile" for="import-perso">+ Importer des personnages (SVG)</label>
+          <input id="import-perso" type="file" accept=".svg" multiple hidden />
+        </div>
+        <button id="btn-restore-builtins" class="panel-btn-ghost" type="button">Restaurer la bibliothèque de base</button>
       </section>
 
       <section id="panel-contour" class="panel-section" hidden>
@@ -152,26 +153,11 @@
         <div class="panel-block">
           <div class="panel-block-head"><span>Zone interdite</span></div>
           <button id="btn-zone" class="btn-dashed" type="button">+ Zone interdite (cavité manuelle)</button>
-          <p class="panel-note">Zone manuelle : rien n'y sera gravé et le rangement automatique l'évite.</p>
+          <p class="panel-note">Zone manuelle : rien n'y sera gravé, et l'export l'épargne.</p>
         </div>
-
-        <div class="panel-sep"></div>
-
-        <div class="panel-block">
-          <div class="panel-block-head"><span>Rangement assisté</span></div>
-          <label class="field block"><span class="field-label">Nombre de motifs</span>
-            <input id="pack-count" type="number" inputmode="decimal" value="30" min="1" />
-          </label>
-          <div class="panel-row-2">
-            <label class="field"><span class="field-label">Échelle min</span>
-              <input id="pack-smin" type="range" min="0.3" max="1.5" step="0.1" value="0.6" />
-            </label>
-            <label class="field"><span class="field-label">Échelle max</span>
-              <input id="pack-smax" type="range" min="0.5" max="2.5" step="0.1" value="1.2" />
-            </label>
-          </div>
-          <button id="btn-pack" class="btn-cta" type="button">Disperser dans le contour</button>
-        </div>
+        <!-- « Rangement assisté » (Nombre de motifs / Échelle min-max / Disperser dans le contour)
+             retiré le 2026-08-02 : obsolète depuis le Générateur de décor, et il posait des motifs
+             jusqu'à 2,4 fois plus grands que la table, en majorité hors du contour. -->
       </section>
 
       <section id="panel-selection" class="panel-section" hidden>
@@ -278,7 +264,9 @@
       </div>
       <div id="toast" hidden></div>
       <div id="edit-mode-banner" hidden>
-        <span id="edit-mode-banner-text">✎ Édition des zones — <span id="edit-mode-banner-name"></span> · contour et décor restent visibles</span>
+        <!-- texte écrit par setModeHint (src/app.js) : « Édition des zones » ne vaut que pour le
+             mode Dessin ; en Générateur ce bandeau porte la consigne de l'outil actif. -->
+        <span id="edit-mode-banner-text"></span>
         <button id="btn-edit-exit-pill" class="edit-mode-banner-btn" type="button">Terminer</button>
       </div>
       <div id="selection-toolbar" hidden>
