@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 511.00 1103.00"
+     data-anchor="255.00,1099.00" data-source="Feuille ovale hybride nue.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M255.00,1099.00L255.00,916.00L143.00,841.00L102.00,797.00L64.00,740.00L35.00,678.00L14.00,608.00L3.00,532.00L2.00,459.00L22.00,337.00L72.00,210.00L151.00,102.00L246.00,12.00L265.00,14.00L339.00,83.00L433.00,203.00L476.00,300.00L504.00,415.00L508.00,520.00L490.00,633.00L449.00,737.00L402.00,807.00L350.00,857.00L257.00,915.00"/>
+    <path d="M257.00,378.00L257.00,498.00L290.00,535.00L290.00,583.00L241.00,636.00L241.00,759.00"/>
+  </g>
+</svg>

@@ -592,3 +592,297 @@ confirmer :
 - [ ] Idem après un contact parasite à deux doigts (ex. paume posée un instant) pendant l'édition.
 - [ ] Le pan un doigt (mode navigue) et le pinch-zoom deux doigts restent inchangés en édition.
 - [ ] Hors édition, le pan un doigt natif Konva fonctionne toujours normalement après un pinch-zoom.
+
+## 2026-08-02 — Banque de motifs complète + sélecteur en galerie (prototype `test/branches.html`)
+
+Fait et vérifié sans navigateur : `node test/branch-proto-check.js` vert, JS de la page contrôlé à
+la syntaxe, planche-contact des 42 cartes rendue depuis les axes de la banque
+(`test/banque-planche.png` — c'est le tracé exact des vignettes du sélecteur).
+
+À vérifier à l'œil, dans la page :
+
+- [ ] Le bouton « Motif » du panneau Semis montre la vignette + le nom du motif courant.
+- [ ] Un appui ouvre la galerie plein écran ; « Fermer », un clic hors grille ou Échap la referment.
+- [ ] Les puces de famille (Feuilles / Fleurs / Vrilles / Champignons / Radicelles / Composants) et
+      d'état (Organique / Hybride / Électronique) filtrent bien, et se cumulent avec la recherche.
+- [ ] Les cartes sous la taille de semis courante sont grisées et affichent « ≥ N mm » en orange —
+      elles restent sélectionnables (c'est un avertissement, pas un interdit).
+- [ ] Le choix d'une carte referme la galerie et redessine ; le motif semé est bien celui montré.
+- [ ] Au stylet sur iPad : la grille défile, les puces se touchent sans effort, la galerie ne
+      bloque pas le tracé une fois refermée.
+
+Points à trancher côté illustrations (rien à corriger dans le code) :
+
+- [ ] `Champignon plat` hybride et organique se ressemblent trop sur la planche — la colonisation
+      électronique ne se lit pas. Idem, à un moindre degré, pour `Champignon grappe` et `touffe`.
+- [ ] `Vrille double hybride` était déjà en base sous ce nom : le fichier `92e90705-….png` du
+      nouveau lot en est un doublon exact, il a été écarté.
+
+## 2026-08-02 (soir) — Manières de poser les motifs
+
+Défaut relevé sur `branches(11).svg` : les composants étaient semés **comme des feuilles**, en
+oblique et décalés à côté de leur piste, sans y être raccordés ; plusieurs étaient posés très
+sous leur taille lisible.
+
+Chaque motif porte désormais une **manière de poser**, et le banc `node test/banc-poses.js`
+(+ `python test/branch-proto-render.py`) la vérifie à l'image :
+
+- [ ] `dans la ligne` — résistance, bobine, condensateur axial : la piste **traverse** la pièce,
+      qui est centrée dessus et dans son sens. Ses pattes ne sont pas dessinées : la piste
+      les remplace.
+- [ ] `en nœud` — puce DIP/QFP : centrée sur la piste, qui aboutit dessus.
+- [ ] `debout dessus` — condensateur céramique, tube, champignon : planté perpendiculairement.
+- [ ] `au bout` — vrille, radicelle : au bout de l'axe, dans son prolongement, **une seule fois**
+      même si on sème sur toute la longueur.
+- [ ] `sur le côté` — feuille, fleur : inchangé, angle libre.
+- [ ] Un motif trop petit pour rester lisible n'est plus posé du tout (le condensateur
+      électrolytique, qui demande 46 mm, est écarté à 26 mm — c'est voulu).
+- [ ] Dans le sélecteur, chaque carte annonce sa manière de poser sous son nom.
+
+## 2026-08-02 — Personnages : prompts kodama + korok
+
+20 prompts ajoutés à `reference/prompts-motifs.html` (5 postures de kodama et 5 masques de
+korok, chacun en classique et en hybride électronique). Ils remplacent les bibliothèques
+`exemple motif/Personnages` et `Symboles`, qui sortent du projet — **rien n'a été supprimé**,
+c'est ta décision à prendre.
+
+À vérifier au fil des générations :
+
+- [ ] Aucun aplat noir sauf les trous d'yeux/bouche du kodama. Tes références de korok
+      (Korok 4, 5, 9, 10, 11) sont pleines de noir et de hachures : ni pyrogravables à la main,
+      ni exploitables par l'extraction d'axes. Les prompts l'interdisent explicitement.
+- [ ] Intérieur clairsemé : posé à 4 cm, un personnage chargé devient un pâté. Contrôle avec
+      la taille minimale annoncée par `tools/build-motif-bank.py` après extraction.
+- [ ] Le personnage repose bien sur le BAS du dessin (il se pose debout sur la branche).
+- [ ] Le trio de kodama compte comme un seul motif : il se pose d'un bloc.
+
+Une fois les images générées : les déposer dans `reference/personnage/`, puis
+`python tools/motif-axes.py "reference/personnage" -o "reference/personnage/axes"` et
+`python tools/build-motif-bank.py`. Le pipeline les classe déjà en famille `personnage`,
+pose « debout dessus », et accepte « classique » comme synonyme d'organique.
+
+## 2026-08-02 (nuit) — Poses impossibles, recouvrement, chaînage
+
+Trois défauts relevés sur `branches(12).svg`, plus deux demandes d'interaction.
+
+**19 motifs sur 42 étaient impossibles à poser** à la taille par défaut : un plafond
+d'agrandissement les refusait *en silence* — on cliquait, rien n'apparaissait. Une pose
+demandée n'est plus jamais refusée : elle est agrandie jusqu'à rester lisible, et la ligne
+d'état l'annonce. Seule la garniture automatique d'une liane garde ce plafond.
+
+- [ ] Choisir n'importe quel motif du sélecteur et le poser : il apparaît toujours.
+- [ ] Sous la taille minimale, l'état annonce « sera agrandi à N mm » avant la pose.
+- [ ] Les motifs écartés faute de place sont comptés dans l'état (avant, ils disparaissaient
+      sans rien dire).
+
+**Les motifs étaient ancrés sur l'AXE de la branche**, donc à moitié avalés par le ruban —
+d'autant plus que la branche est épaisse. Ils sortent maintenant jusqu'à l'écorce.
+
+- [ ] Un champignon sur une gros tronc pousse de la surface, pas du cœur du bois.
+- [ ] Les poignées d'édition tombent bien sur le motif dessiné (même calcul de pose).
+
+**Le décor se voyait à travers les motifs** : la silhouette ne couvrait que les traits, pas
+l'intérieur. Elle est maintenant pleine.
+
+- [ ] Poser une grande feuille ou une puce à cheval sur une branche : le bois est masqué,
+      l'écorce s'arrête au bord du motif.
+
+**Chaînage.** Une pièce en ligne (résistance, bobine, condensateur axial) ou en nœud (puce)
+offre une borne libre à chaque bout : un tracé qui y démarre s'y recale. Un motif qui se pose
+sur un support (champignon, feuille, vrille, radicelle) n'en offre aucune — son pied est déjà
+pris.
+
+- [ ] Les bornes libres apparaissent en vert quand un outil de tracé est actif.
+- [ ] Démarrer une piste sur une borne : elle s'y raccorde sans blanc entre la pièce et la ligne.
+- [ ] Enchaîner branche → résistance → piste → radicelle se fait d'un trait.
+- [ ] Un champignon n'affiche aucune borne.
+
+Bancs : `node test/banc-motifs.js [taille]` balaie les 42 motifs (42/42 posables à 12, 18, 26
+et 40 mm) ; `node test/banc-poses.js` couvre les 5 manières de poser et construit la chaîne.
+
+## 2026-08-02 — Composants au bout des lignes, radicelles à l'envers
+
+Deux défauts relevés sur `branches(13).svg`.
+
+**Les pièces insérées dans une ligne flottaient au bout.** Une résistance ou une puce posée
+près d'une extrémité y laissait la moitié de son corps dans le vide, sans rien à raccorder.
+Elles sont maintenant reculées jusqu'à tenir entières sur leur support.
+
+- [ ] Poser une puce ou une résistance tout au bout d'une piste : elle recule et la piste
+      ressort des deux côtés.
+
+**Les radicelles se posaient à l'envers.** Leurs images sources ont le moignon en HAUT, à
+l'inverse de tous les autres motifs (tige en bas) : posées, elles rabattaient leurs racines
+sur la branche. Les trois images ont été retournées (originaux conservés dans
+`reference/radicelle/_original/`), les axes ré-extraits, et le prompt corrigé pour que les
+prochaines générations sortent dans le bon sens.
+
+- [ ] Une radicelle au bout d'une branche étale ses racines AU-DELÀ de la pointe, moignon
+      soudé au bois.
+- [ ] Si tu regénères des radicelles : moignon en bas, racines vers le haut.
+
+## 2026-08-02 — Vérification pièce par pièce des composants
+
+Question posée : chaque composant a-t-il été testé dans son emploi propre et son rendu vérifié ?
+Réponse honnête : non — cinq manières de poser avaient été testées avec un représentant chacune,
+pas les 16 pièces individuellement. `node test/banc-composants.js` le fait maintenant : chaque
+pièce est posée dans son contexte (en ligne / en nœud / montée), rendue dans une case étiquetée,
+et mesurée.
+
+Corrigé dans le moteur :
+
+- [ ] L'axe d'une pièce se déduisait de sa boîte englobante. Faux dès qu'elle est dessinée de
+      biais, et la végétation d'un hybride gonfle la boîte. Le corps et son axe convergent
+      maintenant l'un sur l'autre en deux passes : la bobine hybride et le condensateur
+      électrolytique hybride se posent droit, ce qui n'était pas le cas.
+- [ ] Un nœud reçoit bien plusieurs pistes : le banc en branche deux de plus sur les broches
+      libres d'une puce, à vérifier à l'image.
+
+**Quatre images à refaire** — c'est un défaut de dessin, aucun réglage du moteur n'y peut rien.
+Le banc les nomme :
+
+- [ ] `Bobine hybride` — dessinée 17° de biais.
+- [ ] `Puce qfp hybride` — 25° de biais.
+- [ ] `Resistance cms hybride` — 29° de biais ; c'est la plus visible, elle se pose en travers.
+- [ ] `Condensateur electrolytique electronique` et `Condensateur ceramique electronique` —
+      3 et 4 traits seulement : le corps se lit comme une capsule vide une fois posé.
+
+Les prompts de la famille Composants ont été corrigés en conséquence : pièce dessinée droite
+(corps exactement horizontal ou vertical), marques internes lisibles, et sur les hybrides la
+végétation ne traverse plus le corps.
+
+## 2026-08-02 — Pièces au bout des tiges, spires cassées par une piste
+
+Deux défauts relevés sur `branches(14).svg`, tous deux reproduits puis verrouillés par un test.
+
+**Une piste qui prolonge une liane cassait son enroulement.** La liane traitait cette piste
+comme un obstacle à contourner : une spire parasite se posait au raccord (fenêtre 0,94–1,00
+mesurée) et défaisait l'enroulement déjà en place. Une liane s'enroule autour du **bois** —
+pas autour d'une piste de 3,5 mm, et surtout pas autour de celle qui la prolonge.
+
+- [ ] Enrouler une liane sur un tronc, puis la prolonger par une piste : les spires ne bougent pas.
+- [ ] La liane passe toujours derrière le bois une fois sur deux (l'exclusion des pistes ne
+      doit pas avoir supprimé le masquage par le bois).
+
+**Les pièces se posaient au bout des tiges au lieu de dessus.** Une résistance ou une bobine
+a besoin de support visible de chaque côté, sinon elle a l'air accrochée dans le vide. On
+réserve maintenant un quart de sa longueur de part et d'autre, en plus de son corps — et on
+interdit la queue effilée d'une liane, qui n'est plus qu'un fil.
+
+- [ ] Poser une résistance tout au bout d'une piste ou d'une liane : elle revient sur la tige.
+      (Mesuré : demandée à t = 0,99, elle se pose à 0,88 sur une piste, 0,68 à 0,75 sur une liane.)
+
+## 2026-08-02 — Personnages intégrés · composition à l'échelle de la table
+
+**Kodama et korok en banque.** 20 images générées, extraites, mesurées : la banque passe à
+72 motifs / 62 cartes. Taille minimale de pose **21 à 43 mm** — exactement l'échelle voulue sur
+une table de 33 cm. Les kodama classiques sont les plus légers (21–28 mm), le korok
+porte-feuille le plus lourd (43 mm, à cause de sa grande feuille).
+
+**Défaut trouvé et corrigé : les visages de kodama disparaissaient.** Leurs yeux et leur bouche
+sont des aplats noirs pleins ; l'extraction cherche des lignes médianes, et un disque plein n'en
+a pas — il se réduisait à un point. `tools/motif-axes.py` détecte maintenant les aplats compacts
+et les rend en CERCLE (ce qu'un pyrograveur remplit ensuite à la main). Correction générale :
+elle vaut aussi pour les taches de chapeau de champignon et les marques de polarité.
+
+- [ ] Vérifier sur `reference/personnage/axes/*_apercu.png` que chaque kodama a bien ses trois
+      trous, et qu'aucun aplat parasite n'a été inventé ailleurs.
+- [ ] `Kodama tete levee hybride` et `Kodama dos hybride` sortent un peu déformés du haut du
+      crâne : à regénérer si tu les veux impeccables. Les 8 autres sont directement utilisables.
+
+**Découpe au contour de la table.** Le moteur accepte `st.zone` : le décor est coupé au corps de
+la guitare (défonces comprises) au moment du rendu, au lieu de brider le tracé. La végétation
+peut donc venir mordre le bord comme sur la référence. Débordement mesuré : passé de 13 % à
+moins de 1 % (résidu = quantification du masque à 4 px).
+
+**Défaut trouvé et corrigé : un tap et un glissé n'étaient pas arbitrés pareil.** Un motif posé
+d'un seul geste échappait à tout contrôle d'encombrement, et les motifs s'entassaient aux
+fourches en composition complète. Deux niveaux désormais : `pose` (basculable, jamais écartée)
+et `rythme` (écartable faute de place).
+
+**Compositions complètes** (`node test/banc-compo.js [graine]`) : les interactions tiennent à
+l'échelle — lianes enroulées, transition bois → piste, composants raccordés, personnages posés
+debout. La RÉPARTITION, elle, n'est pas encore au niveau : le décor reste lourd à gauche et
+laisse le lobe droit nu. C'est un problème de composition, pas de moteur.
+
+## 2026-08-02 — Mode Générateur dans la palette d'édition (bascule Dessin/Générateur)
+
+Ajoute au mode édition (`enterEdit`/`exitEdit`, `src/app.js`) un second mode « Générateur » qui
+porte les outils Branche/Liane/Piste/Semer/Éditer + la galerie de motifs de `test/branches.html`
+directement sur le motif en cours d'édition, dans `edit.draft` (mêmes coordonnées que le Dessin).
+Nouveau fichier `src/generator-ui.js` (chargé après `app.js`), branché via un pont minimal
+`window.EditHost` exposé en fin de `app.js` ; `window.GeneratorUI` est appelé en retour depuis
+`enterEdit`/`exitEdit`/`editPointerDown|Move|Up`/`undoStroke`/`redoStroke`/`discardMotifDraft`,
+toujours derrière `if (window.GeneratorUI)`.
+
+**Auto-validation (sans navigateur) :**
+
+- ✅ `node test/page-check.js` vert (prototype `test/branches.html`, non touché par cette tâche).
+- ✅ Script ad hoc (non commité) : tous les `getElementById(...)` de `app.js`/`generator-ui.js`
+  résolvent un `id` présent dans `index.html` (226 références, 192 ids, 0 orphelin).
+- ✅ Simulation ad hoc (non commitée, avec les vraies libs ClipperLib/geometry.js/branch-engine.js) :
+  scène → `BE.buildGeometry` → `BE.toContours` → fusion additive (`removed`/`added` contre le
+  dernier merge) dans un brouillon `edit.draft` simulé. Vérifié : (1) les facteurs de conversion
+  `k`/`invK` (app-px ↔ unité BE) sont bien inverses l'un de l'autre et donnent des dimensions mm
+  plausibles (tracé de 200 px app = 50 mm → largeur de branche ≈ 57 mm, cohérent avec le tipLen/
+  lissage) ; (2) une gomme manuelle simulée sur l'encre d'une 1ʳᵉ branche **survit** à la génération
+  d'une 2ᵉ branche ailleurs dans la scène (le trou reste un trou, testé au sens *evenodd*, pas un
+  `.some()` naïf qui aurait donné un faux positif) ; (3) supprimer une branche (outil Éditer) retire
+  bien sa part d'encre du brouillon sans toucher au reste. `BE.toContours` a été livré par l'autre
+  agent (branch-engine.js) **pendant** cette session — le repli explicite (`typeof BE.toContours
+  !== "function"`) existe toujours dans `mergeSceneIntoDraft` mais n'est plus le chemin actif.
+- ⚠️ Non vérifiable sans navigateur : rendu Konva réel (aperçu de tracé, poignées, occlusion
+  « autocollant »), tactile/Pencil (priorité stylet, gestes 2/3 doigts avec la scène active),
+  performance ressentie pendant un drag Éditer, look de la galerie/du sélecteur de motif dans le
+  thème clair de l'app (portés depuis le thème sombre du prototype).
+
+**Comment ça bascule (pour Thibault) :** deux gros boutons « ✏️ Dessin » / « 🌿 Générateur » en
+tête de la palette d'édition. On peut alterner librement — la scène de branches (control points,
+motifs posés) vit dans `generator-ui.js`, pas dans `edit.draft`, et survit à la bascule tant que
+la session d'édition reste ouverte. Chaque geste terminé (fin de tracé, relâcher une poignée)
+fusionne SEULEMENT ce qui a changé depuis la dernière fusion dans `edit.draft` (jamais toute la
+scène d'un coup) : une retouche au pinceau faite entre deux passages au Générateur n'est donc pas
+écrasée par la génération suivante, sauf si elle porte exactement sur la zone qu'une reprise
+manuelle (Éditer : glisser une poignée, Supprimer) modifie ensuite. Annuler/Rétablir et Terminer
+puis Entrer en édition à nouveau réinitialisent la scène de travail du Générateur (pas l'encre déjà
+dans le motif) — cf. rapport pour le détail et le compromis assumé.
+
+- [ ] Ouvrir `index.html`, entrer en édition sur un motif DECOR : la palette affiche en tête
+      « ✏️ Dessin » (actif) / « 🌿 Générateur », gros boutons, un seul actif à la fois.
+- [ ] Cliquer « 🌿 Générateur » : la barre d'outils bascule sur Branche/Liane/Piste/Semer/Éditer
+      (icônes 🌳/🍃/⚡/🌱/🎯) ; Pinceau/Gomme/etc. et le popover de taille de trait disparaissent.
+- [ ] Ouvrir le tiroir ⚙ en Générateur : outil Branche → un seul slider « Épaisseur de branche »
+      (12,5 mm par défaut) ; Liane → « Calibre de liane » (3,3 mm) ; Piste → « Largeur de piste »
+      (3,5 mm) ; Semer → « Taille de motif semé » (18 mm) + « Densité de garniture » (22 mm) et le
+      sélecteur de motif (vignette + nom) ; Éditer → texte d'aide + Autre côté/Supprimer (grisés
+      tant que rien n'est sélectionné). Aucun autre réglage visible (les ~15 curseurs du prototype
+      restent à leur valeur par défaut, invisibles).
+- [ ] Outil Branche : tracer un trait dans le cadre de la table (sur le motif édité) → une branche
+      apparaît EXACTEMENT sous le tracé (même position/échelle que si on avait dessiné au pinceau
+      au même endroit — pas de décalage ni de changement d'échelle).
+- [ ] Tracer une 2ᵉ branche en partant du bord d'une branche existante → elle fusionne (aisselle),
+      comme dans `test/branches.html`.
+- [ ] Outil Liane puis Piste : même principe, calibre/largeur suivent le slider du tiroir.
+- [ ] Outil Semer : ouvrir la galerie (bouton motif du tiroir) → recherche, puces famille/état,
+      grille de vignettes fonctionnent (Échap ou tap hors carte referme) ; choisir un motif, taper
+      sur une branche → il se pose ; glisser le long d'une branche → une file de motifs se sème.
+- [ ] Outil Éditer : les poignées (petits ronds) des branches tracées et des motifs posés sont
+      visibles ; glisser une poignée d'axe déforme la branche ; glisser la pointe d'un motif posé
+      change sa taille/son angle, glisser son pied le fait coulisser le long de la branche ;
+      « Autre côté » le fait basculer ; « Supprimer » le retire (ou retire la branche sélectionnée).
+- [ ] Le décor généré est bien COUPÉ au bord de la silhouette du motif édité (une branche tracée
+      pour déborder ne dépasse pas hors du motif, y compris une défonce/trou interne s'il y en a).
+- [ ] Repasser en « ✏️ Dessin » : peindre/gommer par-dessus l'encre du Générateur avec le pinceau →
+      fonctionne normalement. Revenir en « 🌿 Générateur » et ajouter une branche ailleurs → la
+      retouche au pinceau précédente est toujours là (pas écrasée par la nouvelle génération).
+- [ ] **Annuler**/**Rétablir** (bouton ou geste 2/3 doigts) : marche aussi bien sur un geste du
+      Générateur que sur un trait au pinceau — la pile est commune, dans l'ordre chronologique réel.
+- [ ] Terminer l'édition, revérifier le motif (hors édition) : l'encre du Générateur y est bien
+      appliquée en couleur réelle (pas de résidu vert sauf si un essai reste en attente, comme pour
+      le Dessin). Ré-entrer en édition sur le même motif : on repart en mode Dessin, sur une scène
+      de Générateur neuve (les branches précédentes restent dans l'encre du motif, mais leurs
+      poignées de retouche ne sont plus disponibles — limite assumée, cf. rapport §7).
+- [ ] iPad/Pencil : un doigt navigue (pan), le stylet trace, comme en mode Dessin ; deux doigts
+      zooment sans dessiner pendant un tracé Générateur en cours.
+- [ ] Pas de gel perceptible en traçant une branche longue, ni en glissant une poignée Éditer sur
+      une scène avec plusieurs branches déjà posées.

@@ -65,21 +65,13 @@
     <aside id="panel" class="side-panel" hidden>
       <section id="panel-library" class="panel-section" hidden>
         <div class="panel-title">Motifs &amp; décor</div>
-        <div class="tab-switch" role="tablist">
-          <button id="tab-perso" class="tab-btn active" type="button" role="tab" aria-selected="true">Personnages</button>
-          <button id="tab-symbole" class="tab-btn" type="button" role="tab" aria-selected="false">Symboles</button>
-        </div>
+        <!-- Une seule famille depuis le 2026-08-02 : kodama et korok, seuls habitants du
+             décor. La catégorie Symboles a été retirée du projet. -->
         <div id="tab-panel-perso">
           <div id="library-perso" class="library-grid"></div>
           <div class="panel-count">Personnages <span class="lib-count" id="count-perso">0</span></div>
           <label class="btn-tile" for="import-perso">+ Importer des personnages (SVG)</label>
           <input id="import-perso" type="file" accept=".svg" multiple hidden />
-        </div>
-        <div id="tab-panel-symbole" hidden>
-          <div id="library-symbole" class="library-grid"></div>
-          <div class="panel-count">Symboles <span class="lib-count" id="count-symbole">0</span></div>
-          <label class="btn-tile" for="import-symbole">+ Importer des symboles (SVG)</label>
-          <input id="import-symbole" type="file" accept=".svg" multiple hidden />
         </div>
         <button id="btn-restore-builtins" class="panel-btn-ghost" type="button">Restaurer la bibliothèque de base</button>
 
@@ -201,7 +193,6 @@
               <span class="field-label">Rôle</span>
               <select id="insp-role">
                 <option value="PERSONNAGE">Personnage</option>
-                <option value="SYMBOLE">Symbole</option>
                 <option value="DECOR">Décor</option>
               </select>
             </label>
@@ -305,6 +296,14 @@
             <button id="tool-ellipse" class="btn tool-btn icon-btn" type="button" title="Ellipse" aria-label="Ellipse"><span class="tool-btn-icon">◯</span><span class="tool-btn-label">Cercle</span></button>
             <button id="tool-lasso" class="btn tool-btn icon-btn" type="button" title="Lasso" aria-label="Lasso"><span class="tool-btn-icon">➰</span><span class="tool-btn-label">Lasso</span></button>
           </div>
+          <!-- mode Générateur (src/generator-ui.js) : même barre, outils différents -->
+          <div id="gen-tools-row" hidden>
+            <button id="gen-tool-branche" class="btn tool-btn icon-btn on" type="button" title="Branche" aria-label="Branche"><span class="tool-btn-icon">🌳</span><span class="tool-btn-label">Branche</span></button>
+            <button id="gen-tool-liane" class="btn tool-btn icon-btn" type="button" title="Liane" aria-label="Liane"><span class="tool-btn-icon">🍃</span><span class="tool-btn-label">Liane</span></button>
+            <button id="gen-tool-piste" class="btn tool-btn icon-btn" type="button" title="Piste" aria-label="Piste"><span class="tool-btn-icon">⚡</span><span class="tool-btn-label">Piste</span></button>
+            <button id="gen-tool-semer" class="btn tool-btn icon-btn" type="button" title="Semer" aria-label="Semer"><span class="tool-btn-icon">🌱</span><span class="tool-btn-label">Semer</span></button>
+            <button id="gen-tool-editer" class="btn tool-btn icon-btn" type="button" title="Éditer les axes" aria-label="Éditer les axes"><span class="tool-btn-icon">🎯</span><span class="tool-btn-label">Éditer</span></button>
+          </div>
           <details id="brush-size-popover" class="size-popover">
             <summary class="size-summary" title="Taille du trait" aria-label="Taille du trait">
               <span class="size-dot"></span><span id="brush-size-val">3 mm</span>
@@ -358,9 +357,58 @@
                 <button id="smoothing-strong" class="btn sm tool-btn" data-smoothing="0.75">Fort</button>
               </div>
             </div>
-            <button id="finger-draws" class="btn sm tool-btn">✍️ Doigt : navigue</button>
           </div>
+          <!-- mode Générateur (src/generator-ui.js) : 5 réglages au plus, filtrés par outil actif
+               via data-genfor (même principe que data-for dans test/branches.html) -->
+          <div id="generator-tools" style="display:none">
+            <button id="gen-sow-pick" type="button" class="gen-pick" data-genfor="semer">
+              <svg id="gen-pick-vue" viewBox="0 0 100 100" aria-hidden="true"></svg>
+              <span class="gen-pick-text"><b id="gen-pick-nom">—</b><i id="gen-pick-sous"></i></span>
+            </button>
+            <div class="field block" data-genfor="branche">
+              <div class="sel-slider-label"><span class="field-label">Épaisseur de branche</span><span id="gen-root-val" class="slider-val">12.5 mm</span></div>
+              <input id="gen-root" type="range" min="2" max="30" step="0.5" value="12.5" />
+            </div>
+            <div class="field block" data-genfor="liane">
+              <div class="sel-slider-label"><span class="field-label">Calibre de liane</span><span id="gen-lianew-val" class="slider-val">3.3 mm</span></div>
+              <input id="gen-lianew" type="range" min="1" max="10" step="0.1" value="3.3" />
+            </div>
+            <div class="field block" data-genfor="piste">
+              <div class="sel-slider-label"><span class="field-label">Largeur de piste</span><span id="gen-pcbw-val" class="slider-val">3.5 mm</span></div>
+              <input id="gen-pcbw" type="range" min="2" max="10" step="0.1" value="3.5" />
+            </div>
+            <div class="field block" data-genfor="semer">
+              <div class="sel-slider-label"><span class="field-label">Taille de motif semé</span><span id="gen-sowsize-val" class="slider-val">18 mm</span></div>
+              <input id="gen-sowsize" type="range" min="4" max="60" step="0.5" value="18" />
+            </div>
+            <div class="field block" data-genfor="semer">
+              <div class="sel-slider-label"><span class="field-label">Densité de garniture</span><span id="gen-sowstep-val" class="slider-val">22 mm</span></div>
+              <input id="gen-sowstep" type="range" min="4" max="80" step="1" value="22" />
+            </div>
+            <p id="gen-sel-info" class="note" data-genfor="editer">Touche une branche ou un motif posé pour le retoucher.</p>
+            <div class="sel-btn-row" data-genfor="editer">
+              <button id="gen-sel-side" type="button">Autre côté</button>
+              <button id="gen-sel-del" class="danger" type="button">Supprimer</button>
+            </div>
+          </div>
+          <button id="finger-draws" class="btn sm tool-btn">✍️ Doigt : navigue</button>
         </div>
+        <!-- bascule Dessin/Générateur (src/generator-ui.js) : en tête de la palette (column-reverse
+             -> dernier enfant = rendu en haut), permutable librement, cf. PROJECT_MAP/rapport -->
+        <div id="edit-mode-switch">
+          <button id="edit-mode-draw" class="on" type="button">✏️ Dessin</button>
+          <button id="edit-mode-gen" type="button">🌿 Générateur</button>
+        </div>
+      </div>
+      <!-- galerie de motifs du Générateur (src/generator-ui.js), portée de test/branches.html -->
+      <div id="gen-gallery" hidden>
+        <div id="gen-gal-head">
+          <input id="gen-gal-q" type="search" placeholder="Chercher un motif…" autocomplete="off" />
+          <button id="gen-gal-close" class="btn sm" type="button">Fermer</button>
+        </div>
+        <div id="gen-gal-fam" class="gen-puces"></div>
+        <div id="gen-gal-etat" class="gen-puces"></div>
+        <div id="gen-gal-grid"></div>
       </div>
       <!-- P9·S6 (T-131) : mini-barre flottante positionnée près du bbox de la sélection lasso (cf.
            positionLassoToolbar) ; position figée à l'ouverture, ne suit pas le glissé (§Étapes 1). -->
@@ -381,6 +429,7 @@
           <p>Ligne/Rectangle/Ellipse utilisent le mode Pinceau (ajoute) ou Gomme (retire) actif. Maj = carré/cercle contraint.</p>
           <p>Lasso : entoure une portion existante du brouillon, glisse-la si besoin (clic-glisser sur la zone surlignée), puis choisis une action. Échap annule la sélection.</p>
           <p>Pencil = trait · un doigt = déplacer la vue (sauf si « Doigt : dessine ») · deux doigts = zoom. La sélection reste verrouillée sur ce motif tant que l'édition est active.</p>
+          <p>Générateur : Branche/Liane/Piste partent d'un tracé (depuis une branche existante pour la prolonger, dans le vide pour une nouvelle racine). Semer : un tap pose un motif, un glissé le long d'une branche en sème plusieurs. Éditer : glisse les petits ronds (poignées d'axe ou pointe/pied d'un motif posé) pour corriger après coup.</p>
         </div>
       </div>
     </div>
@@ -404,6 +453,12 @@
   <script src="src/geometry.js"></script>
   <script src="src/print.js"></script>
   <script src="src/builtin-motifs.js"></script>
+  <!-- Générateur de décor : moteur de branches + banque de motifs (axes inlinés). -->
+  <script src="src/motif-bank.js"></script>
+  <script src="src/branch-engine.js"></script>
   <script src="src/app.js"></script>
+  <!-- Mode Générateur de la palette d'édition : se branche sur window.EditHost (exposé en fin
+       d'app.js) — doit donc être chargé APRÈS app.js. -->
+  <script src="src/generator-ui.js"></script>
 </body>
 </html>

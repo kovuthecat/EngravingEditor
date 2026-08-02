@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 299.00 1037.00"
+     data-anchor="152.00,1033.00" data-source="Fleur bouton hybride nue.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M169.00,15.00L168.00,62.00L141.00,90.00L141.00,171.00L176.00,191.00L263.00,328.00L292.00,424.00L297.00,499.00L280.00,584.00L249.00,642.00L230.00,658.00L206.00,663.00L152.00,706.00L152.00,1033.00"/>
+    <path d="M152.00,705.00L91.00,677.00L48.00,637.00L16.00,578.00L2.00,507.00L6.00,415.00L33.00,318.00L91.00,214.00L122.00,197.00L139.00,173.00"/>
+    <path d="M124.00,196.00L132.00,215.00L141.00,301.00L193.00,418.00L213.00,489.00L217.00,542.00L202.00,634.00L205.00,663.00"/>
+  </g>
+</svg>

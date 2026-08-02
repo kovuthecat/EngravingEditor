@@ -179,12 +179,22 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-body); 
    rayon 16 (repris tel quel de la maquette). Structure/ids inchangés (P9·S4). */
 #edit-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px; padding: 8px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-pop); }
-#edit-tools-row { display: flex; gap: 4px; flex-wrap: wrap; }
+#edit-tools-row, #gen-tools-row { display: flex; gap: 4px; flex-wrap: wrap; }
+#edit-tools-row[hidden], #gen-tools-row[hidden] { display: none; }
 #edit-toolbar .icon-btn { width: 48px; height: 48px; min-height: 48px; padding: 0; font-size: 20px; flex: none; }
 #edit-toolbar .icon-btn:disabled { opacity: .4; cursor: default; }
 /* les 6 boutons d'outil (dont Lasso, requis par D-013 pt 2 en plus des 5 de la maquette) : icône + label
-   9px empilés, cible 52×50 (maquette l.400-404). */
-#edit-tools-row .icon-btn { width: 52px; height: 50px; min-height: 50px; flex-direction: column; gap: 3px; font-size: 16px; }
+   9px empilés, cible 52×50 (maquette l.400-404). Même gabarit pour les 5 outils du Générateur. */
+#edit-tools-row .icon-btn, #gen-tools-row .icon-btn { width: 52px; height: 50px; min-height: 50px; flex-direction: column; gap: 3px; font-size: 16px; }
+
+/* bascule Dessin/Générateur : même habillage carte que #edit-toolbar, en tête de la palette
+   (cf. index.html #edit-mode-switch, dernier enfant -> rendu en haut via column-reverse). */
+#edit-mode-switch { display: flex; gap: 6px; padding: 8px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-pop); }
+#edit-mode-switch button { flex: 1; height: 48px; min-height: 48px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 14px;
+  font-weight: 600; cursor: pointer; }
+#edit-mode-switch button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tool-btn-label { font-size: 9px; font-weight: 600; }
 .edit-toolbar-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 .edit-toolbar-actions .btn { width: auto; flex: none; background: transparent; border: none; color: var(--ink); font-weight: 500; }
@@ -218,6 +228,40 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-body); 
   border-radius: var(--r-md); box-shadow: var(--shadow-card); touch-action: manipulation; }
 #lasso-toolbar .btn { width: auto; flex: none; }
 #lasso-toolbar .icon-btn { width: var(--tap); padding: 0; }
+
+/* mode Générateur (src/generator-ui.js) : sélecteur de motif (tiroir de réglages, outil Semer). */
+.gen-pick { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; margin: 6px 0 10px;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; text-align: left; }
+.gen-pick svg { width: 40px; height: 40px; flex: none; background: #fff; border-radius: 6px; border: 1px solid var(--line); }
+.gen-pick-text { display: flex; flex-direction: column; min-width: 0; }
+.gen-pick-text b { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gen-pick-text i { font-style: normal; font-size: 11px; color: var(--muted); }
+
+/* galerie de motifs plein écran (portée de test/branches.html #galerie) : recherche + puces
+   famille/état + grille de vignettes tracées depuis les axes du motif (aucun asset à charger). */
+#gen-gallery { position: fixed; inset: 0; z-index: 45; background: rgba(15,17,21,.6);
+  display: flex; flex-direction: column; padding: 16px; gap: 10px; touch-action: manipulation; }
+#gen-gallery[hidden] { display: none; }
+#gen-gal-head { display: flex; gap: 8px; flex: none; }
+#gen-gal-q { flex: 1; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-md);
+  font: inherit; font-size: 14px; background: var(--surface); color: var(--ink); }
+.gen-puces { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
+.gen-puce { padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface);
+  color: var(--muted); font-size: 12px; cursor: pointer; }
+.gen-puce.on { border-color: var(--accent); color: var(--accent); background: oklch(0.66 0.17 45 / 0.1); }
+#gen-gal-grid { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; gap: 10px;
+  align-content: start; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); padding-bottom: 12px; }
+.gen-carte { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
+  padding: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.gen-carte svg { width: 100%; aspect-ratio: 1; background: #fff; border-radius: 6px; }
+.gen-carte .nom { font-size: 12px; color: var(--ink); line-height: 1.25; }
+.gen-carte .meta { font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 4px; }
+.gen-carte.on { border-color: var(--accent); }
+/* sous sa taille minimale un motif se remplit d'encre (agrandi automatiquement) : signalé, pas interdit */
+.gen-carte.petit .meta { color: var(--red); }
+.gen-carte.petit svg { opacity: .5; }
+.gen-carte .pose { font-size: 10px; color: var(--accent); }
+#gen-gal-vide { grid-column: 1 / -1; color: var(--muted); font-size: 13px; padding: 30px; text-align: center; }
 
 /* bandeau fixe haut du canevas (vert = cohérent avec la surcharge verte du brouillon, cf. EDIT_DRAFT_COLOR).
    Reskin tokens P10·S6 : même famille de vert que .pending-banner (--green). */

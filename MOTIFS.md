@@ -379,3 +379,35 @@ Légende priorité : **A** = excellent candidat · **B** = bon complément · **
 - 2026-06-21 : première sélection considérée incluse ; ajout d'une seconde sélection de références Ghibli, Nintendo, jeux vidéo, cinéma culte 80–90, steampunk et science/labo, avec priorités de gravure et motifs de liaison.
 - 2026-06-21 : création du fichier. Inventaire + candidats Star Wars / Marvel-DC-HP / Ghibli-Nintendo / Musique-maker + thèmes suppl. Pipeline = vectorisation manuelle par Thibault ; test packing à valider sur dessins existants nettoyés.
 - 2026-06-21 : outil **`Outils/motif-layout/`** créé (app web Konva+Clipper, sans build) — import DXF, édition manuelle, packing assisté, export DXF avec occlusion « autocollant ». Cœur validé en headless sur DXF de test (potrace depuis 6 PNG). Reste : packing cohérent avec éléments physiques de la table (besoin photo table de face).
+
+---
+
+## 2026-08-02 — La bibliothèque devient celle des personnages
+
+Le décor n'accueille plus qu'un peuple : **kodama et korok**, 20 motifs (5 postures et 5 masques,
+chacun en classique et en hybride électronique). Les 80 anciens personnages et les 20 symboles
+sont sortis de la bibliothèque ; **la catégorie Symboles disparaît**. Tout reste dans
+l'historique git.
+
+Chaîne de fabrication, de l'image au motif de bibliothèque :
+
+```bash
+python tools/motif-axes.py "reference/personnage" -o "reference/personnage/axes"
+python tools/build-motif-bank.py        # -> src/motif-bank.js (générateur de décor)
+node   tools/build-personnages-svg.js   # axes -> SVG pleins (bibliothèque)
+node   tools/build-builtin-motifs.js    # -> src/builtin-motifs.js
+```
+
+Deux points qui ne vont pas de soi :
+
+- **La banque stocke des AXES, la bibliothèque des formes PLEINES.** L'épaisseur du trait est un
+  réglage de l'outil, pas une donnée du motif : c'est ce qui permet de poser le même dessin à
+  toutes les tailles sans qu'il s'empâte. `build-personnages-svg.js` épaissit donc les axes à
+  1 mm — l'encre réelle du pyrograveur — pour la taille de pose de chaque personnage.
+- **Cette taille de pose est mesurée, pas choisie** : c'est le seuil de lisibilité calculé par
+  `build-motif-bank.py`, plus un quart de marge. Déposé dans l'app, un personnage arrive donc
+  déjà à une échelle pyrogravable. Elles vont de 26 mm (kodama debout) à 52 mm (korok
+  porte-feuille, dont la grande feuille double la hauteur).
+
+Bibliothèque : **0,10 Mo** contre 1,75 Mo au premier jet — la tolérance d'arc et le nettoyage
+des points inutiles pèsent lourd sur une app qui tourne en `file://` depuis un iPad.

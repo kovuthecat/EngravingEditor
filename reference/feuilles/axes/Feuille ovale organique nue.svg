@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 501.00 1096.00"
+     data-anchor="252.00,1092.00" data-source="Feuille ovale organique nue.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M252.00,1092.00L251.00,877.00L146.00,805.00L52.00,689.00L8.00,566.00L2.00,461.00L14.00,365.00L61.00,236.00L136.00,120.00L200.00,56.00L233.00,10.00L246.00,9.00L261.00,20.00L293.00,61.00L375.00,139.00L422.00,202.00L461.00,275.00L494.00,381.00L498.00,495.00L479.00,614.00L442.00,704.00L395.00,771.00L351.00,812.00L253.00,876.00"/>
+    <path d="M251.00,416.00L257.00,536.00L251.00,712.00"/>
+  </g>
+</svg>

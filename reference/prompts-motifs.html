@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motifs à générer — décor guitare</title>
+<style>
+  :root {
+    --paper: #F3F4F0;
+    --surface: #FFFFFF;
+    --ink: #16181A;
+    --muted: #5E635C;
+    --rule: #DBDDD5;
+    --organique: #4F6B47;
+    --hybride: #8A6A35;
+    --electronique: #3D6675;
+    --alert: #9C4A2F;
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --shadow: 0 1px 2px rgba(22, 24, 26, .06), 0 8px 24px -16px rgba(22, 24, 26, .3);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #15171A; --surface: #1C1F23; --ink: #E7E9E4; --muted: #969B93;
+      --rule: #2C3036; --organique: #8FB183; --hybride: #C9A469;
+      --electronique: #7FAEC1; --alert: #DE8A6C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--serif); font-size: 17px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    padding: 12px max(20px, 4vw); background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  .bar h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: -.01em; }
+  .bar .count {
+    margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar .count b { color: var(--ink); }
+
+  main { max-width: 880px; margin: 0 auto; padding: 0 max(20px, 4vw) 96px; }
+
+  .lede { padding: 40px 0 8px; }
+  .lede p { max-width: 62ch; color: var(--muted); margin: 0 0 14px; }
+  .lede p strong { color: var(--ink); font-weight: 600; }
+
+  .rules {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 18px 20px; margin: 20px 0 8px; box-shadow: var(--shadow);
+  }
+  .rules h2 {
+    font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--muted); margin: 0 0 12px; font-weight: 500;
+  }
+  .rules ul { margin: 0; padding-left: 18px; }
+  .rules li { margin-bottom: 8px; max-width: 62ch; }
+  .rules li:last-child { margin-bottom: 0; }
+  .rules code { font-family: var(--mono); font-size: .85em; }
+
+  h2.family {
+    font-size: 26px; font-weight: 600; letter-spacing: -.015em;
+    margin: 56px 0 4px; padding-top: 20px; border-top: 1px solid var(--rule);
+    text-wrap: balance;
+  }
+  h2.family .n {
+    font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--muted);
+    letter-spacing: .06em; margin-left: 10px; vertical-align: middle;
+  }
+  .family-note { color: var(--muted); margin: 0 0 24px; max-width: 62ch; font-size: 15px; }
+  .family-note code {
+    font-family: var(--mono); font-size: .88em; background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px;
+  }
+
+  h3.shape {
+    font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); font-weight: 500; margin: 28px 0 10px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  h3.shape::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    margin-bottom: 12px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .card.done { opacity: .5; }
+  .head {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 11px 16px; border-bottom: 1px solid var(--rule);
+  }
+  .chip {
+    font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+    letter-spacing: .09em; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid currentColor; white-space: nowrap;
+  }
+  .chip.organique { color: var(--organique); }
+  .chip.hybride { color: var(--hybride); }
+  .chip.electronique { color: var(--electronique); }
+  .chip.refaire { color: var(--alert); }
+  .head .name { font-weight: 600; font-size: 15px; }
+
+  button.file {
+    font-family: var(--mono); font-size: 11.5px; padding: 4px 9px; cursor: pointer;
+    background: var(--paper); color: var(--muted);
+    border: 1px dashed var(--rule); border-radius: 5px; white-space: nowrap;
+  }
+  button.file:hover { color: var(--ink); border-color: var(--muted); border-style: solid; }
+  button.file.ok { color: var(--organique); border-color: currentColor; border-style: solid; }
+
+  .actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  button.copy {
+    font-family: var(--mono); font-size: 12px; padding: 6px 12px; cursor: pointer;
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 6px;
+  }
+  button.copy:hover { border-color: var(--muted); }
+  button.copy.ok { color: var(--organique); border-color: currentColor; }
+  label.tick {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font-family: var(--mono); font-size: 12px; color: var(--muted); -webkit-user-select: none; user-select: none;
+  }
+  label.tick input { accent-color: var(--organique); width: 15px; height: 15px; }
+  :focus-visible { outline: 2px solid var(--electronique); outline-offset: 2px; }
+
+  pre {
+    margin: 0; padding: 16px; font-family: var(--mono); font-size: 12.5px;
+    line-height: 1.65; white-space: pre-wrap; word-break: break-word; color: var(--ink);
+  }
+
+  .pipeline { margin-top: 56px; }
+  .pipeline pre {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    box-shadow: var(--shadow); margin-top: 14px; white-space: pre;
+    overflow-x: auto; font-size: 12.5px;
+  }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(12px);
+    background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 12px;
+    padding: 9px 16px; border-radius: 999px; opacity: 0; pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Motifs à générer — décor guitare</h1>
+  <span class="count"><b id="done">0</b> / <span id="total">0</span> générés</span>
+</div>
+
+<main>
+  <section class="lede">
+    <p>Chaque prompt est complet : rien à recomposer, rien à compléter. Le bouton copie le texte,
+      la case retient ce qui est fait.</p>
+    <p>Deux axes de variation, et ils ne servent pas à la même chose. <strong>L'état</strong>
+      — organique, hybride, électronique — est ce dans quoi l'outil ira piocher selon l'endroit de
+      la table, pour que la transition du végétal vers le circuit se fasse toute seule.
+      <strong>La forme</strong> ne sert qu'à casser la répétition, et n'est donc nécessaire que
+      pour ce qui revient souvent : trois silhouettes de feuille, deux de fleur ou de champignon,
+      une seule de radicelle. L'outil ajoute gratuitement le miroir, la rotation, la taille et
+      l'angle — inutile de générer des variantes qui n'en seraient que ça.</p>
+    <p>La transition n'est pas trois états répétés dans chaque famille, mais <strong>une échelle
+      unique à quatre barreaux</strong> : végétal pur, végétal hybridé, composant colonisé,
+      composant pur. Un motif végétal n'existe donc qu'en <em>organique</em> et <em>hybride</em>,
+      un composant qu'en <em>hybride</em> et <em>électronique</em> — une feuille redessinée en
+      circuit imprimé n'a pas d'emploi, le côté droit de la table porte des composants, pas des
+      feuilles-PCB. Les versions électroniques des familles végétales, déjà générées, restent en
+      réserve mais ne seront pas semées.</p>
+    <p>Enfin, un même motif existe en deux <strong>niveaux de détail</strong> : détaillé et nu.
+      C'est la taille de pose qui décide, et l'outil choisit seul — le nu quand la place manque.</p>
+
+    <div class="rules">
+      <h2>Ce qui a été appris sur le pilote</h2>
+      <ul>
+        <li><strong>Densité</strong> — mesurée sur les neuf premières feuilles, elles n'étaient
+          lisibles qu'au-dessus de 84 à 130 mm, pour une pose prévue à 20 mm. Tous les prompts
+          ci-dessous imposent un écart minimal d'un dixième de la largeur du motif entre deux
+          traits. C'est la contrainte la plus sévère : trois ou quatre paires de nervures, pas
+          dix.</li>
+        <li><strong>Épaisseur du trait</strong> — sans importance, et inutile à demander. Les
+          motifs sont réduits à leurs axes, l'épaisseur est appliquée ensuite par l'outil, en
+          millimètres, la même que celle des branches.</li>
+        <li><strong>Tige d'attache</strong> — un moignon droit et vertical en bas de l'image
+          (en haut pour les radicelles). C'est par là que le motif se greffe sur la branche.</li>
+        <li><strong>Après génération</strong> — ré-encoder les PNG avec Pillow, sans quoi le
+          marqueur C2PA de ChatGPT fait planter Inkscape.</li>
+      </ul>
+    </div>
+  </section>
+
+  <h2 class="family">Feuille<span class="n">3 formes · 9 images · à refaire</span></h2>
+  <p class="family-note">Le motif le plus semé du décor, donc celui où la répétition se voit le
+    plus. Les neuf premières étaient trop détaillées pour la taille de pose : ces versions
+    demandent trois à quatre paires de nervures au lieu de dix, s'arrêtant avant le bord.</p>
+
+  <h3 class="shape">Ovale</h3>
+
+  <div class="card" data-id="feuille-ovale-organique" data-file="Feuille ovale organique.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip organique">organique</span><span class="name">Feuille ovale</span>
+      <div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front: a broad oval blade with a pointed tip. One central midrib, and only three pairs of curved secondary veins, each stopping well short of the blade outline. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-ovale-hybride" data-file="Feuille ovale hybride.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip hybride">hybride</span><span class="name">Feuille ovale</span>
+      <div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front: a broad oval blade with a pointed tip, its outline smooth and organic. Inside the blade, one central midrib and only three pairs of secondary veins are drawn as printed-circuit traces: straight runs meeting at 45-degree angles, each vein ending in a small open circle well short of the outline. The blade outline stays organic; only the veins are electronic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-ovale-electronique" data-file="Feuille ovale electronique.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip electronique">électronique</span><span class="name">Feuille ovale</span>
+      <div class="actions"></div></div>
+    <pre>A leaf-shaped element drawn entirely in printed-circuit vocabulary: the blade outline is a closed polygon of straight segments meeting only at 45 and 90 degree angles, with the proportions of a broad oval leaf with a pointed tip. Inside it, a central trace and only three pairs of branch traces, each ending in a small open circle well short of the outline, plus one concentric via on the central trace. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Lancéolée</h3>
+
+  <div class="card" data-id="feuille-lanceolee-organique" data-file="Feuille lanceolee organique.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip organique">organique</span><span class="name">Feuille lancéolée</span>
+      <div class="actions"></div></div>
+    <pre>A single narrow lance-shaped leaf seen flat from the front, about four times longer than it is wide, tapering to a fine tip. One central midrib, and only four pairs of secondary veins branching at a shallow angle, each stopping well short of the blade outline. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-lanceolee-hybride" data-file="Feuille lanceolee hybride.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip hybride">hybride</span><span class="name">Feuille lancéolée</span>
+      <div class="actions"></div></div>
+    <pre>A single narrow lance-shaped leaf seen flat from the front, about four times longer than it is wide, tapering to a fine tip, its outline smooth and organic. Inside the blade, one central midrib and only four pairs of secondary veins are drawn as printed-circuit traces: straight runs meeting at 45-degree angles, each vein ending in a small open circle well short of the outline. The blade outline stays organic; only the veins are electronic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-lanceolee-electronique" data-file="Feuille lanceolee electronique.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip electronique">électronique</span><span class="name">Feuille lancéolée</span>
+      <div class="actions"></div></div>
+    <pre>A narrow lance-shaped leaf drawn entirely in printed-circuit vocabulary: the blade outline is a closed polygon of straight segments meeting only at 45 and 90 degree angles, about four times longer than it is wide, tapering to a point. Inside it, a central trace and only four pairs of branch traces at a shallow angle, each ending in a small open circle well short of the outline, plus one concentric via on the central trace. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Dentelée</h3>
+
+  <div class="card" data-id="feuille-dentelee-organique" data-file="Feuille dentelee organique.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip organique">organique</span><span class="name">Feuille dentelée</span>
+      <div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front, oval overall, with a toothed margin: only four large rounded lobes along each side of the blade. One central midrib, and one secondary vein running toward each lobe but stopping well short of the outline. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-dentelee-hybride" data-file="Feuille dentelee hybride.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip hybride">hybride</span><span class="name">Feuille dentelée</span>
+      <div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front, oval overall, with a toothed margin of only four large rounded lobes along each side; the blade outline stays smooth and organic. Inside it, one central midrib and one vein toward each lobe are drawn as printed-circuit traces with 45-degree corners, each ending in a small open circle well short of the outline. Only the veins are electronic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-dentelee-electronique" data-file="Feuille dentelee electronique.png">
+    <div class="head"><span class="chip refaire">à refaire</span>
+      <span class="chip electronique">électronique</span><span class="name">Feuille dentelée</span>
+      <div class="actions"></div></div>
+    <pre>A toothed leaf drawn entirely in printed-circuit vocabulary: the blade outline is a closed stepped polygon whose teeth are four large square notches on each side, meeting only at 45 and 90 degree angles, oval in overall proportion. Inside it, a central trace with one branch trace toward each tooth, every branch ending in a small open circle well short of the outline, plus one concentric via on the central trace. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Version nue — pour les petites poses</h3>
+  <p class="family-note">Contour et nervure centrale, rien d'autre. À 20 mm, une feuille de 8 mm
+    de large ne peut porter que six traits en travers, dont deux pour le contour : la version
+    détaillée y devient un pâté. Celle-ci se pose jusqu'à <strong>10 mm</strong>. L'outil choisit
+    tout seul entre les deux selon la taille demandée — inutile de s'en occuper au tracé.</p>
+
+  <div class="card" data-id="feuille-ovale-organique-nue" data-file="Feuille ovale organique nue.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Ovale nue</span><div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front: a broad oval blade with a pointed tip, drawn with nothing inside it but one short central midrib covering only the middle half of the blade — it must stop well before the tip and start well above the base, touching neither. No secondary veins at all. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-ovale-hybride-nue" data-file="Feuille ovale hybride nue.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Ovale nue</span><div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front: a broad oval blade with a pointed tip and a smooth organic outline, drawn with nothing inside it but one short central midrib rendered as a printed-circuit trace — straight runs meeting at 45-degree angles, ending in a small open circle. It covers only the middle half of the blade: it must stop well before the tip and start well above the base, touching neither. No secondary veins at all. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-lanceolee-organique-nue" data-file="Feuille lanceolee organique nue.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Lancéolée nue</span><div class="actions"></div></div>
+    <pre>A single narrow lance-shaped leaf seen flat from the front, about four times longer than it is wide, tapering to a fine tip, drawn with nothing inside it but one short central midrib covering only the middle half of the blade — it must stop well before the tip and start well above the base, touching neither. No secondary veins at all. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-lanceolee-hybride-nue" data-file="Feuille lanceolee hybride nue.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Lancéolée nue</span><div class="actions"></div></div>
+    <pre>A single narrow lance-shaped leaf seen flat from the front, about four times longer than it is wide, with a smooth organic outline, drawn with nothing inside it but one short central midrib rendered as a printed-circuit trace — straight runs meeting at 45-degree angles, ending in a small open circle. It covers only the middle half of the blade: it must stop well before the tip and start well above the base, touching neither. No secondary veins at all. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-dentelee-organique-nue" data-file="Feuille dentelee organique nue.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Dentelée nue</span><div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front, oval overall, with a toothed margin of only four large rounded lobes along each side, drawn with nothing inside it but one short central midrib covering only the middle half of the blade — it must stop well before the tip and start well above the base, touching neither. No secondary veins at all. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="feuille-dentelee-hybride-nue" data-file="Feuille dentelee hybride nue.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Dentelée nue</span><div class="actions"></div></div>
+    <pre>A single leaf seen flat from the front, oval overall, with a toothed margin of only four large rounded lobes along each side and a smooth organic outline, drawn with nothing inside it but one short central midrib rendered as a printed-circuit trace — straight runs meeting at 45-degree angles, ending in a small open circle. It covers only the middle half of the blade: it must stop well before the tip and start well above the base, touching neither. No secondary veins at all. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Branche<span class="n">5 images · référence de style</span></h2>
+  <p class="family-note">Pas des motifs non plus : la branche est fabriquée par le moteur à partir
+    de ton tracé. Ces quatre-là servent à le <strong>mesurer</strong>. Aujourd'hui la loi
+    d'effilement, le ratio fille/mère, le rayon de l'aisselle, l'amplitude de l'ondulation et
+    l'espacement des lignes d'écorce sont réglés à l'œil sur des zooms de la trame, où tout est
+    enchevêtré. Sur une branche isolée, je peux les extraire au chiffre — c'est le calage par
+    l'exemple que tu avais choisi au départ, et que je n'ai livré qu'à moitié. Cadrer large, la
+    branche seule, sans feuille ni décor.</p>
+
+  <div class="card" data-id="branche-ref-troncon" data-file="Branche ref troncon.png">
+    <div class="head"><span class="chip organique">effilement</span>
+      <span class="name">Tronçon seul</span><div class="actions"></div></div>
+    <pre>A single bare branch drawn on its own, running diagonally across the image from the lower left corner to the upper right corner: thick at the lower end and tapering to a fine point at the upper end, with no side branches and no leaves. It is drawn as two outline contours with a slightly irregular, hand-drawn edge that makes the branch swell and narrow gently along its length, three or four long interrupted bark lines inside the thicker half, and one small almond-shaped knot with a short arc inside it. Purely botanical — no electronic elements, no dots, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="branche-ref-fourche" data-file="Branche ref fourche.png">
+    <div class="head"><span class="chip organique">fourche</span>
+      <span class="name">Embranchement</span><div class="actions"></div></div>
+    <pre>A single bare branch fork drawn on its own, filling the image: a thick branch rises from the bottom edge and divides once into two branches of clearly unequal thickness, the thinner one leaving at about thirty-five degrees, both tapering to fine points. The crotch between them is smoothly rounded, not sharp, and the mother branch visibly swells where the daughter leaves it. A short curved mark lies in the crotch. Drawn as two outline contours with a slightly irregular, hand-drawn edge, and long interrupted bark lines inside the thick parts. No leaves, no electronic elements, no dots, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="branche-ref-pied" data-file="Branche ref pied.png">
+    <div class="head"><span class="chip organique">pied</span>
+      <span class="name">Pied et racines</span><div class="actions"></div></div>
+    <pre>The foot of a tree trunk drawn on its own: a thick trunk enters from the top edge of the image and spreads at the bottom into five roots of decreasing thickness that run outward and taper to fine points, two of them dividing once. Drawn as two outline contours with a slightly irregular, hand-drawn edge, long interrupted bark lines inside the trunk, and two small almond-shaped knots. No leaves, no ground, no electronic elements, no dots, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="branche-ref-transition" data-file="Branche ref transition.png">
+    <div class="head"><span class="chip hybride">transition</span>
+      <span class="name">Branche vers piste</span><div class="actions"></div></div>
+    <pre>A single bare branch drawn on its own, running diagonally across the image from the lower left corner to the upper right corner, changing nature along its length: at the lower end it is organic — two outline contours with an irregular hand-drawn edge, tapering, a few bark lines inside; toward the upper end it has become a printed-circuit trace — two parallel straight lines of constant width, corners at 45 degrees, ending in a small open circle. The change happens gradually over the middle third of its length: the edge grows steadily more regular, the width stops tapering, and the curve gives way to straight runs. A concentric via marks the point where it becomes fully electronic. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="branche-ref-ecorce" data-file="Branche ref ecorce.png">
+    <div class="head"><span class="chip organique">écorce</span>
+      <span class="name">Planche d'écorce</span><div class="actions"></div></div>
+    <pre>A study sheet of bark markings on a single thick bare branch, drawn on its own and filling the image: the branch runs vertically from the bottom edge to the top edge, wide enough to hold detail, and along its length appear five different kinds of interior marking, each clearly separated from the others and each shown twice. First, long interrupted lines running lengthwise along the branch. Second, a small group of five short parallel ticks lying across the grain. Third, an almond-shaped knot with a short arc inside it. Fourth, a healed scar where a small branch was lost, drawn as a small closed oval with a few short lines radiating from its rim. Fifth, a patch of cracked scaly bark, drawn as a few irregular closed shapes fitted together. No leaves, no side branches, no electronic elements, no dots, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. Keep the markings well spaced: any two lines stay at least one twentieth of the branch width apart. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Liane<span class="n">5 images · référence de style</span></h2>
+  <p class="family-note">Ces trois-là ne sont <strong>pas des motifs à poser</strong> : la liane
+    est un tracé, dessinée au stylet comme une branche. Elles servent à calibrer le moteur, comme
+    la trame l'a fait pour les branches — j'y mesurerai le calibre, l'espacement des nœuds et la
+    façon dont la tige se vrille. En l'état le moteur en fait un tuyau régulier, ce qui n'est pas
+    une liane. Demander une longueur de tige seule, en diagonale, avec plusieurs nœuds visibles.</p>
+
+  <div class="card" data-id="liane-ref-organique" data-file="Liane ref organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Longueur de liane</span><div class="actions"></div></div>
+    <pre>A length of climbing vine drawn on its own, running diagonally across the image from corner to corner: a thin stem of even thickness that twists slightly along its course, with a small swelling at each node, about six nodes visible, two small leaves at every other node, and a short spiral tendril at the upper end. The stem crosses over itself once. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="liane-ref-hybride" data-file="Liane ref hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Longueur de liane</span><div class="actions"></div></div>
+    <pre>A length of climbing vine drawn on its own, running diagonally across the image from corner to corner: it starts at the lower end as a thin organic stem with two swollen nodes and small leaves, then straightens progressively into a printed-circuit trace of even width with 45-degree corners, a concentric via marking the point where it changes, and it ends at the upper end in a small open circle. About six nodes or corners visible in all. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="liane-ref-electronique" data-file="Liane ref electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Longueur de liane</span><div class="actions"></div></div>
+    <pre>A length of printed-circuit trace drawn on its own, running diagonally across the image from corner to corner: an even-width trace made of straight runs meeting only at 45 and 90 degree angles, with three concentric vias spaced along it, two short branch traces leaving it and ending in small open circles, and one place where the trace crosses over another. No curves anywhere. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="liane-ref-attache" data-file="Liane ref attache.png">
+    <div class="head"><span class="chip organique">attache</span>
+      <span class="name">Enroulement sur branche</span><div class="actions"></div></div>
+    <pre>A climbing vine wrapped around a tree branch, drawn on its own: a short length of bare branch runs horizontally across the middle of the image, and a thin vine coils twice around it before rising up from it, ending in a small spiral tendril. Show clearly which parts of the vine pass in front of the branch and which pass behind it: where the vine goes behind, the branch outline is unbroken and the vine stops at its edge; where it comes in front, the vine is unbroken and the branch outline stops. Two small leaves on the hanging part. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="liane-ref-depart" data-file="Liane ref depart.png">
+    <div class="head"><span class="chip organique">départ</span>
+      <span class="name">Départ depuis une fourche</span><div class="actions"></div></div>
+    <pre>A climbing vine leaving a tree branch, drawn on its own: a bare branch fork occupies the upper half of the image, and from the crotch between the two branches a thin vine emerges, passes once behind the thicker branch, then hangs freely down the lower half, ending in a small spiral tendril. At the point where the vine leaves the crotch it thickens slightly into a small woody collar. Show clearly where the vine passes behind the branch: there its line stops at the branch outline, which stays unbroken. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Vrille<span class="n">2 formes · 6 images</span></h2>
+  <p class="family-note">Se pose au bout d'une liane ou d'une brindille. C'est le seul motif dont
+    la pose sera automatique : l'outil le placera en bout de chaque liane tracée.</p>
+
+  <h3 class="shape">Spirale serrée</h3>
+
+  <div class="card" data-id="vrille-serree-organique" data-file="Vrille serree organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Vrille serrée</span><div class="actions"></div></div>
+    <pre>A single plant tendril: a slender stem that curls at its top into a tight spiral of about two and a half turns. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart, including between the turns of the spiral. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="vrille-serree-hybride" data-file="Vrille serree hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Vrille serrée</span><div class="actions"></div></div>
+    <pre>A single plant tendril whose slender stem curls at its top into a spiral of about two turns; the spiral is drawn as a printed-circuit trace with straight runs meeting at 45-degree angles, ending at its centre in a small open circle, while the lower stem stays organic and curved. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart, including between the turns of the spiral. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="vrille-serree-electronique" data-file="Vrille serree electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Vrille serrée</span><div class="actions"></div></div>
+    <pre>A tendril drawn entirely in printed-circuit vocabulary: a trace that spirals inward in straight runs meeting only at 45 and 90 degree angles, about two turns, ending at the centre in a concentric via. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart, including between the turns of the spiral. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Double crosse</h3>
+
+  <div class="card" data-id="vrille-double-organique" data-file="Vrille double organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Vrille double</span><div class="actions"></div></div>
+    <pre>A single plant tendril with two curls: a slender stem that hooks into a wide open curl of one and a half turns at its top, and carries a second, smaller curl half-way down on the opposite side. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart, including between the turns of each curl. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="vrille-double-hybride" data-file="Vrille double hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Vrille double</span><div class="actions"></div></div>
+    <pre>A single plant tendril with two curls: the upper curl, one and a half wide open turns, is drawn as a printed-circuit trace with 45-degree corners ending in a small open circle; the smaller curl half-way down and the stem below stay organic and curved. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart, including between the turns of each curl. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="vrille-double-electronique" data-file="Vrille double electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Vrille double</span><div class="actions"></div></div>
+    <pre>A double tendril drawn entirely in printed-circuit vocabulary: a trace that hooks into a wide open spiral of one and a half turns at the top, ending in a concentric via, with a second smaller spiral branching off half-way down on the opposite side and ending in a small open circle. All runs are straight and meet only at 45 and 90 degree angles. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Fleur<span class="n">2 formes · 2 niveaux · 10 images</span></h2>
+  <p class="family-note">Posée en bout de branche fine ou de liane. Peu d'occurrences sur la
+    table, mais la fleur ouverte et le bouton fermé ne se remplacent pas l'un l'autre : ils
+    donnent deux moments de la même plante.</p>
+
+  <h3 class="shape">Ouverte</h3>
+
+  <div class="card" data-id="fleur-ouverte-organique" data-file="Fleur ouverte organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Fleur ouverte</span><div class="actions"></div></div>
+    <pre>A single small flower seen from three-quarters: five rounded petals around a plain centre, on a short stem with one small leaf. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-ouverte-hybride" data-file="Fleur ouverte hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Fleur ouverte</span><div class="actions"></div></div>
+    <pre>A single small flower seen from three-quarters with five rounded organic petals, but its centre is a square microchip with short contact legs, and three thin printed-circuit traces rise from behind the petals, each ending in a small open circle. The stem below stays organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-ouverte-electronique" data-file="Fleur ouverte electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Fleur ouverte</span><div class="actions"></div></div>
+    <pre>A flower shape drawn entirely in printed-circuit vocabulary: five angular petals made of straight segments meeting only at 45 and 90 degree angles, arranged around a square microchip at the centre, each petal ending in a small open circle. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Bouton fermé</h3>
+
+  <div class="card" data-id="fleur-bouton-organique" data-file="Fleur bouton organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Bouton</span><div class="actions"></div></div>
+    <pre>A single closed flower bud seen from the side: an oval bud made of three overlapping sepals coming to a point at the top, on a short stem with two narrow leaves at its base. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-bouton-hybride" data-file="Fleur bouton hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Bouton</span><div class="actions"></div></div>
+    <pre>A single closed flower bud seen from the side: an oval bud made of three overlapping organic sepals, but three thin printed-circuit traces escape from its pointed top, each ending in a small open circle, and one concentric via sits where the bud meets its stem. The bud outline and the stem stay organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-bouton-electronique" data-file="Fleur bouton electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Bouton</span><div class="actions"></div></div>
+    <pre>A closed bud shape drawn entirely in printed-circuit vocabulary: three overlapping angular sepals made of straight segments meeting only at 45 and 90 degree angles, coming to a point at the top, with three short traces escaping from the point, each ending in a small open circle, and one concentric via at the base. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Version nue — pour les petites poses</h3>
+  <p class="family-note">Même raison que pour les feuilles : à petite taille, le cœur et les nervures des pétales se soudent. Ici, les pétales seuls, sans rien dedans.</p>
+
+  <div class="card" data-id="fleur-ouverte-organique-nue" data-file="Fleur ouverte organique nue.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Ouverte nue</span><div class="actions"></div></div>
+    <pre>A single small flower seen from three-quarters: five rounded petals arranged around a plain empty centre, drawn as outlines only, with nothing inside the petals — no veins, no texture, no dot at the centre. On a short stem with no leaf. Purely botanical — no electronic elements, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-ouverte-hybride-nue" data-file="Fleur ouverte hybride nue.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Ouverte nue</span><div class="actions"></div></div>
+    <pre>A single small flower seen from three-quarters: five rounded organic petals drawn as outlines only, with nothing inside them, arranged around one small plain square microchip at the centre. On a short stem with no leaf. No other electronic detail. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-bouton-organique-nue" data-file="Fleur bouton organique nue.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Bouton nu</span><div class="actions"></div></div>
+    <pre>A single closed flower bud seen from the side: an oval bud coming to a point at the top, drawn as one closed outline with a single line marking where two sepals overlap. Nothing else inside. On a short stem with no leaf. Purely botanical — no electronic elements, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="fleur-bouton-hybride-nue" data-file="Fleur bouton hybride nue.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Bouton nu</span><div class="actions"></div></div>
+    <pre>A single closed flower bud seen from the side: an oval organic bud drawn as one closed outline with a single line marking where two sepals overlap, and one short printed-circuit trace escaping from its pointed top, ending in a small open circle. Nothing else inside. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Champignon<span class="n">3 formes · 8 images</span></h2>
+  <p class="family-note">Au pied des troncs et sur les racines. Les taches du chapeau et les
+    lamelles sont les premières à se souder à petite taille : peu, et bien espacées.</p>
+
+  <h3 class="shape">Grappe de trois</h3>
+
+  <div class="card" data-id="champignon-grappe-organique" data-file="Champignon grappe organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Grappe</span><div class="actions"></div></div>
+    <pre>A cluster of three mushrooms of different heights sharing one base: rounded caps with three or four large spots each, a few widely spaced gills under each cap, plain stems. Purely botanical — no electronic elements, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart — few spots, few gills, well separated. Base at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="champignon-grappe-hybride" data-file="Champignon grappe hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Grappe</span><div class="actions"></div></div>
+    <pre>A cluster of three mushrooms of different heights sharing one base, with rounded organic caps; the three or four spots on each cap are small concentric vias, and one printed-circuit trace runs down each stem, ending in a small open circle. The cap outlines and the few widely spaced gills stay organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart — few spots, few gills, well separated. Base at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="champignon-grappe-electronique" data-file="Champignon grappe electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Grappe</span><div class="actions"></div></div>
+    <pre>A cluster of three mushroom shapes drawn entirely in printed-circuit vocabulary: caps made of straight segments meeting only at 45 and 90 degree angles, each cap carrying two concentric vias, stems drawn as single traces, all rising from one base. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Base at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Solitaire à chapeau plat</h3>
+
+  <div class="card" data-id="champignon-plat-organique" data-file="Champignon plat organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Chapeau plat</span><div class="actions"></div></div>
+    <pre>A single large mushroom seen from the side, with a wide flat cap that turns up slightly at its rim, four widely spaced gills visible under the cap, a ring around the middle of the stem, and a swollen base. Purely botanical — no electronic elements, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Base at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="champignon-plat-hybride" data-file="Champignon plat hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Chapeau plat</span><div class="actions"></div></div>
+    <pre>A single large mushroom seen from the side with a wide flat organic cap turning up at its rim; under the cap, four widely spaced gills, and around the stem a ring drawn as a printed-circuit trace with 45-degree corners, from which two short traces run down the stem, each ending in a small open circle. The cap outline stays organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Base at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="champignon-plat-electronique" data-file="Champignon plat electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Chapeau plat</span><div class="actions"></div></div>
+    <pre>A single large mushroom shape drawn entirely in printed-circuit vocabulary: a wide flat cap made of straight segments meeting only at 45 and 90 degree angles, carrying three concentric vias, four short traces under the cap in place of gills, and a stem drawn as two parallel traces with a square ring around its middle. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. Base at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Touffe</h3>
+  <p class="family-note">La forme que tu avais retenue : un groupe serré de tailles très inégales, chapeaux à pastilles, lamelles rayonnantes. Plus vivante que le trio régulier, et c’est elle qui se pose au pied des troncs.</p>
+
+  <div class="card" data-id="champignon-touffe-organique" data-file="Champignon touffe organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Touffe</span><div class="actions"></div></div>
+    <pre>A tight clump of five mushrooms of very unequal sizes sharing one tangled base: one large one in the middle with a broad rounded cap, two medium ones leaning outward, and two small ones at the foot. Each cap carries three or four round spots of different sizes, one of them filled solid; under each cap, gills drawn as short lines radiating from the stem. The stems are slender and slightly curved. Purely botanical — no electronic elements, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas apart from the single large spot, no grey, no shading, no hatching. No frame, no background, no shadow. The base is at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="champignon-touffe-hybride" data-file="Champignon touffe hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Touffe</span><div class="actions"></div></div>
+    <pre>A tight clump of five mushrooms of very unequal sizes sharing one tangled base: one large one in the middle with a broad rounded cap, two medium ones leaning outward, and two small ones at the foot. Each cap carries three or four round spots of different sizes, one of them filled solid, and on the largest cap a few fine printed-circuit traces link the spots to one another. Under each cap, gills drawn as short lines radiating from the stem. The cap outlines and the slender curved stems stay organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas apart from the single large spot, no grey, no shading, no hatching. No frame, no background, no shadow. The base is at the bottom, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Radicelles<span class="n">1 forme · 3 images</span></h2>
+  <p class="family-note"><b>Sens du dessin :</b> le moignon en BAS, les radicelles qui s’étalent vers le HAUT — comme la tige de tous les autres motifs. Les images du premier lot étaient dessinées à l’envers et se posaient racines rabattues sur la branche ; elles ont dû être retournées (originaux dans <code>reference/radicelle/_original/</code>).</p>
+  <p class="family-note">Grandes et peu nombreuses — deux ou trois sur toute la table, sous le
+    tronc. Une seule silhouette suffit : le miroir de l'outil fera le reste. Seule famille qui
+    pousse vers le bas, donc à extraire avec <code>--anchor top</code>.</p>
+
+  <div class="card" data-id="radicelle-organique" data-file="Radicelle organique.png">
+    <div class="head"><span class="chip organique">organique</span>
+      <span class="name">Radicelles</span><div class="actions"></div></div>
+    <pre>A tuft of roots spreading UPWARD from a single thick root neck at the top: about six main roots dividing once, tapering to fine tips. Purely botanical — no electronic elements, no dots, no straight segments, no right angles. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two roots stay at least one tenth of the element's width apart. The thick root neck is at the TOP, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="radicelle-hybride" data-file="Radicelle hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Radicelles</span><div class="actions"></div></div>
+    <pre>A tuft of roots spreading UPWARD from a single thick root neck at the top: about six organic roots dividing once, but the lower half of each root straightens into a printed-circuit trace with 45-degree corners, ending in a small open circle. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two roots stay at least one tenth of the element's width apart. The thick root neck is at the TOP, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="radicelle-electronique" data-file="Radicelle electronique.png">
+    <div class="head"><span class="chip electronique">électronique</span>
+      <span class="name">Radicelles</span><div class="actions"></div></div>
+    <pre>A root system drawn entirely in printed-circuit vocabulary: from a single thick trace at the top, about six branch traces spread downward in straight runs meeting only at 45 and 90 degree angles, each dividing once and ending in a small open circle, with two concentric vias along the way. No curves anywhere. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two traces stay at least one tenth of the element's width apart. The thick trace is at the TOP, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Composants<span class="n">8 pièces · 16 images</span></h2>
+  <p class="family-note"><b>Deux règles vérifiées par <code>node test/banc-composants.js</code> :</b> la pièce doit être dessinée <b>droite</b> (corps exactement horizontal ou vertical) — de biais, elle se pose en travers de sa piste et aucun réglage n’y peut rien ; et son corps doit garder des <b>marques internes lisibles</b> — sans elles, il se lit comme une capsule vide. Sur les versions hybrides, la végétation ne doit pas traverser le corps : elle le noie et brouille son axe.</p>
+  <p class="family-note">Ici le trajet s'inverse : pas de version organique pure, mais chaque
+    composant existe <strong>pur</strong> et <strong>colonisé par le végétal</strong>. C'est ce
+    qui empêchera le côté circuit d'être seulement froid — le végétal y revient par en dessous,
+    comme le circuit gagne l'autre côté. Deux ou trois occurrences chacun sur la table : une seule
+    silhouette par pièce suffit.</p>
+
+  <h3 class="shape">Résistance axiale</h3>
+
+  <div class="card" data-id="resistance-pure" data-file="Resistance axiale electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Résistance</span><div class="actions"></div></div>
+    <pre>A single axial resistor seen from the side: a barrel body with three colour bands drawn as plain outlined rings, and a straight wire lead coming out of each end. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. The lower lead is at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="resistance-colonisee" data-file="Resistance axiale hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Résistance</span><div class="actions"></div></div>
+    <pre>A single axial resistor seen from the side, a barrel body with three outlined rings, but it is being overgrown by a plant: its lower wire lead has turned into a woody root that divides once, and two small leaves sprout from where the upper lead leaves the body. The resistor itself stays geometric, the growth stays organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. The root is at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Condensateur électrolytique</h3>
+
+  <div class="card" data-id="condensateur-pur" data-file="Condensateur electrolytique electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Condensateur</span><div class="actions"></div></div>
+    <pre>A single electrolytic capacitor seen from the side: a cylindrical body with a rounded top, one polarity stripe down the side, and a straight wire lead from each end. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. The lower lead is at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="condensateur-colonise" data-file="Condensateur electrolytique hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Condensateur</span><div class="actions"></div></div>
+    <pre>A single cylindrical capacitor seen from the side, being overgrown by a plant: a climbing vine coils twice around its body and ends in a small spiral tendril above it, and a few moss tufts grow at its foot. The capacitor stays geometric, the vine stays organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. The lower lead is at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Puce DIP</h3>
+
+  <div class="card" data-id="puce-pure" data-file="Puce dip electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Puce</span><div class="actions"></div></div>
+    <pre>A single square microchip seen from above: a plain square body with a small notch on one edge and four short contact legs on each of two opposite sides, plus a small square marking inside. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. One leg extends at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="puce-colonisee" data-file="Puce dip hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Puce</span><div class="actions"></div></div>
+    <pre>A single square microchip seen from above, being overgrown by a plant: three leaves sprout from behind its upper edge on organic stems, and fine roots grow out of its lower contact legs and spread downward. The chip stays geometric and is drawn perfectly straight, its sides exactly horizontal and vertical, never tilted; the growth stays organic and creeps only along two sides. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. One root extends at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Tube rond</h3>
+
+  <div class="card" data-id="tube-pur" data-file="Tube rond electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Tube</span><div class="actions"></div></div>
+    <pre>A single vacuum tube seen from the side: a rounded glass envelope on a base, with a simple filament and two plates drawn as plain lines inside, and three straight pins under the base. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. The centre pin is at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="tube-colonise" data-file="Tube rond hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Tube</span><div class="actions"></div></div>
+    <pre>A single vacuum tube seen from the side, its glass envelope holding a small plant instead of a filament: a slender stem with three leaves growing inside the glass, and one shoot escaping through the top. The tube and its base stay geometric, the plant stays organic. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Keep it sparse: any two lines stay at least one tenth of the element's width apart. The centre pin is at the bottom, straight and vertical, ending in a short plain stub. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Résistance CMS</h3>
+
+  <div class="card" data-id="resistance-cms-electronique" data-file="Resistance cms electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Résistance CMS</span><div class="actions"></div></div>
+    <pre>A single surface-mount chip resistor seen from above: a plain rectangle about three times longer than it is wide, with a band across each short end and a small marking in the middle, sitting on two rectangular solder pads. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="resistance-cms-hybride" data-file="Resistance cms hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Résistance CMS</span><div class="actions"></div></div>
+    <pre>A single surface-mount chip resistor seen from above, a plain rectangle with a band at each end on two solder pads, being overgrown by a plant: fine roots creep out from under one pad and spread away, and a single small leaf sprouts from the other. The component stays geometric and is drawn perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted — and the growth stays organic. The plant must not cross the body: it creeps from the ends and from underneath, so the body outline and its markings stay fully readable. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Condensateur céramique</h3>
+
+  <div class="card" data-id="condensateur-ceramique-electronique" data-file="Condensateur ceramique electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Condensateur céramique</span><div class="actions"></div></div>
+    <pre>A single ceramic disc capacitor seen from the front: a flat round body on two straight parallel wire leads, with one short marking line inside the disc. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="condensateur-ceramique-hybride" data-file="Condensateur ceramique hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Condensateur céramique</span><div class="actions"></div></div>
+    <pre>A single ceramic disc capacitor seen from the front, a flat round body on two straight wire leads, being overgrown by a plant: a thin vine climbs one lead and coils once around the rim of the disc, ending in a small spiral tendril. The component stays geometric and is drawn perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted — and the vine stays organic. The vine must not cross the body: it climbs the leads and stops at the rim. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Puce QFP</h3>
+
+  <div class="card" data-id="puce-qfp-electronique" data-file="Puce qfp electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Puce QFP</span><div class="actions"></div></div>
+    <pre>A single square microchip seen from above with contact legs on all four sides: four short legs per side, a small circle marking one corner, and a plain square body. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="puce-qfp-hybride" data-file="Puce qfp hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Puce QFP</span><div class="actions"></div></div>
+    <pre>A single square microchip seen from above with four short contact legs on each of its four sides, being overgrown by a plant: moss tufts grow along two of its sides between the legs, and one small leafy shoot rises from a corner. The chip stays geometric and is drawn perfectly straight, its sides exactly horizontal and vertical, never tilted; the growth stays organic and creeps only along two sides. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Bobine</h3>
+
+  <div class="card" data-id="bobine-electronique" data-file="Bobine electronique.png">
+    <div class="head"><span class="chip electronique">pur</span>
+      <span class="name">Bobine</span><div class="actions"></div></div>
+    <pre>A single inductor coil seen from the side: five evenly spaced turns of wire wound around a plain cylindrical core, with a straight wire lead leaving each end. Printed-circuit vocabulary only, no organic shapes. Draw the component perfectly straight — its body axis exactly horizontal or exactly vertical, never tilted. Its body must carry clearly visible markings (bands, a value stripe, a polarity mark), well spaced: an outline alone reads as an empty capsule once burned. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="bobine-hybride" data-file="Bobine hybride.png">
+    <div class="head"><span class="chip hybride">colonisé</span>
+      <span class="name">Bobine</span><div class="actions"></div></div>
+    <pre>A single inductor coil seen from the side, five turns of wire around a plain core with a lead at each end, being overgrown by a plant: two of the turns have become woody stems bearing one small leaf each, and a fine root leaves the lower lead. The coil stays geometric and is drawn perfectly straight, its axis exactly horizontal, never tilted; the growth stays organic and stays clear of the windings. Black line art on pure white. One isolated element, centred, fully visible, generous white margin. All outlines, one uniform line weight, no filled black areas, no grey, no shading, no hatching. No frame, no background, no shadow. Stem at the bottom, drawn as a SINGLE straight vertical line, not as two parallel lines. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Kodama<span class="n">5 postures · 10 images</span></h2>
+  <p class="family-note">Esprit de la forêt : grosse tête lisse, corps sobre, trois trous sombres pour visage. C’est la SILHOUETTE qui porte le personnage — l’intérieur doit rester quasi vide, sinon il devient un pâté à 4 cm. Il se pose debout sur le bois : le bas du dessin est ce qui touche la branche.</p>
+
+  <h3 class="shape">Debout</h3>
+
+  <div class="card" data-id="kodama-debout-classique" data-file="Kodama debout classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Debout</span><div class="actions"></div></div>
+    <pre>A single kodama standing straight, seen from the front: a small forest spirit with a large smooth egg-shaped head, much bigger than its body, and a plain narrow body with short simple arms and short legs. Its face is nothing but three dark holes — two round eyes of slightly different sizes and one smaller oval mouth below. No nose, no eyebrows, no ears, no mouth line. Arms hanging relaxed along the body, feet together. Purely organic — no electronic elements anywhere. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="kodama-debout-hybride" data-file="Kodama debout hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Debout</span><div class="actions"></div></div>
+    <pre>A single kodama standing straight, seen from the front: a small forest spirit with a large smooth egg-shaped head, much bigger than its body, and a plain narrow body with short simple arms and short legs. Its face is nothing but three dark holes — two round eyes of slightly different sizes and one smaller oval mouth below. No nose, no eyebrows, no ears, no mouth line. Its two eye holes and its mouth are drawn as small round solder pads instead of plain holes, and one fine printed-circuit trace leaves the lower pad, runs down the middle of the body in straight runs meeting at 45-degree angles, and ends in a small plain square microchip on the chest. Nothing else is electronic: the head and body outlines stay soft and organic. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Assis en tailleur</h3>
+
+  <div class="card" data-id="kodama-assis-classique" data-file="Kodama assis classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Assis en tailleur</span><div class="actions"></div></div>
+    <pre>A single kodama sitting cross-legged, seen from the front: a small forest spirit with a large smooth egg-shaped head, much bigger than its body, and a plain narrow body with short simple arms and short legs. Its face is nothing but three dark holes — two round eyes of slightly different sizes and one smaller oval mouth below. No nose, no eyebrows, no ears, no mouth line. Its legs are folded in front of it and its two hands rest on its knees. Purely organic — no electronic elements anywhere. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="kodama-assis-hybride" data-file="Kodama assis hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Assis en tailleur</span><div class="actions"></div></div>
+    <pre>A single kodama sitting cross-legged, its legs folded in front and its hands on its knees, seen from the front: a small forest spirit with a large smooth egg-shaped head, much bigger than its body, and a plain narrow body with short simple arms and short legs. Its face is nothing but three dark holes — two round eyes of slightly different sizes and one smaller oval mouth below. No nose, no eyebrows, no ears, no mouth line. Its two eye holes and its mouth are drawn as small round solder pads instead of plain holes, and one fine printed-circuit trace leaves the lower pad, runs down the middle of the body in straight runs meeting at 45-degree angles, and ends in a small plain square microchip on the chest. Nothing else is electronic: the head and body outlines stay soft and organic. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">De dos, tête tournée</h3>
+  <p class="family-note">La pose emblématique : le corps de dos, la tête pivotée vers nous. Utile pour rompre la file quand plusieurs personnages se suivent sur une même branche.</p>
+
+  <div class="card" data-id="kodama-dos-classique" data-file="Kodama dos classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">De dos, tête tournée</span><div class="actions"></div></div>
+    <pre>A single kodama seen from behind, standing, with its head turned right round over its shoulder to face the viewer: a large smooth egg-shaped head, much bigger than its body, showing three dark holes — two round eyes of slightly different sizes and one smaller oval mouth. Its plain narrow back, short arms and short legs are seen from behind, with no detail on them at all. Purely organic — no electronic elements anywhere. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="kodama-dos-hybride" data-file="Kodama dos hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">De dos, tête tournée</span><div class="actions"></div></div>
+    <pre>A single kodama seen from behind, standing, with its head turned right round over its shoulder to face the viewer: a large smooth egg-shaped head showing two round eye pads and one mouth pad, on a plain narrow back seen from behind. One fine printed-circuit trace runs down the middle of the back in straight runs meeting at 45-degree angles and ends in a small plain square microchip between the shoulders. The head and body outlines stay soft and organic. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Tête levée</h3>
+
+  <div class="card" data-id="kodama-tete-levee-classique" data-file="Kodama tete levee classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Tête levée</span><div class="actions"></div></div>
+    <pre>A single kodama standing and tilting its big head back to look upward, seen from three-quarters: a small forest spirit with a large smooth egg-shaped head, much bigger than its body, and a plain narrow body with short simple arms and short legs. Its face is nothing but three dark holes — two round eyes of slightly different sizes and one smaller oval mouth below. No nose, no eyebrows, no ears, no mouth line. The head leans back on the narrow body so the three holes point up and away. Arms hanging. Purely organic — no electronic elements anywhere. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="kodama-tete-levee-hybride" data-file="Kodama tete levee hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Tête levée</span><div class="actions"></div></div>
+    <pre>A single kodama standing and tilting its big head back to look upward, seen from three-quarters: a small forest spirit with a large smooth egg-shaped head, much bigger than its body, and a plain narrow body with short simple arms and short legs. Its face is nothing but three dark holes — two round eyes of slightly different sizes and one smaller oval mouth below. No nose, no eyebrows, no ears, no mouth line. Its two eye holes and its mouth are drawn as small round solder pads instead of plain holes, and one fine printed-circuit trace leaves the lower pad, runs down the middle of the body in straight runs meeting at 45-degree angles, and ends in a small plain square microchip on the chest. Nothing else is electronic: the head and body outlines stay soft and organic. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Trio</h3>
+  <p class="family-note">Un groupe serré compte comme UN motif : il se pose d’un bloc, au pied d’un tronc ou sur une branche large. Tailles inégales, sinon c’est une frise.</p>
+
+  <div class="card" data-id="kodama-trio-classique" data-file="Kodama trio classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Trio</span><div class="actions"></div></div>
+    <pre>Three kodama of clearly unequal sizes standing close together as one tight group, seen from the front, the tallest in the middle and slightly behind: each has a large smooth egg-shaped head, much bigger than its body, a plain narrow body with short arms and legs, and a face made of three dark holes only. They overlap slightly. Purely organic — no electronic elements anywhere. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="kodama-trio-hybride" data-file="Kodama trio hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Trio</span><div class="actions"></div></div>
+    <pre>Three kodama of clearly unequal sizes standing close together as one tight group, the tallest in the middle: each has a large smooth egg-shaped head, much bigger than its body, and a face made of two round solder pads and one mouth pad. A single fine printed-circuit trace links the three of them, running from one shoulder to the next in straight runs meeting at 45-degree angles, and ends in one small plain square microchip. Their outlines stay soft and organic. The only solid black areas are the small eye and mouth holes. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h2 class="family">Korok<span class="n">5 masques · 10 images</span></h2>
+  <p class="family-note">Enfant de la forêt : un masque de feuille pour visage, un corps rond, des bras de brindille. C’est la découpe du masque qui distingue les variantes — le corps, lui, ne change pas. Aucun aplat noir : tes références actuelles sont trop chargées pour la pyrogravure comme pour l’extraction d’axes.</p>
+
+  <h3 class="shape">Masque rond</h3>
+
+  <div class="card" data-id="korok-masque-rond-classique" data-file="Korok masque rond classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Masque rond</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is one broad rounded leaf with a smooth edge, carrying a single midrib and two pairs of side veins. Purely organic — no electronic elements, no straight segments, no right angles. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="korok-masque-rond-hybride" data-file="Korok masque rond hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Masque rond</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is one broad rounded leaf with a smooth edge. The veins of the leaf mask are drawn as printed-circuit traces — straight runs meeting at 45-degree angles, each ending in a small open circle — and one small plain square microchip sits where they meet. The body outline and the twig arms stay organic. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Masque érable</h3>
+
+  <div class="card" data-id="korok-masque-erable-classique" data-file="Korok masque erable classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Masque érable</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is one maple leaf with five broad pointed lobes and a single vein running into each lobe. Purely organic — no electronic elements, no straight segments, no right angles. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="korok-masque-erable-hybride" data-file="Korok masque erable hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Masque érable</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is one maple leaf with five broad pointed lobes. The veins of the leaf mask are drawn as printed-circuit traces — straight runs meeting at 45-degree angles, each ending in a small open circle — and one small plain square microchip sits where they meet. The body outline and the twig arms stay organic. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Masque éventail</h3>
+
+  <div class="card" data-id="korok-masque-eventail-classique" data-file="Korok masque eventail classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Masque éventail</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is one ginkgo leaf, a wide fan flaring upward with a small notch at the top and three straight veins spreading from its base. Purely organic — no electronic elements, no right angles. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="korok-masque-eventail-hybride" data-file="Korok masque eventail hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Masque éventail</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is one ginkgo leaf, a wide fan flaring upward with a small notch at the top. The veins of the leaf mask are drawn as printed-circuit traces — straight runs meeting at 45-degree angles, each ending in a small open circle — and one small plain square microchip sits where they meet. The body outline and the twig arms stay organic. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Masque cornu</h3>
+  <p class="family-note">Le masque d’écorce à pointes, plus sauvage. Garde-le simple : les références chargées de hachures ne passent ni la pyrogravure ni l’extraction.</p>
+
+  <div class="card" data-id="korok-masque-cornu-classique" data-file="Korok masque cornu classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Masque cornu</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is a piece of bark cut into a rough shield shape with two long horns rising from its top corners, and three straight grain lines across it. Purely organic — no electronic elements. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="korok-masque-cornu-hybride" data-file="Korok masque cornu hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Masque cornu</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The mask is a piece of bark cut into a rough shield shape with two long horns rising from its top corners. The veins of the leaf mask are drawn as printed-circuit traces — straight runs meeting at 45-degree angles, each ending in a small open circle — and one small plain square microchip sits where they meet. The body outline and the twig arms stay organic. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <h3 class="shape">Porte-feuille</h3>
+  <p class="family-note">Il tient une grande feuille au-dessus de lui, comme un parasol. Elle double la hauteur du motif : à poser plus grand que les autres.</p>
+
+  <div class="card" data-id="korok-porte-feuille-classique" data-file="Korok porte feuille classique.png">
+    <div class="head"><span class="chip organique">classique</span>
+      <span class="name">Porte-feuille</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front, holding one large leaf overhead like a parasol: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. Both twig arms reach up and grip the straight stem of the big leaf, which spreads wide above its head and shows a midrib and two pairs of side veins. Purely organic — no electronic elements, no straight segments, no right angles. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <div class="card" data-id="korok-porte-feuille-hybride" data-file="Korok porte feuille hybride.png">
+    <div class="head"><span class="chip hybride">hybride</span>
+      <span class="name">Porte-feuille</span><div class="actions"></div></div>
+    <pre>A single korok seen from the front, holding one large leaf overhead like a parasol, both twig arms gripping its straight stem: a small forest child whose whole face is a leaf mask: a plain round body about as wide as it is tall, two thin bare twig arms, two short stub legs, and the mask held in front of the head. On the mask, two round eye holes and one small round mouth hole are cut out as plain circles. The veins of the big overhead leaf are drawn as printed-circuit traces — straight runs meeting at 45-degree angles, each ending in a small open circle. The mask, the body outline and the twig arms stay organic. No solid black areas at all — everything is outline. Black line art on pure white. One isolated character, centred, fully visible, generous white margin. Every outline drawn with one single uniform line weight. No grey, no shading, no hatching, no texture, no scattered dots. No frame, no background, no shadow, no ground line. Keep the inside sparse: this will be burned by hand at about 4 cm tall, so only a handful of internal lines, generously spaced. Draw it upright and flat on, resting on the lowest part of the drawing. Square, 1024x1024.</pre>
+  </div>
+
+  <section class="pipeline">
+    <h2 class="family">Après génération</h2>
+    <p class="family-note">Le nom de fichier proposé sur chaque carte se copie d'un clic : c'est
+      lui qui porte le classement <code>famille forme état</code> lu par la bibliothèque, sans
+      accent pour éviter toute divergence. Deux points à savoir : un composant <em>pur</em> est
+      nommé <code>electronique</code> et un composant <em>colonisé</em> <code>hybride</code>, pour
+      que le champ de transition y pioche comme dans les familles végétales ; et les trois
+      longueurs de liane ne passent pas par ce circuit, ce sont des références de style.
+      Puis, depuis <code>motif-layout/</code> :</p>
+    <pre>python tools/motif-axes.py "reference/&lt;famille&gt;" -o "reference/&lt;famille&gt;/axes"
+python tools/motif-axes.py "reference/radicelle" -o "reference/radicelle/axes" --anchor top
+python tools/build-motif-bank.py</pre>
+    <p class="family-note" style="margin-top: 14px;">Le premier écrit un aperçu par motif, axes en
+      rouge et point d'attache en bleu. Le second reconstruit la bibliothèque et affiche
+      <strong>la taille minimale de chaque motif</strong> : tout ce qui dépasse 30 mm est encore
+      trop détaillé et demande une régénération plus sobre.</p>
+  </section>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var KEY = "motifs-generes-v2";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".card[data-id]"));
+  var doneEl = document.getElementById("done");
+  var toast = document.getElementById("toast");
+  document.getElementById("total").textContent = cards.length;
+
+  var toastTimer;
+  function say(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 1400);
+  }
+
+  function refresh() {
+    doneEl.textContent = cards.filter(function (c) { return state[c.dataset.id]; }).length;
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* fichier local sans stockage */ }
+  }
+
+  // copie robuste : l'API presse-papier est refusée sur certains file://, d'où le repli
+  function copy(text, after) {
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (e) { /* rien à faire de plus */ }
+      ta.parentNode.removeChild(ta);
+      after();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(after, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  function flash(btn, label, revert) {
+    btn.textContent = label;
+    btn.classList.add("ok");
+    setTimeout(function () { btn.textContent = revert; btn.classList.remove("ok"); }, 1400);
+  }
+
+  cards.forEach(function (card) {
+    var id = card.dataset.id;
+    var actions = card.querySelector(".actions");
+    var text = card.querySelector("pre").textContent.trim();
+    var file = card.dataset.file;
+
+    // Le nom de fichier porte le classement lu par la bibliothèque : il se copie d'un clic,
+    // pour enregistrer l'image sans avoir à le retaper.
+    if (file) {
+      var fbtn = document.createElement("button");
+      fbtn.className = "file";
+      fbtn.type = "button";
+      fbtn.textContent = file;
+      fbtn.title = "Copier le nom de fichier";
+      fbtn.addEventListener("click", function () {
+        copy(file, function () { flash(fbtn, "Nom copié", file); say("Nom copié"); });
+      });
+      card.querySelector(".head").insertBefore(fbtn, actions);
+    }
+
+    var btn = document.createElement("button");
+    btn.className = "copy";
+    btn.type = "button";
+    btn.textContent = "Copier";
+    btn.addEventListener("click", function () {
+      copy(text, function () { flash(btn, "Copié", "Copier"); say("Prompt copié"); });
+    });
+
+    var label = document.createElement("label");
+    label.className = "tick";
+    var box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = !!state[id];
+    card.classList.toggle("done", box.checked);
+    box.addEventListener("change", function () {
+      state[id] = box.checked;
+      save();
+      card.classList.toggle("done", box.checked);
+      refresh();
+    });
+    label.appendChild(box);
+    label.appendChild(document.createTextNode("généré"));
+
+    actions.appendChild(btn);
+    actions.appendChild(label);
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

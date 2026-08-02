@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 222.00 1121.00"
+     data-anchor="111.00,1104.00" data-source="Condensateur electrolytique electronique.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M111.00,16.00L111.00,257.00L32.00,266.00L19.00,279.00L2.00,323.00L2.00,733.00L23.00,771.00L111.00,789.00"/>
+    <path d="M14.00,297.00L52.00,312.00L100.00,312.00L111.00,305.00L112.00,258.00L183.00,263.00L197.00,271.00L208.00,294.00L196.00,336.00L193.00,754.00L185.00,773.00L173.00,780.00L111.00,789.00"/>
+    <path d="M111.00,306.00L176.00,319.00L196.00,335.00"/>
+    <path d="M111.00,789.00L111.00,1104.00"/>
+  </g>
+</svg>

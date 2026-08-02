@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 423.00 1119.00"
+     data-anchor="200.00,1104.00" data-source="Vrille serree hybride.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M217.00,209.00L219.00,247.00L239.00,266.00L276.00,266.00L315.00,228.00L315.00,165.00L255.00,106.00L166.00,107.00L107.00,166.00L109.00,249.00L209.00,346.00L323.00,346.00L412.00,259.00L412.00,113.00L340.00,33.00L312.00,11.00L119.00,11.00L38.00,84.00L10.00,118.00L13.00,281.00L136.00,411.00L171.00,470.00L198.00,552.00L199.00,619.00L179.00,746.00L200.00,888.00L200.00,1104.00"/>
+  </g>
+</svg>

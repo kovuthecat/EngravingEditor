@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380.00 1133.00"
+     data-anchor="198.00,1118.00" data-source="Vrille double hybride.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M168.00,274.00L165.00,260.00L124.00,218.00L128.00,156.00L156.00,129.00L196.00,122.00L209.00,179.00L211.00,233.00L234.00,245.00L263.00,245.00L312.00,196.00L312.00,90.00L233.00,12.00L118.00,12.00L12.00,118.00L15.00,268.00L150.00,425.00L183.00,486.00L211.00,582.00L223.00,600.00"/>
+    <path d="M207.00,237.00L205.00,239.00"/>
+    <path d="M173.00,256.00L172.00,257.00"/>
+    <path d="M332.00,618.00L326.00,593.00L314.00,579.00L225.00,599.00"/>
+    <path d="M223.00,600.00L198.00,844.00L198.00,1118.00"/>
+  </g>
+</svg>

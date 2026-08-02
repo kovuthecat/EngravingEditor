@@ -1,0 +1,19 @@
+# Sorties des bancs d'essai : régénérées à chaque exécution, jamais éditées à la main.
+test/branch-proto.json
+test/branch-proto.png
+test/branch-proto-zoom.png
+test/banque-planche.png
+test/z*.png
+test/_masque-corps.npy
+test/out_occluded.svg
+branch-proto.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Système
+.DS_Store
+Thumbs.db
+test/branch-proto.svg
+test/pcb-zoom.png

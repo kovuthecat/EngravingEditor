@@ -293,3 +293,41 @@ zones → `motifFill` ; place les motifs en grille serrée (chevauchement volont
 `ML.occludeSurfaces` ; écrit `test/out_occluded.svg` (multi-couleur, `evenodd`, mm) ; logue le nombre de
 points avant/après occlusion (réduction attendue si chevauchement géré) et la présence de l'en-tête
 `viewBox`.
+
+---
+
+## Rendu des croisements et esthétique du trait (2026-08-02)
+
+### Marge d'interruption
+
+Ce qui passe devant masque un peu **plus** que sa propre largeur : `st.halo`, par défaut égal à
+`st.ink` (1 mm). Sans elle, deux lianes de 3,3 mm qui se croisent n'effacent qu'une largeur de
+ruban et fusionnent en X — l'œil ne peut pas dire laquelle passe devant. C'est la convention du
+dessin technique : la ligne du dessous s'arrête avant celle du dessus.
+
+La marge élargit la **silhouette d'occultation**, pas le dessin : le contour et les traits se
+posent ensuite à leur place exacte, par-dessus ce blanc. Sur fond blanc elle est invisible ; elle
+ne se révèle qu'aux croisements.
+
+**Exception : les motifs qui poussent.** Une feuille naît de sa tige, un champignon de son
+écorce — la marge les en détacherait par un blanc. Les poses `laterale`, `montee` et `terminale`
+n'en reçoivent donc pas (drapeau `pousse` sur l'arbre). Les poses `enligne` et `noeud`, elles, la
+gardent : interrompre la ligne est précisément leur rôle.
+
+Vérifié par `node test/banc-croisements.js` — douze paires d'éléments, une par case, plus la
+mesure que chaque arbre non-poussant a bien sa marge.
+
+### Anneaux de liane : supprimés par défaut
+
+`reference/liane/Liane ref organique.png` montre une liane **sans aucun anneau** : un fin ruban
+sinueux, des feuilles alternées, une spirale au bout. Les anneaux de nœud étaient une invention
+de l'outil, et c'est eux qui donnaient cet air mécanique aux lianes. `lianeNodes` passe à **0**
+par défaut ; le réglage reste disponible pour qui en veut.
+
+### Reste à traiter (relevé sur `node test/banc-esthetique.js`)
+
+- Les branches filles s'effilent en longues lames : de 8 mm à 3,5 mm sur toute leur course, sans
+  écorce ni rameau. La référence a des membres plus trapus qui se divisent en brindilles.
+- Sous 3 mm, une liane tombe au plancher du ruban et devient un trait simple : elle perd son
+  caractère. La référence garde un double trait très fin.
+- La transition branche → piste est franche : la piste démarre à pleine largeur contre le bois.

@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Prototype — moteur de branches</title>
+<style>
+  :root { --bg:#12151a; --panel:#1b1f27; --line:#2c323d; --txt:#e6e9ef; --dim:#98a1b2;
+          --acc:#7cc4a4; --warn:#e0a33f; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--txt);
+              font:13px/1.4 "IBM Plex Sans",system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  #wrap { display:flex; height:100dvh; }
+  #stage { flex:1; position:relative; display:flex; align-items:center; justify-content:center;
+           padding:8px; min-width:0; }
+  #board { position:relative; background:#fff; box-shadow:0 2px 24px #0008; touch-action:none; }
+  #board canvas, #board img { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #ref { pointer-events:none; opacity:.28; }
+  #panel { width:280px; flex:none; background:var(--panel); border-left:1px solid var(--line);
+           padding:12px; overflow:auto; -webkit-overflow-scrolling:touch; }
+  h1 { font-size:13px; margin:0 0 2px; letter-spacing:.02em; }
+  .sub { color:var(--dim); font-size:11px; margin:0 0 12px; }
+  fieldset { border:1px solid var(--line); border-radius:8px; margin:0 0 10px; padding:6px 10px 10px; }
+  legend { color:var(--acc); font-size:11px; text-transform:uppercase; letter-spacing:.06em; padding:0 4px; }
+  label { display:block; margin:9px 0 0; color:var(--dim); font-size:11px; }
+  label b { color:var(--txt); float:right; font-weight:500; font-family:"IBM Plex Mono",monospace; }
+  input[type=range] { width:100%; margin:2px 0 0; height:22px; accent-color:var(--acc); }
+  select { width:100%; margin:3px 0 0; padding:6px; background:#232833; color:var(--txt);
+           border:1px solid var(--line); border-radius:6px; font:inherit; font-size:12px; }
+  .row { display:flex; gap:6px; margin-top:8px; }
+  button { flex:1; padding:9px 6px; border:1px solid var(--line); border-radius:7px;
+           background:#232833; color:var(--txt); font:inherit; font-size:12px; cursor:pointer; }
+  button:active { background:#2e3542; }
+  button.on { border-color:var(--acc); color:var(--acc); }
+  #stats { color:var(--dim); font-size:11px; margin-top:10px; line-height:1.7; }
+  #stats b { color:var(--txt); font-family:"IBM Plex Mono",monospace; }
+  #stats .warn { color:var(--warn); }
+  .hint { color:var(--dim); font-size:11px; margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+
+  /* Sélecteur de motif. Une liste déroulante de 42 entrées ne se parcourt pas : on montre
+     les motifs, tracés depuis leurs propres axes — rien à charger, la page vit en file://. */
+  .pick { display:flex; align-items:center; gap:8px; width:100%; margin:3px 0 0; padding:6px;
+          text-align:left; }
+  .pick svg { width:34px; height:34px; flex:none; background:#fff; border-radius:4px; }
+  .pick span { display:flex; flex-direction:column; min-width:0; }
+  .pick b { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pick i { color:var(--dim); font-style:normal; font-size:10px; }
+
+  #galerie { position:fixed; inset:0; z-index:20; background:#0d1015ee; display:none;
+             flex-direction:column; padding:12px; gap:10px; }
+  #galerie.on { display:flex; }
+  #gal-tete { display:flex; gap:8px; align-items:center; flex:none; }
+  #gal-q { flex:1; padding:9px 10px; background:#232833; color:var(--txt); font:inherit;
+           border:1px solid var(--line); border-radius:7px; }
+  #gal-tete button { flex:none; padding:9px 14px; }
+  .puces { display:flex; flex-wrap:wrap; gap:5px; flex:none; }
+  .puce { padding:5px 10px; border:1px solid var(--line); border-radius:20px; background:#232833;
+          color:var(--dim); font-size:11px; cursor:pointer; flex:none; }
+  .puce.on { border-color:var(--acc); color:var(--acc); background:#1e2a25; }
+  #gal-grille { flex:1; overflow:auto; -webkit-overflow-scrolling:touch;
+                display:grid; gap:8px; align-content:start;
+                grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); }
+  .carte { border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:6px;
+           cursor:pointer; display:flex; flex-direction:column; gap:4px; }
+  .carte svg { width:100%; aspect-ratio:1; background:#fff; border-radius:5px; }
+  .carte .nom { font-size:11px; line-height:1.25; }
+  .carte .meta { color:var(--dim); font-size:10px; display:flex; justify-content:space-between; gap:4px; }
+  .carte.on { border-color:var(--acc); }
+  /* Sous sa taille minimale un motif se remplit d'encre : on le signale sans l'interdire. */
+  .carte.petit .meta { color:var(--warn); }
+  .carte.petit svg { opacity:.5; }
+  .carte .pose { color:var(--acc); font-size:10px; }
+  #gal-vide { color:var(--dim); font-size:12px; padding:20px; text-align:center; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><div id="board">
+    <canvas id="cv"></canvas>
+    <img id="ref" src="../reference/trame%20de%20base.png" alt="">
+  </div></div>
+
+  <div id="panel">
+    <h1>Moteur de branches — prototype</h1>
+    <p class="sub">Trace un axe : la branche est fabriquée. Pars d'une branche existante&nbsp;: elle fusionne. Une liane, elle, s'enroule d'elle-même sur ce qu'elle croise.</p>
+
+    <fieldset><legend>Tracer</legend>
+      <div class="row">
+        <button id="k-auto" class="on">Branche</button>
+        <button id="k-liane">Liane</button>
+      </div>
+      <div class="row">
+        <button id="k-piste">Piste</button>
+        <button id="k-semer">Semer</button>
+        <button id="k-editer">Éditer</button>
+      </div>
+      <label>Distance d'accroche <b id="v-snap">26</b>px<input type="range" id="s-snap" min="4" max="70" step="1" value="26"></label>
+    </fieldset>
+
+    <fieldset id="fs-edit" data-for="editer" hidden><legend>Sélection</legend>
+      <p class="sub" id="sel-what" style="margin:6px 0 0">Touche un motif ou une poignée d'axe.</p>
+      <label>Taille <b id="v-seltaille">18</b>mm<input type="range" id="s-seltaille" min="4" max="60" step="0.5" value="18"></label>
+      <label>Angle de sortie <b id="v-selang">55</b>°<input type="range" id="s-selang" min="0" max="90" step="1" value="55"></label>
+      <div class="row"><button id="b-selside">Autre côté</button><button id="b-seldel">Supprimer</button></div>
+    </fieldset>
+
+    <fieldset data-for="semer"><legend>Semis</legend>
+      <label>Motif<button type="button" id="sow-pick" class="pick">
+        <svg id="pick-vue" viewBox="0 0 100 100" aria-hidden="true"></svg>
+        <span><b id="pick-nom">—</b><i id="pick-sous"></i></span>
+      </button></label>
+      <label>Taille <b id="v-sowsize">18</b>mm<input type="range" id="s-sowsize" min="4" max="60" step="0.5" value="18"></label>
+      <label>Pas <b id="v-sowstep">22</b>mm<input type="range" id="s-sowstep" min="4" max="80" step="1" value="22"></label>
+      <label>Angle de sortie <b id="v-sowang">55</b>°<input type="range" id="s-sowang" min="0" max="90" step="1" value="55"></label>
+      <div class="row"><button id="b-lod" class="on">Détail selon la taille</button></div>
+      <div class="row">
+        <button id="side-auto" class="on">Alterné</button>
+        <button id="side-l">Gauche</button>
+        <button id="side-r">Droite</button>
+      </div>
+    </fieldset>
+
+    <fieldset data-for="liane"><legend>Liane</legend>
+      <label>Calibre <b id="v-lianew">3.4</b>mm<input type="range" id="s-lianew" min="1" max="10" step="0.1" value="3.4"></label>
+      <label>Anneaux de nœud <b id="v-lianen">0.00</b>× le calibre<input type="range" id="s-lianen" min="0" max="3" step="0.1" value="0"></label>
+      <label>Un nœud tous les <b id="v-lianes">12</b> calibres<input type="range" id="s-lianes" min="4" max="30" step="1" value="12"></label>
+      <label>Collier de départ <b id="v-collar">0.55</b><input type="range" id="s-collar" min="0" max="1.5" step="0.05" value="0.55"></label>
+      <label>Feuille aux nœuds <b id="v-lleaf">6.0</b>× le calibre<input type="range" id="s-lleaf" min="0" max="14" step="0.5" value="6"></label>
+      <label>Spires par croisement <b id="v-coil">1</b><input type="range" id="s-coil" min="1" max="5" step="1" value="1"></label>
+    </fieldset>
+
+    <fieldset data-for="piste"><legend>Piste PCB</legend>
+      <label>Largeur de piste <b id="v-pcbw">3.5</b>mm<input type="range" id="s-pcbw" min="2" max="10" step="0.1" value="3.5"></label>
+      <label>Fidélité au geste <b id="v-pcbt">18</b>px<input type="range" id="s-pcbt" min="4" max="60" step="1" value="18"></label>
+      <div class="row"><button id="b-vias" class="on">Vias</button><button id="b-pad" class="on">Pastille</button></div>
+    </fieldset>
+
+    <fieldset><legend>Traçabilité (pyrogravure)</legend>
+      <label>Trait de structure <b id="v-ink">1.00</b>mm<input type="range" id="s-ink" min="0.6" max="2.5" step="0.05" value="1"></label>
+      <label>Trait de détail <b id="v-inkf">0.60</b>mm<input type="range" id="s-inkf" min="0.4" max="1.5" step="0.05" value="0.6"></label>
+      <label>Ruban minimum <b id="v-minr">3.0</b>mm<input type="range" id="s-minr" min="1.5" max="8" step="0.1" value="3"></label>
+      <div class="row"><button id="b-tail">Finir en brindille</button></div>
+    </fieldset>
+
+    <fieldset data-for="branche"><legend>Branche</legend>
+      <label>Largeur de base <b id="v-root">12.5</b>mm<input type="range" id="s-root" min="2" max="30" step="0.5" value="12.5"></label>
+      <label>Effilement <b id="v-taper">1.15</b><input type="range" id="s-taper" min="0.2" max="3" step="0.05" value="1.15"></label>
+      <label>Ratio fille / mère <b id="v-child">0.66</b><input type="range" id="s-child" min="0.25" max="0.95" step="0.01" value="0.66"></label>
+      <label>Renflement de fourche <b id="v-jsw">0.35</b><input type="range" id="s-jsw" min="0" max="1" step="0.05" value="0.35"></label>
+      <label>Arrondi d'aisselle <b id="v-fillet">0.70</b><input type="range" id="s-fillet" min="0" max="1.2" step="0.05" value="0.7"></label>
+      <label>Départ tangentiel <b id="v-lead">0.5</b><input type="range" id="s-lead" min="0" max="2.5" step="0.1" value="0.5"></label>
+    </fieldset>
+
+    <fieldset data-for="branche liane"><legend>Tracé main</legend>
+      <label>Respiration du trait <b id="v-swell">0.10</b><input type="range" id="s-swell" min="0" max="0.3" step="0.01" value="0.10"></label>
+      <label>Ondulation — amplitude <b id="v-wamp">0.02</b><input type="range" id="s-wamp" min="0" max="0.35" step="0.01" value="0.02"></label>
+      <label>Ondulation — longueur d'onde <b id="v-wlen">3.2</b><input type="range" id="s-wlen" min="0.6" max="6" step="0.1" value="3.2"></label>
+      <label>Lissage du tremblé <b id="v-smooth">2.5</b>mm<input type="range" id="s-smooth" min="0" max="8" step="0.1" value="2.5"></label>
+      <label>Longueur de pointe <b id="v-tip">8</b>mm<input type="range" id="s-tip" min="0" max="30" step="0.5" value="8"></label>
+      <label>Écorce — une ligne tous les <b id="v-bark">4.0</b>mm<input type="range" id="s-bark" min="1" max="12" step="0.5" value="4"></label>
+      <label>Nœuds du bois <b id="v-knot">1.0</b><input type="range" id="s-knot" min="0" max="3" step="0.1" value="1"></label>
+    </fieldset>
+
+    <fieldset><legend>Aides</legend>
+      <label>Référence en calque <b id="v-op">28</b>%<input type="range" id="s-op" min="0" max="100" step="1" value="28"></label>
+      <div class="row"><button id="b-axes">Voir les axes</button><button id="b-seed">Autre aléa</button></div>
+    </fieldset>
+
+    <div class="row"><button id="b-undo">Annuler</button><button id="b-clear">Effacer</button></div>
+    <div class="row"><button id="b-svg">Exporter le SVG</button></div>
+
+    <div id="stats"></div>
+    <p class="hint">Ctrl+Z annule. Au stylet, le doigt ne dessine pas.<br>
+      1 px = 0,288 mm (mesuré sur la trame de référence).</p>
+  </div>
+</div>
+
+<div id="galerie">
+  <div id="gal-tete">
+    <input id="gal-q" type="search" placeholder="Chercher un motif…" autocomplete="off">
+    <button type="button" id="gal-fermer">Fermer</button>
+  </div>
+  <div class="puces" id="gal-fam"></div>
+  <div class="puces" id="gal-etat"></div>
+  <div id="gal-grille"></div>
+</div>
+
+<script src="../vendor/clipper.js"></script>
+<script src="../src/motif-bank.js"></script>
+<script src="../src/branch-engine.js"></script>
+<script>
+(function () {
+  const W = 1402, H = 1122;            // espace de travail = pixels de la trame de référence
+  const MM = 1 / BE.MM_PER_PX;         // px par mm
+  const DPR = Math.min(2, window.devicePixelRatio || 1) * 1.5;
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+
+  const st = { rootWidth: 12.5 * MM, taper: 1.15, tipFrac: 0.12, childRatio: 0.66, childRatioSide: 0.30,
+               junctionSwell: 0.35, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.10,
+               wobbleAmp: 0.02, wobbleLen: 3.2, smoothPx: 2.5 * MM, tipLen: 8 * MM,
+               barkPitch: 4 * MM, ink: 1.0 * MM, inkFine: 0.6 * MM, minRibbon: 3.0 * MM, snap: 26, tailTwig: false,
+               pcbWidth: 3.5 * MM, pcbTol: 18, pcbVias: true, pcbPad: true,
+               knotDensity: 1.0, knotStep: 26 * MM,
+               lianeWidth: 3.3 * MM, lianeNodes: 0, lianeNodeStep: 12, lianeCollar: 0.55, lianeLeaf: 6, lianeEtat: "organique",
+               sowSize: 18 * MM, sowStep: 22 * MM, sowAngle: (55 * Math.PI) / 180, autoLod: true, coilTurns: 1 };
+  let scene = BE.createScene();
+  let trees = [];
+  let showAxes = false;
+  let forceKind = null;                // null = branche, sinon liane / piste / semer / editer
+  let sel = null;                      // { kind:"stamp"|"ctrl", id, index }
+  let dragging = null;
+  let portVise = null;   // borne de motif visée par le tracé en cours
+
+  // bibliothèque de motifs (axes inlinés par tools/build-motif-bank.py)
+  BE.setBank(window.MOTIF_BANK || []);
+  const FAMILLES = { feuille: "Feuilles", fleur: "Fleurs", vrille: "Vrilles",
+                     champignon: "Champignons", radicelle: "Radicelles", composant: "Composants" };
+  const ETATS = { organique: "Organique", hybride: "Hybride", electronique: "Électronique" };
+  /* Manière de poser : elle décide de tout. Une résistance s'insère DANS la ligne, une puce
+     est un nœud, une vrille termine la course. L'afficher évite de semer une pièce comme
+     une feuille et de se retrouver avec des composants flottant à côté de leur piste. */
+  const POSES = { laterale: "sur le côté", montee: "debout dessus", enligne: "dans la ligne",
+                  noeud: "en nœud", terminale: "au bout" };
+
+  /* ── Galerie de motifs ────────────────────────────────────────────────────────────────
+     Une CARTE = un motif, pas une variante : les versions nue et détaillée du même motif
+     sont choisies par l'outil selon la taille de pose, les montrer séparément doublerait
+     la liste sans rien apprendre. */
+  const cartes = [];
+  for (const m of BE.bank) {
+    const cle = `${m.famille}|${m.forme}|${m.etat}`;
+    let c = cartes.find((x) => x.cle === cle);
+    if (!c) cartes.push((c = { cle, famille: m.famille, forme: m.forme, etat: m.etat, variantes: [] }));
+    c.variantes.push(m);
+  }
+  for (const c of cartes) {
+    // vignette : la variante la plus riche ; pose : l'outil tranchera
+    c.vue = c.variantes.reduce((a, b) => ((a.gap || 0) <= (b.gap || 0) ? a : b));
+    c.id = c.vue.id;
+    c.mini = Math.min(...c.variantes.map((m) => BE.minStampSize(m, st) || Infinity));
+    c.pose = c.vue.pose || "laterale";
+    c.texte = `${c.famille} ${c.forme} ${c.etat} ${POSES[c.pose] || ""}`.toLowerCase();
+  }
+
+  // Vignette tracée depuis les axes du motif : rien à charger, et c'est exactement ce que
+  // l'outil posera. Trait épaissi à la vignette, sinon on ne voit rien à 100 px.
+  function vignette(svg, m) {
+    const pad = Math.max(m.w, m.h) * 0.04;
+    svg.setAttribute("viewBox", `${-pad} ${-pad} ${m.w + 2 * pad} ${m.h + 2 * pad}`);
+    svg.innerHTML = m.paths.map((p) =>
+      `<path d="M${p.map((q) => q.join(",")).join("L")}"/>`).join("");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "#111");
+    svg.setAttribute("stroke-width", Math.max(m.w, m.h) / 34);
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+  }
+
+  let motifCourant = cartes.length ? cartes[0].id : "";
+  const sowMotif = () => motifCourant;
+
+  const gal = document.getElementById("galerie");
+  const grille = document.getElementById("gal-grille");
+  const champ = document.getElementById("gal-q");
+  let filtreFam = "", filtreEtat = "";
+
+  function puces(hote, valeurs, courant, choisir) {
+    hote.innerHTML = "";
+    for (const [v, lib] of valeurs) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "puce" + (v === courant() ? " on" : "");
+      b.textContent = lib;
+      b.addEventListener("click", () => { choisir(v); remplirGalerie(); });
+      hote.appendChild(b);
+    }
+  }
+
+  function remplirGalerie() {
+    const fams = [...new Set(cartes.map((c) => c.famille))];
+    const etats = [...new Set(cartes.map((c) => c.etat))];
+    puces(document.getElementById("gal-fam"),
+          [["", `Tout (${cartes.length})`]].concat(fams.map((f) => [f, FAMILLES[f] || f])),
+          () => filtreFam, (v) => (filtreFam = v));
+    puces(document.getElementById("gal-etat"),
+          [["", "Tous états"]].concat(etats.map((e) => [e, ETATS[e] || e])),
+          () => filtreEtat, (v) => (filtreEtat = v));
+
+    const q = champ.value.trim().toLowerCase();
+    const vus = cartes.filter((c) =>
+      (!filtreFam || c.famille === filtreFam) &&
+      (!filtreEtat || c.etat === filtreEtat) &&
+      (!q || c.texte.includes(q)));
+
+    grille.innerHTML = "";
+    if (!vus.length) {
+      grille.innerHTML = '<p id="gal-vide">Aucun motif ne correspond.</p>';
+      return;
+    }
+    for (const c of vus) {
+      const miniMm = c.mini === Infinity ? 0 : c.mini * BE.MM_PER_PX;
+      const trop = miniMm > st.sowSize * BE.MM_PER_PX + 0.01;
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "carte" + (c.id === motifCourant ? " on" : "") + (trop ? " petit" : "");
+      el.innerHTML = `<svg></svg><span class="nom">${c.forme}</span>` +
+        `<span class="meta"><span>${ETATS[c.etat] || c.etat}</span>` +
+        `<span>${miniMm ? "≥ " + miniMm.toFixed(0) + " mm" : ""}</span></span>` +
+        `<span class="pose">${POSES[c.pose] || c.pose}</span>`;
+      vignette(el.querySelector("svg"), c.vue);
+      el.addEventListener("click", () => { motifCourant = c.id; fermerGalerie(); });
+      grille.appendChild(el);
+    }
+  }
+
+  function majPastille() {
+    const c = cartes.find((x) => x.id === motifCourant);
+    document.getElementById("pick-nom").textContent = c ? `${FAMILLES[c.famille] || c.famille} · ${c.forme}` : "(bibliothèque vide)";
+    document.getElementById("pick-sous").textContent =
+      c ? `${ETATS[c.etat] || c.etat} · ${POSES[c.pose] || c.pose}` : "";
+    if (c) vignette(document.getElementById("pick-vue"), c.vue);
+  }
+  function fermerGalerie() { gal.classList.remove("on"); majPastille(); rebuild(); }
+
+  document.getElementById("sow-pick").addEventListener("click", () => {
+    gal.classList.add("on"); remplirGalerie(); champ.focus();
+  });
+  document.getElementById("gal-fermer").addEventListener("click", fermerGalerie);
+  champ.addEventListener("input", remplirGalerie);
+  gal.addEventListener("click", (e) => { if (e.target === gal) fermerGalerie(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && gal.classList.contains("on")) fermerGalerie();
+  });
+  majPastille();
+
+  // Le motif choisi tient-il à la taille demandée, ou ses traits vont-ils se rejoindre ?
+  function sowWarning() {
+    const id = st.autoLod ? BE.pickVariant(sowMotif(), st.sowSize, st) : sowMotif();
+    const m = BE.motif(id);
+    if (!m) return "";
+    const mini = BE.minStampSize(m, st);
+    if (!mini) return "";
+    const miniMm = mini * BE.MM_PER_PX, curMm = st.sowSize * BE.MM_PER_PX;
+    /* On ne refuse plus rien : un motif trop petit est AGRANDI jusqu'à rester lisible. Il
+       faut le dire, sinon la taille posée ne correspond pas au réglage et ça passe pour un
+       bug — c'était le cas quand l'outil renonçait en silence. */
+    return curMm + 0.01 < miniMm
+      ? `<span class="warn">${m.forme} ${m.etat} : sera agrandi à ${miniMm.toFixed(0)} mm (réglé sur ${curMm.toFixed(0)})</span>`
+      : `pose « ${m.detail} » · lisible dès ${miniMm.toFixed(0)} mm`;
+  }
+
+  function fit() {
+    const stage = document.getElementById("stage");
+    const k = Math.min((stage.clientWidth - 16) / W, (stage.clientHeight - 16) / H);
+    const board = document.getElementById("board");
+    board.style.width = Math.round(W * k) + "px";
+    board.style.height = Math.round(H * k) + "px";
+  }
+  window.addEventListener("resize", fit);
+
+  // ── rendu ──
+  function rebuild() {
+    trees = BE.buildGeometry(scene, st);
+    draw();
+    const s = BE.stats(scene);
+    const inkMm = st.ink * BE.MM_PER_PX;
+    const org = scene.branches.filter((b) => b.forceKind !== "piste");
+    const widths = org.map((b) => b.w0 * BE.MM_PER_PX);
+    const range = widths.length
+      ? `largeurs : <b>${Math.min(...widths).toFixed(1)}</b> à <b>${Math.max(...widths).toFixed(1)} mm</b>`
+      : "";
+    document.getElementById("stats").innerHTML =
+      `<b>${org.length}</b> branche(s) · <b>${scene.branches.length - org.length}</b> piste(s) · ` +
+      `<b>${scene.stamps.length}</b> motif(s) posé(s)<br>` + (range ? range + "<br>" : "") +
+      /* Un motif écarté faute de place disparaît sans rien dire : on le compte, sinon on
+         croit que la pose a échoué. Et on annonce les bornes où une ligne peut repartir. */
+      (BE._ecartes ? `<span class="warn">${BE._ecartes} motif(s) écarté(s) faute de place</span><br>` : "") +
+      (BE.freePorts(scene, st).length
+        ? `<b>${BE.freePorts(scene, st).length}</b> borne(s) libre(s) où enchaîner une ligne<br>` : "") +
+      `budget de trait : <b>${(s.lengthMm / 1000).toFixed(2)} m</b> d'axe<br>` +
+      (st.inkFine * BE.MM_PER_PX < 0.55 ? `<span class="warn">trait de détail &lt; 0,55 mm : hors de portée d'une pointe fine</span><br>`
+                    : `deux calibres traçables à la main<br>`) +
+      sowWarning();
+  }
+
+  function pathOf(polys) {
+    ctx.beginPath();
+    for (const p of polys) {
+      ctx.moveTo(p[0][0], p[0][1]);
+      for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+      ctx.closePath();
+    }
+  }
+
+  function draw(preview) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+    for (const t of trees) {
+      if (!t.silhouette.length) continue;
+      pathOf(t.silhouette);
+      ctx.fillStyle = "#fff"; ctx.fill("evenodd");        // occlusion « autocollant »
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = st.ink;                                      // structure
+      if (t.outline.length) { pathOf(t.outline); ctx.stroke(); }   // rubans : le contour EST l'encre
+      ctx.lineWidth = st.inkFine;                                  // détail
+      if (t.lines.length) {                                        // écorce, brindilles, motifs
+        ctx.save();
+        pathOf(t.silhouette); ctx.clip("evenodd");
+        ctx.beginPath();
+        for (const l of t.lines) {
+          ctx.moveTo(l[0][0], l[0][1]);
+          for (let i = 1; i < l.length; i++) ctx.lineTo(l[i][0], l[i][1]);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    if (forceKind === "editer") {
+      // poignées d'axe : c'est par elles qu'on rattrape une branche mal tracée
+      for (const b of scene.branches) {
+        if (!b.ctrl) continue;
+        for (let i = 0; i < b.ctrl.length; i++) {
+          const on = sel && sel.kind === "ctrl" && sel.id === b.id && sel.index === i;
+          ctx.beginPath();
+          ctx.arc(b.ctrl[i][0], b.ctrl[i][1], on ? 9 : 6, 0, 6.284);
+          ctx.fillStyle = on ? "#e0433f" : "#fff";
+          ctx.fill();
+          ctx.strokeStyle = "#e0433f"; ctx.lineWidth = 2; ctx.stroke();
+        }
+      }
+      const s0 = sel && sel.kind === "stamp" && scene.stamps.find((x) => x.id === sel.id);
+      if (s0 && s0._geom) {
+        ctx.strokeStyle = "#e0433f"; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (const l of s0._geom.lines) {
+          ctx.moveTo(l[0][0], l[0][1]);
+          for (let i = 1; i < l.length; i++) ctx.lineTo(l[i][0], l[i][1]);
+        }
+        ctx.stroke();
+        // deux poignées : le pied coulisse le long de la branche, la pointe règle taille et angle
+        const h = BE.stampHandles(scene, s0, st);
+        if (h) {
+          ctx.strokeStyle = "#e0433f"; ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(h.pied[0], h.pied[1]); ctx.lineTo(h.pointe[0], h.pointe[1]); ctx.stroke();
+          for (const [pt, plein] of [[h.pied, false], [h.pointe, true]]) {
+            ctx.beginPath(); ctx.arc(pt[0], pt[1], 11, 0, 6.284);
+            ctx.fillStyle = plein ? "#e0433f" : "#fff"; ctx.fill();
+            ctx.lineWidth = 2.5; ctx.stroke();
+          }
+        }
+      }
+    }
+
+    /* BORNES LIBRES. Une résistance, une bobine, une puce ont une patte à chaque bout :
+       une ligne peut y repartir, et la chaîne branche → composant → piste se lit d'un trait.
+       Sans les montrer, personne ne peut deviner où enchaîner. Un champignon ou une feuille
+       n'en a pas : son pied est déjà pris par son support. */
+    if (forceKind !== "editer" && forceKind !== "semer") {
+      const libres = BE.freePorts(scene, st);
+      if (libres.length) {
+        ctx.strokeStyle = "#7cc4a4"; ctx.lineWidth = 2;
+        for (const b of libres) {
+          ctx.beginPath(); ctx.arc(b.p[0], b.p[1], 7, 0, 6.284); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(b.p[0], b.p[1]);
+          ctx.lineTo(b.p[0] + b.dir[0] * 15, b.p[1] + b.dir[1] * 15);
+          ctx.stroke();
+        }
+      }
+    }
+
+    if (showAxes) {
+      ctx.strokeStyle = "#e0433f"; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (const b of scene.branches) {
+        ctx.moveTo(b.axis[0][0], b.axis[0][1]);
+        for (let i = 1; i < b.axis.length; i++) ctx.lineTo(b.axis[i][0], b.axis[i][1]);
+      }
+      ctx.stroke();
+    }
+
+    if (preview && preview.length > 1) {
+      ctx.strokeStyle = "#7cc4a4"; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(preview[0][0], preview[0][1]);
+      for (let i = 1; i < preview.length; i++) ctx.lineTo(preview[i][0], preview[i][1]);
+      ctx.stroke();
+    }
+    if (portVise) {                       // la borne visée : elle l'emporte sur l'axe
+      ctx.strokeStyle = "#7cc4a4"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(portVise.p[0], portVise.p[1], 12, 0, 6.284); ctx.stroke();
+    } else if (anchor) {
+      // la pastille a le DIAMÈTRE de ce qui va être créé : on voit la grosseur avant de tracer
+      const w = forceKind === "semer" ? st.sowSize
+        : forceKind === "piste" ? st.pcbWidth
+        : forceKind === "liane" ? st.lianeWidth
+        : BE.childWidth(anchor, st);
+      ctx.strokeStyle = "#e0a33f"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(anchor.point[0], anchor.point[1], Math.max(5, w / 2), 0, 6.284); ctx.stroke();
+    }
+  }
+
+  // ── saisie ──
+  const board = document.getElementById("board");
+  let drawing = false, raw = [], anchor = null, headAnchor = null, penSeen = false, activeId = null;
+
+  const toWorld = (e) => {
+    const r = board.getBoundingClientRect();
+    return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H];
+  };
+
+  board.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "pen") penSeen = true;
+    if (penSeen && e.pointerType === "touch") return;   // doigt = navigation, jamais dessin
+    if (drawing) return;
+    board.setPointerCapture(e.pointerId);
+    activeId = e.pointerId; drawing = true;
+    const p = toWorld(e);
+    if (forceKind === "editer") {
+      // une poignée du motif déjà sélectionné l'emporte sur toute autre cible
+      const cur = sel && sel.kind === "stamp" ? scene.stamps.find((x) => x.id === sel.id) : null;
+      const h = cur && BE.stampHandles(scene, cur, st);
+      if (h && Math.hypot(p[0] - h.pointe[0], p[1] - h.pointe[1]) < 22) {
+        dragging = { kind: "tip", id: cur.id };
+      } else if (h && Math.hypot(p[0] - h.pied[0], p[1] - h.pied[1]) < 22) {
+        dragging = { kind: "stamp", id: cur.id };
+      } else {
+        sel = BE.editHit(scene, p, st, 30);
+        dragging = sel;
+      }
+      showSelection();
+      draw();
+      e.preventDefault();
+      return;
+    }
+    // en semis on cherche loin : on vise le corps d'une branche, pas son axe au pixel près
+    headAnchor = anchor = BE.hitAxis(scene, p, forceKind === "semer" ? st.snap * 2.5 : st.snap, st);
+    portVise = forceKind === "semer" ? null : BE.hitPort(scene, p, st.snap, st);
+    raw = [p];
+    e.preventDefault();
+  });
+
+  board.addEventListener("pointermove", (e) => {
+    if (!drawing || e.pointerId !== activeId) return;
+    if (forceKind === "editer") {
+      if (dragging) {
+        const p = toWorld(e);
+        if (dragging.kind === "tip") {
+          const s0 = scene.stamps.find((x) => x.id === dragging.id);
+          if (s0) { BE.dragStampTip(scene, s0, p, st); showSelection(); }
+        } else if (dragging.kind === "stamp") {
+          const s0 = scene.stamps.find((x) => x.id === dragging.id);
+          if (s0) BE.moveStamp(scene, s0, p);
+        } else {
+          const b = scene.branches.find((x) => x.id === dragging.id);
+          if (b) BE.moveCtrl(scene, b, dragging.index, p, st);
+        }
+        rebuild();
+      }
+      e.preventDefault();
+      return;
+    }
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ev of evs) raw.push(toWorld(ev));
+    // l'accroche peut venir de l'autre bout (tracé pointe→tronc) : on l'affiche en direct.
+    // Seule la queue bouge, la tête est figée : une seule recherche par déplacement.
+    const tail = BE.hitAxis(scene, raw[raw.length - 1], forceKind === "semer" ? st.snap * 2.5 : st.snap, st);
+    anchor = tail && (!headAnchor || tail.d < headAnchor.d) ? tail : headAnchor;
+    draw(raw);
+    e.preventDefault();
+  }, { passive: false });
+
+  function end(e) {
+    if (!drawing || e.pointerId !== activeId) return;
+    drawing = false; activeId = null; portVise = null;
+    if (forceKind === "editer") { dragging = null; return; }
+
+    if (forceKind === "semer") {
+      /* Semis : on pose sur la branche visée au départ. Un simple tap pose un motif,
+         un glissé en pose une file entre les deux abscisses. */
+      const to = BE.hitAxis(scene, raw[raw.length - 1], st.snap * 2.5, st);
+      if (headAnchor && sowMotif()) {
+        if (to && to.branchId === headAnchor.branchId && Math.abs(to.t - headAnchor.t) > 0.01) {
+          BE.sowAlong(scene, headAnchor.branchId, headAnchor.t, to.t, sowMotif(), st);
+        } else {
+          BE.addStampAuto(scene, sowMotif(), headAnchor, st);
+        }
+      }
+    } else if (raw.length > 2) {
+      const a = BE.anchorStroke(scene, raw, st);   // tracé de la pointe vers le tronc accepté
+      const nouvelle = BE.addBranch(scene, a.pts, st, a.anchor, forceKind);
+      // une liane se garnit d'elle-même : feuilles aux nœuds, vrille au bout
+      if (forceKind === "liane") BE.garnishLiane(scene, nouvelle, st);
+    }
+    raw = []; anchor = headAnchor = null;
+    rebuild();
+  }
+  board.addEventListener("pointerup", end);
+  board.addEventListener("pointercancel", end);
+
+  // ── réglages ──
+  function bind(id, key, factor, digits, after) {
+    const el = document.getElementById("s-" + id), lbl = document.getElementById("v-" + id);
+    el.addEventListener("input", () => {
+      const v = parseFloat(el.value);
+      st[key] = v * (factor || 1);
+      lbl.textContent = digits != null ? v.toFixed(digits) : v;
+      if (after) after();
+      rebuild();
+    });
+  }
+  bind("snap", "snap");
+  bind("ink", "ink", MM, 2);
+  bind("inkf", "inkFine", MM, 2);
+  bind("minr", "minRibbon", MM, 1);
+  bind("root", "rootWidth", MM, 1);
+  bind("taper", "taper", 1, 2);
+  bind("child", "childRatio", 1, 2);
+  bind("jsw", "junctionSwell", 1, 2);
+  bind("fillet", "filletRatio", 1, 2);
+  bind("lead", "emergeLead", 1, 1);
+  bind("swell", "swellAmp", 1, 2);
+  bind("wamp", "wobbleAmp", 1, 2);
+  bind("wlen", "wobbleLen", 1, 1);
+  bind("smooth", "smoothPx", MM, 1, () => BE.rebuildAxes(scene, st));
+  bind("tip", "tipLen", MM, 1);
+  bind("bark", "barkPitch", MM, 1);
+  bind("knot", "knotDensity", 1, 1);
+  bind("pcbw", "pcbWidth", MM, 1);
+  bind("pcbt", "pcbTol");
+  bind("lianew", "lianeWidth", MM, 1);
+  bind("lianen", "lianeNodes", 1, 2);
+  bind("lianes", "lianeNodeStep");
+  bind("coil", "coilTurns");
+  bind("collar", "lianeCollar", 1, 2);
+  bind("lleaf", "lianeLeaf", 1, 1);
+  bind("sowsize", "sowSize", MM, 1);
+  bind("sowstep", "sowStep", MM);
+  bind("sowang", "sowAngle", Math.PI / 180);
+
+  document.getElementById("s-op").addEventListener("input", (e) => {
+    document.getElementById("ref").style.opacity = e.target.value / 100;
+    document.getElementById("v-op").textContent = e.target.value;
+  });
+
+  const kinds = { "k-auto": null, "k-liane": "liane",
+                  "k-piste": "piste", "k-semer": "semer", "k-editer": "editer" };
+  for (const id of Object.keys(kinds)) {
+    document.getElementById(id).addEventListener("click", () => {
+      forceKind = kinds[id];
+      for (const o of Object.keys(kinds)) document.getElementById(o).classList.toggle("on", o === id);
+      if (forceKind !== "editer") sel = null;
+      montrerReglages();
+      showSelection();
+      draw();
+    });
+  }
+
+  /* Panneau de sélection : il décrit ce qui est pris et n'expose que ce qui s'y applique.
+     Un motif a une taille et un angle, une poignée d'axe n'a rien à régler — elle se
+     déplace, c'est tout. */
+  function showSelection() {
+    const what = document.getElementById("sel-what");
+    const s0 = sel && sel.kind === "stamp" ? scene.stamps.find((x) => x.id === sel.id) : null;
+    for (const id of ["s-seltaille", "s-selang"]) {
+      document.getElementById(id).closest("label").hidden = !s0;
+    }
+    document.getElementById("b-selside").disabled = !s0;
+    document.getElementById("b-seldel").disabled = !sel;
+    if (s0) {
+      const m = BE.motif(s0.motifId);
+      what.textContent = `${m ? m.nom : "motif"} · ${(s0.sizePx * BE.MM_PER_PX).toFixed(0)} mm`;
+      document.getElementById("s-seltaille").value = (s0.sizePx * BE.MM_PER_PX).toFixed(1);
+      document.getElementById("v-seltaille").textContent = (s0.sizePx * BE.MM_PER_PX).toFixed(0);
+      document.getElementById("s-selang").value = Math.round((s0.angle * 180) / Math.PI);
+      document.getElementById("v-selang").textContent = Math.round((s0.angle * 180) / Math.PI);
+    } else if (sel) {
+      what.textContent = `poignée ${sel.index + 1} de la branche ${sel.id} — fais-la glisser`;
+    } else {
+      what.textContent = "Touche un motif ou une poignée d'axe.";
+    }
+  }
+
+  function selStamp() {
+    return sel && sel.kind === "stamp" ? scene.stamps.find((x) => x.id === sel.id) : null;
+  }
+  document.getElementById("s-seltaille").addEventListener("input", (e) => {
+    const s0 = selStamp(); if (!s0) return;
+    const mm = parseFloat(e.target.value);
+    document.getElementById("v-seltaille").textContent = mm.toFixed(0);
+    s0.sizePx = mm / BE.MM_PER_PX;
+    // redimensionner peut changer de niveau de détail : c'est voulu, et le panneau le dit
+    if (st.autoLod) s0.motifId = BE.pickVariant(s0.motifId, s0.sizePx, st);
+    s0._geom = null; rebuild(); showSelection();
+  });
+  document.getElementById("s-selang").addEventListener("input", (e) => {
+    const s0 = selStamp(); if (!s0) return;
+    document.getElementById("v-selang").textContent = e.target.value;
+    s0.angle = (parseFloat(e.target.value) * Math.PI) / 180;
+    s0._geom = null; rebuild();
+  });
+  document.getElementById("b-selside").addEventListener("click", () => {
+    const s0 = selStamp(); if (!s0) return;
+    s0.side = -s0.side; s0.mirror = !s0.mirror; s0._geom = null; rebuild();
+  });
+  document.getElementById("b-seldel").addEventListener("click", () => {
+    if (!sel) return;
+    if (sel.kind === "stamp") scene.stamps = scene.stamps.filter((x) => x.id !== sel.id);
+    else {
+      scene.branches = scene.branches.filter((x) => x.id !== sel.id);
+      scene.stamps = scene.stamps.filter((x) => x.branchId !== sel.id);
+      for (const c of scene.branches) if (c.parentId === sel.id) { c.parentId = null; c.t = null; }
+    }
+    sel = null; showSelection(); rebuild();
+  });
+  /* Un outil, ses réglages. Le panneau montrait tout en permanence — quatorze curseurs dont
+     douze sans effet sur le geste en cours. On n'affiche que ce qui s'applique. */
+  function montrerReglages() {
+    const outil = forceKind || "branche";
+    for (const fs of document.querySelectorAll("fieldset[data-for]")) {
+      fs.hidden = !fs.dataset.for.split(" ").includes(outil);
+    }
+  }
+  montrerReglages();
+
+  const sides = { "side-auto": "auto", "side-l": -1, "side-r": 1 };
+  st.sowSide = "auto";
+  for (const id of Object.keys(sides)) {
+    document.getElementById(id).addEventListener("click", () => {
+      st.sowSide = sides[id];
+      for (const o of Object.keys(sides)) document.getElementById(o).classList.toggle("on", o === id);
+    });
+  }
+
+  document.getElementById("b-lod").addEventListener("click", (e) => {
+    st.autoLod = !st.autoLod; e.target.classList.toggle("on", st.autoLod);
+  });
+  document.getElementById("b-vias").addEventListener("click", (e) => {
+    st.pcbVias = !st.pcbVias; e.target.classList.toggle("on", st.pcbVias); rebuild();
+  });
+  document.getElementById("b-pad").addEventListener("click", (e) => {
+    st.pcbPad = !st.pcbPad; e.target.classList.toggle("on", st.pcbPad); rebuild();
+  });
+
+  document.getElementById("b-tail").addEventListener("click", (e) => {
+    st.tailTwig = !st.tailTwig; e.target.classList.toggle("on", st.tailTwig); rebuild();
+  });
+  document.getElementById("b-axes").addEventListener("click", (e) => {
+    showAxes = !showAxes; e.target.classList.toggle("on", showAxes); draw();
+  });
+  document.getElementById("b-seed").addEventListener("click", () => {
+    for (const b of scene.branches) b.seed = (Math.random() * 4294967296) >>> 0;
+    rebuild();
+  });
+  document.getElementById("b-undo").addEventListener("click", () => { BE.removeLast(scene); rebuild(); });
+  document.getElementById("b-clear").addEventListener("click", () => { scene = BE.createScene(); rebuild(); });
+  document.getElementById("b-svg").addEventListener("click", () => {
+    const blob = new Blob([BE.toSVG(trees, W, H, st)], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "branches.svg"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+  window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { BE.removeLast(scene); rebuild(); }
+  });
+
+  fit();
+  rebuild();
+})();
+</script>
+</body>
+</html>

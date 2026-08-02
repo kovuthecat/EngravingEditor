@@ -1,11 +1,14 @@
-// Scanne exemple motif/Personnages et exemple motif/Symboles, écrit src/builtin-motifs.js.
+// Scanne exemple motif/Personnages, écrit src/builtin-motifs.js.
+//
+// La catégorie Symboles a été retirée du projet (2026-08-02) : le décor n'accueille plus que
+// des personnages, kodama et korok, seuls habitants de la forêt. Les anciens motifs et
+// personnages sont sortis de la bibliothèque ; ils restent dans l'historique git.
 const fs = require("fs");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
 const SOURCES = [
   { dir: "exemple motif/Personnages", role: "PERSONNAGE", prefix: "Personnages" },
-  { dir: "exemple motif/Symboles", role: "SYMBOLE", prefix: "Symboles" },
 ];
 
 const entries = [];

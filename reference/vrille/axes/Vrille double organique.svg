@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352.00 1131.00"
+     data-anchor="177.00,1115.00" data-source="Vrille double organique.png">
+  <!-- Axes du motif. L'epaisseur est appliquee par l'outil, en mm : le
+       stroke-width ci-dessous n'est qu'un rendu de controle. -->
+  <g fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M189.00,137.00L168.00,146.00L158.00,161.00L154.00,182.00L162.00,209.00L194.00,234.00L226.00,238.00L250.00,233.00L285.00,208.00L304.00,173.00L309.00,138.00L299.00,92.00L271.00,52.00L230.00,27.00L181.00,18.00L137.00,23.00L83.00,49.00L49.00,83.00L23.00,136.00L17.00,186.00L37.00,273.00L119.00,393.00L148.00,447.00L171.00,509.00L187.00,587.00L199.00,605.00"/>
+    <path d="M305.00,627.00L299.00,603.00L286.00,589.00L199.00,606.00L178.00,826.00L178.00,1115.00"/>
+  </g>
+</svg>

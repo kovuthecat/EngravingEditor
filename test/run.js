@@ -17,10 +17,13 @@ const transformedPts = transformed.subpaths[0].pts;
 if (transformedPts[0][0] !== 12 || transformedPts[0][1] !== 24 || transformedPts[1][0] !== 14)
   fail("les transformations SVG imbriquées ne sont pas appliquées dans le bon ordre");
 
+/* Trois motifs de complexité croissante, pris dans la bibliothèque courante. Les anciens
+   échantillons ont disparu avec la catégorie Symboles (2026-08-02) : on prend désormais un
+   kodama simple, un korok chargé, et le trio — celui qui a le plus de contours. */
 const SAMPLES = [
-  { name: "noiraude", file: "exemple motif/Personnages/noiraudes.svg" },
-  { name: "link", file: "exemple motif/Personnages/link.svg" },
-  { name: "majora", file: "exemple motif/Symboles/majora mask.svg" },
+  { name: "kodama", file: "exemple motif/Personnages/Kodama debout classique.svg" },
+  { name: "korok", file: "exemple motif/Personnages/Korok masque erable hybride.svg" },
+  { name: "trio", file: "exemple motif/Personnages/Kodama trio classique.svg" },
 ];
 
 function buildMotif(name, file) {

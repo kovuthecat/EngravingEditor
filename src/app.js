@@ -325,7 +325,9 @@
     item.append(cv, label, del);
     item.title = "Cliquer pour ajouter au plan";
     item.onclick = () => addInstance(motif);
-    const gridId = motif.role === "SYMBOLE" ? "library-symbole"
+    // rôle SYMBOLE : catégorie retirée, mais un ancien projet peut encore en contenir —
+    // on les range chez les personnages plutôt que de les faire disparaître en silence
+    const gridId = motif.role === "SYMBOLE" ? "library-perso"
                  : motif.role === "DECOR"   ? "library-decor"
                  :                            "library-perso";
     document.getElementById(gridId).appendChild(item);
@@ -367,8 +369,6 @@
   function updateLibCounts() {
     document.getElementById("count-perso").textContent =
       document.getElementById("library-perso").childElementCount;
-    document.getElementById("count-symbole").textContent =
-      document.getElementById("library-symbole").childElementCount;
   }
 
   // ─── bibliothèque de base (built-ins, D-008) ───────────────────────────────
@@ -422,7 +422,7 @@
     item.append(cv, label, del);
     item.title = "Cliquer pour ajouter au plan";
     item.onclick = () => addInstance(materializeBuiltin(entry));
-    const gridId = entry.role === "SYMBOLE" ? "library-symbole" : "library-perso";
+    const gridId = "library-perso";   // catégorie Symboles retirée : tout va chez les personnages
     document.getElementById(gridId).appendChild(item);
     const obs = getBuiltinObserver();
     if (obs) obs.observe(cv);
@@ -1014,7 +1014,9 @@
   // s'il a été modifié (edit.dirty) ; Appliquer seul écrit motif.surface. Verrouillage : draggable
   // désactivé partout, clics/dragstart ignorés (cf. guards plus haut), tr+moveHandle masqués ; deux
   // doigts restent le pan (T2).
-  const edit = { active: false, motifId: null, node: null, tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], altitudes: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
+  // mode ("draw"|"generate") : bascule Dessin/Générateur de la palette d'édition (src/generator-ui.js,
+  // branché via window.EditHost/window.GeneratorUI plus bas) — deux façons de peupler le MÊME edit.draft.
+  const edit = { active: false, motifId: null, node: null, mode: "draw", tool: "brush", op: "add", sizeMm: 3, strokeMode: "round", calliAngle: 45, pressureGamma: 1, minWidthFrac: 0.25, smoothing: 0, smoothPrev: null, drawing: false, pts: [], pressures: [], altitudes: [], draft: [], added: [], realFill: [], dirty: false, shapeAnchor: null, shapeCurrent: null, shapeConstrain: false, lasso: null, lassoDragAnchor: null, sidebarWasCollapsed: false, history: [], redo: [], reopenDetails: null, fingerDraws: false, panAnchor: null, drawerOpen: false, drawingPointerType: null, prevView: null, tapGesture: null };
   // (T5) conteneur natif du stage : les Pointer Events du tracé d'édition y sont attachés/détachés
   // par enterEdit/exitEdit (cf. plus bas), en parallèle des touch events du pinch (l. 166-205, inchangés).
   const editContainer = stage.container();
@@ -1104,6 +1106,10 @@
     edit.dirty = true;
     clearLassoSelection();
     redrawEditLayer(state.motifs.find((m) => m.id === edit.motifId));
+    // la scène du Générateur n'est pas rejouée par cet historique (cf. window.EditHost/generator-ui.js) :
+    // après un saut d'historique elle ne correspond plus forcément au brouillon -> on la remet à zéro
+    // plutôt que de risquer un décalage silencieux (une branche "fantôme" qui influence encore la suite).
+    if (window.GeneratorUI) window.GeneratorUI.onHistoryJump();
   }
   function redoStroke() {
     if (!edit.active || !edit.redo.length) return;
@@ -1118,6 +1124,7 @@
     edit.dirty = true;
     clearLassoSelection();
     redrawEditLayer(state.motifs.find((m) => m.id === edit.motifId));
+    if (window.GeneratorUI) window.GeneratorUI.onHistoryJump(); // cf. undoStroke
   }
   // brouillon effectif d'un motif pour Appliquer/Jeter : la session live si elle l'édite, sinon
   // l'essai rangé dans editDrafts ; null si rien en attente. Lit la première (unique en pratique,
@@ -1302,6 +1309,8 @@
     activeTouchPointers.clear();
     edit.panAnchor = null;
     edit.tapGesture = null;
+    setEditMode("draw"); // chaque entrée en édition démarre en Dessin (le Générateur se rechoisit)
+    if (window.GeneratorUI) window.GeneratorUI.onEnterEdit(); // scène de travail neuve (cf. §7 rapport)
     editContainer.addEventListener("pointerdown", editPointerDown, { passive: false });
     editContainer.addEventListener("pointermove", editPointerMove, { passive: false });
     editContainer.addEventListener("pointerup", editPointerUp, { passive: false });
@@ -1354,6 +1363,7 @@
     edit.tapGesture = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
     if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
+    if (window.GeneratorUI) window.GeneratorUI.onExitEdit(); // libère la scène de travail (cf. §7 rapport)
     editLayer.visible(false);
     editStaticGroup.clearCache();
     editDraftGroup.clearCache();
@@ -1419,6 +1429,7 @@
       edit.added = [];
       edit.dirty = false;
       redrawEditLayer(motif);
+      if (window.GeneratorUI) window.GeneratorUI.onHistoryJump(); // Jeter == retour en arrière, cf. undoStroke
     }
     rerenderMotif(motif); // repasse au réel (retire le vert s'il n'était pas en édition live)
     refreshDraftCounter();
@@ -1714,6 +1725,7 @@
     edit.shapeCurrent = null;
     edit.lassoDragAnchor = null;
     if (editPreview) { editPreview.destroy(); editPreview = null; }
+    if (window.GeneratorUI) window.GeneratorUI.cancelGesture(); // no-op hors mode Générateur
     uiLayer.batchDraw();
   }
 
@@ -1903,6 +1915,9 @@
     const prevPos = editCursorNode ? editCursorNode.position() : null;
     const wasVisible = editCursorNode ? editCursorNode.visible() : false;
     if (editCursorNode) { editCursorNode.destroy(); editCursorNode = null; }
+    // pas de réticule pinceau/gomme en mode Générateur (édit.tool n'y a pas de sens) : le
+    // repère visuel y vient de generator-ui.js (aperçu du tracé + pastille d'accroche).
+    if (edit.mode === "generate") { uiLayer.batchDraw(); return; }
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
     const scale = edit.node ? edit.node.getAbsoluteScale().x || 1 : 1;
@@ -1968,6 +1983,9 @@
     editContainer.setPointerCapture(e.pointerId);
     const motif = state.motifs.find((m) => m.id === edit.motifId);
     if (!motif) return;
+    // mode Générateur (src/generator-ui.js) : même verrouillage/priorité stylet ci-dessus, mais le
+    // tracé lui-même (branche/liane/piste/semer/éditer) est géré là-bas, pas ici.
+    if (edit.mode === "generate") { if (window.GeneratorUI) window.GeneratorUI.pointerDown(e, motif); return; }
     if (edit.tool === "lasso") { startLassoPointer(e); return; }
     if (isFreehandTool(edit.tool)) startStroke(motif, e); else startShape(motif, e);
   }
@@ -1987,6 +2005,7 @@
       return;
     }
     stage.setPointersPositions(e);
+    if (edit.mode === "generate") { if (window.GeneratorUI) window.GeneratorUI.pointerMove(e); return; }
     updateEditCursor(e);
     if (edit.lassoDragAnchor) { e.preventDefault(); moveLassoDrag(); return; }
     if (!edit.drawing) return;
@@ -2011,6 +2030,7 @@
     }
     if (edit.panAnchor && e.pointerId === edit.panAnchor.pointerId) { edit.panAnchor = null; return; }
     if (e.type === "pointercancel") { cancelActiveStroke(); return; }
+    if (edit.mode === "generate") { if (window.GeneratorUI) window.GeneratorUI.pointerUp(e); return; }
     if (edit.lassoDragAnchor) { edit.lassoDragAnchor = null; return; }
     if (!edit.drawing) return;
     if (isFreehandTool(edit.tool)) endStroke(e); else if (edit.tool === "lasso") endLassoTrace(e); else endShape();
@@ -2046,6 +2066,30 @@
     document.getElementById("stroke-mode-settings").hidden = tool !== "brush";
     document.getElementById("smoothing-settings").hidden = tool !== "brush" && tool !== "eraser";
   }
+  // bascule Dessin/Générateur (src/generator-ui.js) : même edit.draft, deux façons de le peupler —
+  // on peut alterner librement, rien n'est perdu (cf. rapport). Chaque bascule resynchronise juste
+  // quelle rangée d'outils/tiroir est visible ; la scène du Générateur (branches en cours) vit dans
+  // generator-ui.js et survit à la bascule (réinitialisée seulement par enterEdit/onHistoryJump).
+  function setEditMode(mode) {
+    const changed = edit.mode !== mode;
+    edit.mode = mode;
+    document.getElementById("edit-mode-draw").classList.toggle("on", mode === "draw");
+    document.getElementById("edit-mode-gen").classList.toggle("on", mode === "generate");
+    document.getElementById("edit-tools-row").hidden = mode !== "draw";
+    document.getElementById("gen-tools-row").hidden = mode !== "generate";
+    document.getElementById("brush-size-popover").hidden = mode !== "draw";
+    document.getElementById("stylet-tools").style.display = mode === "draw" ? "" : "none";
+    document.getElementById("generator-tools").style.display = mode === "generate" ? "" : "none";
+    if (mode === "draw") refreshDrawerForTool();
+    else if (window.GeneratorUI) window.GeneratorUI.refreshDrawer();
+    if (changed) {
+      clearLassoSelection(); // pas de sélection lasso résiduelle en changeant de mode
+      if (window.GeneratorUI) { if (mode === "generate") window.GeneratorUI.onModeEnter(); else window.GeneratorUI.onModeLeave(); }
+    }
+    if (edit.active) buildEditCursor(); // no-op en génération (garde dans buildEditCursor)
+  }
+  document.getElementById("edit-mode-draw").onclick = () => setEditMode("draw");
+  document.getElementById("edit-mode-gen").onclick = () => setEditMode("generate");
   function toggleEditDrawer(forceOpen) {
     const drawer = document.getElementById("edit-drawer");
     const open = typeof forceOpen === "boolean" ? forceOpen : drawer.hidden;
@@ -2382,7 +2426,7 @@
     exitEdit();
     select(null);
     mainLayer.destroyChildren(); boundaryLayer.destroyChildren(); zonesLayer.destroyChildren(); guideLayer.destroyChildren();
-    ["library-perso", "library-symbole", "library-decor"].forEach(
+    ["library-perso", "library-decor"].forEach(
       (id) => { document.getElementById(id).innerHTML = ""; });
     for (const k in motifThumbs) delete motifThumbs[k];
     state.motifs = []; state.boundary = data.boundary || null; state.holes = data.holes || null; state.contourRef = data.contourRef || null; state.seq = 0;
@@ -2712,16 +2756,6 @@
       });
       e.target.value = "";
     });
-  document.getElementById("import-symbole").onchange = (e) =>
-    readFiles(e.target.files, (name, text) => {
-      runWithBusy(() => {
-        recordHistory();
-        const base = name.replace(/\.[^.]+$/, "");
-        addMotifToLibrary(buildMotifFromSVG(base, ML.parseSVG(text), "SYMBOLE"));
-        markProjectChanged();
-      });
-      e.target.value = "";
-    });
   document.getElementById("import-decor").onchange = (e) =>
     readFiles(e.target.files, (name, text) => {
       runWithBusy(() => {
@@ -2880,16 +2914,6 @@
   document.getElementById("rail-export").onclick = () => setPanel("export");
   document.getElementById("btn-export-open").onclick = openExport;
 
-  function setLibraryTab(tab) {
-    document.getElementById("tab-perso").classList.toggle("active", tab === "perso");
-    document.getElementById("tab-perso").setAttribute("aria-selected", String(tab === "perso"));
-    document.getElementById("tab-symbole").classList.toggle("active", tab === "symbole");
-    document.getElementById("tab-symbole").setAttribute("aria-selected", String(tab === "symbole"));
-    document.getElementById("tab-panel-perso").hidden = tab !== "perso";
-    document.getElementById("tab-panel-symbole").hidden = tab !== "symbole";
-  }
-  document.getElementById("tab-perso").onclick = () => setLibraryTab("perso");
-  document.getElementById("tab-symbole").onclick = () => setLibraryTab("symbole");
   document.getElementById("btn-pending-discard").onclick = discardAllDrafts;
   document.getElementById("btn-pending-apply").onclick = applyAllDrafts;
   document.getElementById("load-project").onchange = (e) =>
@@ -2902,4 +2926,21 @@
   refreshDraftCounter();
   updateZoomLabel();
   restoreLocalProject();
+
+  // ─── pont vers src/generator-ui.js (mode Générateur de la palette d'édition) ────────────────
+  // Fichier chargé APRÈS app.js (index.html) : reste un script « classic » autonome (pas d'import),
+  // on lui passe donc un accès explicite et minimal aux internes d'édition dont il a besoin plutôt
+  // que de tout exposer sur window. Ses propres hooks (window.GeneratorUI.pointerDown/onEnterEdit/…)
+  // sont appelés depuis enterEdit/exitEdit/editPointer*/undoStroke/redoStroke/discardMotifDraft
+  // ci-dessus, toujours derrière un test `if (window.GeneratorUI)` (silencieux tant que le fichier
+  // ne s'est pas encore branché, ou si un jour il est retiré).
+  window.EditHost = {
+    edit, PX_PER_MM, ML,
+    stage, editLayer,
+    localPoint,
+    pushEditEntry,
+    redrawEditLayer,
+    getEditedMotif: () => state.motifs.find((m) => m.id === edit.motifId),
+    showToast,
+  };
 })();
