@@ -17,3 +17,4 @@ __pycache__/
 Thumbs.db
 test/branch-proto.svg
 test/pcb-zoom.png
+_probe.js
