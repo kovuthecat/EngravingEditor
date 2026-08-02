@@ -909,3 +909,20 @@ y compris pour un motif ordinaire, et le clic suivant sur « Éditer » appelait
 
 - [ ] Entrer en édition sur un personnage : la palette s'ouvre, mode Dessin actif.
 - [ ] En cas d'erreur du générateur, la console la signale mais l'édition s'ouvre quand même.
+
+## 2026-08-02 — Générateur remis en marche + ergonomie iPad (jugement à l'œil)
+
+Le fonctionnel est vérifié au navigateur (cf. `STATUS.md`) : branche tracée, découpe au contour,
+poignées, semis, Annuler. Ne restent ici que les points de **goût** et ceux qui demandent un vrai
+Pencil :
+
+- [ ] Poignées de l'outil Éditer : 22 px de diamètre constant à l'écran — attrapables au doigt sans
+      viser, mais pas au point de masquer le dessin en dessous ? (à juger surtout au zoom fort).
+- [ ] Bascule « ✏️ Dessin / 🌿 Générateur » compactée à gauche : encore assez visible, ou elle se
+      perd maintenant à côté de la barre d'outils ?
+- [ ] Galerie de motifs : le clavier ne monte plus tout seul. Reste-t-il facile de chercher au
+      clavier quand on le veut (il faut taper dans le champ) ?
+- [ ] Un décor tracé au Générateur puis retouché à la gomme en mode Dessin, puis repris au
+      Générateur : le résultat reste-t-il celui qu'on attend, ou faut-il T-150 (gomme intégrée) ?
+- [ ] Épaisseur de branche par défaut (12,5 mm) à l'échelle réelle de la table : juste, ou trop
+      grosse une fois le décor complet ?

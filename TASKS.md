@@ -65,3 +65,10 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [x] T-147 — Chrome mode édition (pilule + barre re-skinnée, tiroir préservé) · modèle: Sonnet, effort: high · plan: `plans/P10/` (S6, dépend S3)
 - [x] T-148 — Passe responsive/PWA/safe-area + nettoyage DOM mort · modèle: Sonnet, effort: medium · plan: `plans/P10/` (S7, dépend S2-S6)
 - [ ] T-149 — [Humain] Validation visuelle d'ensemble sur iPad réel · modèle: — (humain) · plan: `plans/P10/` (S8, dépend S1-S7)
+
+### Générateur de décor — suites de l'audit du 2026-08-02 (cf. `STATUS.md`)
+
+- [ ] T-150 — Gomme/pinceau accessibles SANS quitter le Générateur (retoucher un semis sans changer de mode) · modèle: Sonnet, effort: medium · plan: —
+- [ ] T-151 — Conserver la scène BE (branches/poignées) à travers Annuler/Rétablir et d'une session d'édition à l'autre · modèle: Opus→Sonnet, effort: high · plan: —
+- [ ] T-152 — Générateur sans contour chargé : prévenir au lieu de laisser pousser sans cadre · modèle: Haiku, effort: minimal · plan: —
+- [ ] T-153 — `/purge-contexte` : STATUS 350→80, VALIDATION 912→120, TASKS 63→60 lignes · modèle: Sonnet, effort: medium · plan: —

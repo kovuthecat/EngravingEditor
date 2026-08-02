@@ -4,7 +4,50 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-07-07 (P10 · S6)
+> **Dernière mise à jour :** 2026-08-02 (audit d'intégration du Générateur)
+
+## Audit d'intégration du mode Générateur (2026-08-02)
+
+Le mode Générateur (commits `97314b7`/`f907926`) **ne fonctionnait sur aucun chemin** : bugs trouvés
+en pilotant l'app dans le navigateur in-app, tous reproduits puis corrigés.
+
+1. **`host.editLayer.batchDraw` n'existe pas.** `editLayer` est un `Konva.Group` (app.js l.1043), pas
+   un Layer. Les 7 appels de `generator-ui.js` jetaient une `TypeError` — dès `onEnterEdit`, donc à
+   chaque entrée en édition. La fuite touchait aussi le mode **Dessin** : `cancelActiveStroke()`
+   (2ᵉ doigt / `pointercancel`) appelle `GeneratorUI.cancelGesture()` → même throw. Fix : pont
+   `EditHost.redrawOverlay()` → `uiLayer.batchDraw()`.
+2. **Décor vierge posé en (NaN, NaN).** Le `Konva.Transformer` attaché par `select()` à un groupe de
+   boîte 0×0 **réécrit x/y en NaN** sur le nœud (`Transformer.update`) ; `fitScale` sur une silhouette
+   vide en produisait aussi. `localPoint()` ne rendait alors que des NaN : on pouvait tracer sans fin,
+   rien n'apparaissait, sans une seule erreur. Fix en trois points : pas de Transformer sur une boîte
+   vide (`selectedEmpty`), garde dans `fitScale`, filet dans `makeGroup` (couvre aussi le rechargement
+   d'un projet déjà enregistré avec un exemplaire corrompu — cas réel en base locale).
+3. **Le cadre de découpe était la mauvaise surface.** `st.zone` valait la silhouette de l'encre déjà
+   posée (`edit.realFill`) : vide sur un décor neuf (plus rien ne bornait la pousse), et réduite au
+   TRAIT lui-même sur un décor importé (tout ce qui ne recouvrait pas un trait existant était coupé —
+   mesuré). Le cadre est désormais le **corps de la guitare moins les défonces**
+   (`EditHost.getZoneLocal()`, `state.boundary`/`state.holes` ramenés en px locaux du motif), mémoïsé
+   pour la session. Vérifié : zone = 440 × 325 mm, 6 contours (corps + 5 cavités) ; une branche tracée
+   au-delà du bord est coupée net au contour.
+4. **Un geste = deux Annuler.** Une fusion qui retire ET rajoute de la matière (glissé de poignée,
+   semis) poussait deux entrées d'historique ; un Annuler laissait un état intermédiaire jamais vu.
+   `rebuildDraftFrom` accepte maintenant une entrée `{kind:"op", ops:[…]}` rejouée en bloc.
+5. Robustesse : `window.GeneratorUI` n'est publié qu'après un `init()` réussi (sinon l'édition entière
+   tombait) ; `setEditMode("generate")` refuse et le dit si le générateur ne s'est pas branché ;
+   `safeCache` ne tente plus de cacher un nœud vide (Konva écrivait une erreur à chaque appel).
+
+**Ergonomie iPad du Générateur.** Poignées, bornes libres, tracé d'aperçu et pastille d'accroche
+étaient dessinés à taille fixe en px LOCAUX : au zoom d'ensemble (×0,38) une poignée faisait 2,5 px
+à l'écran. Compensées par `ecran()` (même principe que les ancres du Transformer, T-127) → 22 px de
+diamètre constant, et tolérances de saisie élargies au dézoom (`tolBE`, jamais plus serrées qu'avant).
+Puces de la galerie passées à 44 px (`--tap`) ; plus de `.focus()` à l'ouverture de la galerie (il
+faisait monter le clavier iOS par-dessus un choix visuel) ; safe-area sur la galerie ; bandeau de mode
+masqué pendant la galerie (il passait par-dessus, z-index 60 > 45) ; bascule Dessin/Générateur
+compactée (726 × 66 px → 253 × 58, alignée à gauche) ; `zoomToFitEdit` cadre le contour de la table
+quand le motif édité est vide.
+
+`node test/run.js`, `test/app-check.js`, `test/branch-proto-check.js` verts. Reste à juger à l'œil :
+`VALIDATION.md`. Reste à traiter : cf. `TASKS.md` (T-150…T-153).
 
 ## Phase actuelle
 
