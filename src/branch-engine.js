@@ -9,6 +9,18 @@
   const toInt = (pts) => pts.map((p) => ({ X: Math.round(p[0] * S), Y: Math.round(p[1] * S) }));
   const fromInt = (path) => path.map((p) => [p.X / S, p.Y / S]);
 
+  /* ArcTolerance de ClipperOffset : par défaut 0.25, dans le MÊME repère que les coordonnées
+     qu'on lui donne. Comme toutes nos coordonnées sont multipliées par S=1000 avant d'entrer
+     dans Clipper, un delta d'offset de quelques mm se retrouve de l'ordre de plusieurs milliers
+     d'unités — face à ça, une tolérance de 0.25 est ~4000x trop fine : Clipper sur-tessellait
+     CHAQUE congé rond (chaque branche, chaque anneau de via, chaque nœud d'écorce...) en un
+     nombre d'arcs démesuré. C'est ce qui rendait `buildGeometry` extrêmement lent dès que le
+     décor grossissait (plusieurs SECONDES pour une poignée de branches). On réaccorde la
+     tolérance au même facteur d'échelle — 0.05 unité BE réelle, un cran sous l'épaisseur du
+     trait fin, largement assez pour rester lisse à l'œil. */
+  const ARC_TOL = 0.05 * S;
+  function newOffset(miterLimit) { return new ClipperLib.ClipperOffset(miterLimit || 2, ARC_TOL); }
+
   BE.MM_PER_PX = 0.288; // 330 mm de corps mesurés sur 1144 px d'encre
 
   // ───────────────────────── Clipper : opérations sur des JEUX de contours ─────────────────────────
@@ -33,7 +45,7 @@
 
   function offsetSet(polys, d) {
     if (!polys.length || d === 0) return polys;
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     co.AddPaths(polys.map(toInt), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
     const sol = new ClipperLib.Paths();
     co.Execute(sol, d * S);
@@ -61,17 +73,25 @@
     return pts;
   }
 
-  // Fermeture morphologique LOCALE : arrondit le creux de l'aisselle à une jonction, sans
-  // souder au passage deux branches voisines simplement proches ailleurs dans l'arbre.
-  function filletAt(U, center, radius, r) {
-    if (!U.length || r <= 0) return U;
+  /* Fermeture morphologique LOCALE : arrondit le creux de l'aisselle à une jonction, sans
+     souder au passage deux branches voisines simplement proches ailleurs dans l'arbre.
+
+     `U` ne doit contenir QUE les rubans utiles à CETTE jonction (la branche + sa mère) —
+     jamais l'arbre entier. Appelé une fois par branche, repasser l'accumulation complète des
+     rubans à chaque appel rendait ce calcul quadratique en nombre de branches (des SECONDES
+     dès qu'un décor réel s'étoffait) : chaque appel ne regarde qu'un cercle de quelques mm de
+     rayon, ça n'a jamais eu besoin de voir le reste du décor. Renvoie le PATCH local à unir
+     (ou []), à la charge de l'appelant de l'unir une seule fois à la fin, pas branche par
+     branche. */
+  function filletPatch(U, center, radius, r) {
+    if (!U.length || r <= 0) return [];
     const disc = [circle(center, radius, 40)];
     const local = interSet(U, disc);
-    if (!local.length) return U;
+    if (!local.length) return [];
     let closed = offsetSet(local, r); // dilate : comble le creux
     closed = offsetSet(closed, -r); //  érode  : restaure les bords
     closed = interSet(closed, disc); //  reste local
-    return closed.length ? unionSet(U, closed) : U;
+    return closed;
   }
 
   // ───────────────────────── bruit déterministe (style « tracé main ») ─────────────────────────
@@ -407,7 +427,7 @@
 
   // ruban à largeur constante, coins vifs (jtMiter) : l'inverse du tracé organique
   function pcbRibbon(b, st) {
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     co.AddPath(toInt(b.axis), ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etOpenButt);
     const sol = new ClipperLib.Paths();
     co.Execute(sol, (b.w0 / 2) * S);
@@ -758,7 +778,7 @@
 
   // contour d'encre d'un jeu de polylignes : sert de silhouette d'occlusion au motif posé
   function inkOutline(lines, st) {
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     let any = false;
     for (const l of lines) {
       if (l.length >= 2) { co.AddPath(toInt(l), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenRound); any = true; }
@@ -1136,7 +1156,7 @@
 
   // ruban à largeur constante autour d'une polyligne (brindille : un seul trait)
   function twigOutline(axis, st) {
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     co.AddPath(toInt(axis), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenRound);
     const sol = new ClipperLib.Paths();
     co.Execute(sol, (fine(st) / 2) * S);
@@ -1617,7 +1637,7 @@
 
   // ruban de calibre constant autour de plusieurs polylignes, en une seule passe
   function twigOutlineSet(lines, w) {
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     let any = false;
     for (const l of lines) {
       if (l.length >= 2) { co.AddPath(toInt(l), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenButt); any = true; }
@@ -1853,11 +1873,14 @@
       let bark = [];
       let rings = [];
       const twigAxes = [];
+      const ownRibbon = new Map(); // ruban propre de CHAQUE branche (avant union à l'arbre) — cf. filletPatch
       for (const b of branches) {
         const g = branchGeom(b, st);
         if (g.polys.length) {
           const nds = lianeNodes(b, st);
-          ribbons = unionSet(ribbons, cleanup(g.polys));
+          const own = cleanup(g.polys);
+          ownRibbon.set(b.id, own);
+          ribbons = unionSet(ribbons, own);
           if (nds.discs.length) {
             twigs = unionSet(twigs, cleanup(nds.discs));   // occultation seule
             bark = bark.concat(nds.anneaux);               // le cercle, tracé par-dessus
@@ -1873,12 +1896,17 @@
           twigAxes.push(g.twig);
         }
       }
+      let filletPatches = [];
       for (const b of branches) {
         // pas de congé sur une piste : un circuit imprimé a des angles vifs, c'est le propos
         if (!b.anchorPoint || isTwig(b, st) || b.forceKind === "piste") continue;
         const r = st.filletRatio * b.w0;
-        ribbons = filletAt(ribbons, b.anchorPoint, Math.max(r * 3, b.w0 * 2.2), r);
+        // seuls le ruban de la branche et celui de sa mère participent à CETTE jonction
+        const local = unionSet(ownRibbon.get(b.id) || [], ownRibbon.get(b.parentId) || []);
+        const patch = filletPatch(local, b.anchorPoint, Math.max(r * 3, b.w0 * 2.2), r);
+        if (patch.length) filletPatches = filletPatches.concat(patch);
       }
+      if (filletPatches.length) ribbons = unionSet(ribbons, filletPatches);
       // une brindille ne se dessine pas à l'intérieur d'un ruban (elle en sort, elle ne le traverse pas)
       const lines = clipLines(twigAxes, ribbons, ClipperLib.ClipType.ctDifference)
         .concat(bark)
@@ -1936,7 +1964,7 @@
         // puis on efface les demi-tours qui passent derrière le bois
         let masque = [];
         for (const brin of h.brins) {
-          const co = new ClipperLib.ClipperOffset();
+          const co = newOffset();
           co.AddPath(toInt(brin), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenRound);
           const sol = new ClipperLib.Paths();
           co.Execute(sol, (b.w0 / 2 + st.ink * 0.9) * S);
@@ -2027,7 +2055,7 @@
     if (halo > 0) {
       for (const t of trees) {
         if (!t.silhouette.length || t.pousse) continue;
-        const co = new ClipperLib.ClipperOffset();
+        const co = newOffset();
         for (const p of t.silhouette)
           if (p.length >= 3) co.AddPath(toInt(p), ClipperLib.JoinType.jtRound,
                                         ClipperLib.EndType.etClosedPolygon);
@@ -2054,7 +2082,7 @@
      recroiser son propre centre. */
   function outlineInk(outline, w) {
     if (!outline.length) return [];
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     co.AddPaths(outline.map(toInt), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedLine);
     const sol = new ClipperLib.Paths();
     co.Execute(sol, (w / 2) * S);
@@ -2066,7 +2094,7 @@
   // qu'un arbre sans ruban (motif posé) et un arbre avec ruban (écorce/nœuds sur une branche)
   // n'ont pas le même poids de trait une fois aplatis (cf. BE.toContours).
   function linesInk(lines, w) {
-    const co = new ClipperLib.ClipperOffset();
+    const co = newOffset();
     let any = false;
     for (const l of lines) {
       if (l.length >= 2) { co.AddPath(toInt(l), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenRound); any = true; }

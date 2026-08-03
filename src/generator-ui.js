@@ -44,8 +44,8 @@
   function defaultSt() {
     return {
       rootWidth: 16.5 * MM, taper: 0.70, tipFrac: 0.12, childRatio: 0.95, childRatioSide: 0.30,
-      junctionSwell: 0.85, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.10,
-      wobbleAmp: 0.02, wobbleLen: 3.2, smoothPx: 2.5 * MM, tipLen: 8 * MM,
+      junctionSwell: 0.85, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.15,
+      wobbleAmp: 0.04, wobbleLen: 3.2, smoothPx: 2.5 * MM, tipLen: 8 * MM,
       barkPitch: 4 * MM, ink: 1.0 * MM, inkFine: 0.6 * MM, minRibbon: 3.0 * MM, snap: 26, tailTwig: false,
       pcbWidth: 2.0 * MM, pcbTol: 18, pcbVias: true, pcbPad: true,
       knotDensity: 1.0, knotStep: 26 * MM,
@@ -63,7 +63,7 @@
      à chaque construction depuis le motif édité et n'a aucun sens hors de cette édition-là. */
   const ST_STORAGE_KEY = "motif-layout:gen-st";
   const ST_PERSIST_KEYS = ["rootWidth", "taper", "childRatio", "childRatioSide", "junctionSwell",
-    "filletRatio", "emergeLead", "lianeWidth", "pcbWidth", "sowSize", "sowStep"];
+    "filletRatio", "emergeLead", "swellAmp", "wobbleAmp", "lianeWidth", "pcbWidth", "sowSize", "sowStep"];
   function loadSavedSt(base) {
     try {
       const raw = localStorage.getItem(ST_STORAGE_KEY);
@@ -677,6 +677,8 @@
     bindSliderRaw("gen-jsw", "junctionSwell", 2);
     bindSliderRaw("gen-fillet", "filletRatio", 2);
     bindSliderRaw("gen-lead", "emergeLead", 1);
+    bindSliderRaw("gen-swell", "swellAmp", 2);
+    bindSliderRaw("gen-wobble", "wobbleAmp", 2);
     bindSlider("gen-lianew", "lianeWidth", MM);
     bindSlider("gen-pcbw", "pcbWidth", MM);
     bindSlider("gen-sowsize", "sowSize", MM);
