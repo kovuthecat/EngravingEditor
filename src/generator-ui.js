@@ -101,6 +101,7 @@
   let sel = null;      // { kind:"stamp"|"ctrl", id, index } — sélection de l'outil Éditer
   let dragging = null;
   let renderRAF = null; // requestAnimationFrame en attente (cf. scheduleRenderOverlay)
+  let traceRAF = null;  // requestAnimationFrame en attente (cf. scheduleTracePreview)
 
   // calques Konva (aperçu léger, cf. §rendu plus bas) — créés une fois, réutilisés
   let previewGroup = null;  // rendu approximatif de la scène (aperçu de geste, ou repli sans toContours)
@@ -314,6 +315,20 @@
     host.redrawOverlay();
   }
 
+  /* `raw` grandit à chaque évènement pointermove/touchmove d'un tracé Branche/Liane/Piste/Semer
+     (potentiellement des dizaines par frame sur tablette — évènements coalescés). Reconstruire
+     TOUT le tracé (`scalePts(raw,...).flat()`) à CHAQUE évènement plutôt qu'à chaque frame rend
+     ce travail quadratique en longueur de tracé : négligeable sur les premiers centimètres, puis
+     de plus en plus lourd, jusqu'à saturer le fil principal sur un CPU plus modeste (tablette) —
+     constaté comme des branches qui « s'arrêtent » toujours vers la même distance. On regroupe
+     donc les demandes en une seule mise à jour par frame, comme pour l'outil Éditer. */
+  function scheduleTracePreview() {
+    if (traceRAF) return;
+    traceRAF = requestAnimationFrame(() => { traceRAF = null; drawTracePreview(); });
+  }
+  function cancelScheduledTracePreview() {
+    if (traceRAF) { cancelAnimationFrame(traceRAF); traceRAF = null; }
+  }
   function drawTracePreview() {
     ensureOverlay();
     if (!traceLine) { traceLine = new Konva.Line({ stroke: "#4caf7d", listening: false }); previewGroup.add(traceLine); }
@@ -389,7 +404,7 @@
     for (const ev of evs) { host.stage.setPointersPositions(ev); raw.push(localBE()); }
     const tail = BE.hitAxis(scene, raw[raw.length - 1], genTool === "semer" ? st.snap * 2.5 : st.snap, st);
     anchor = tail && (!headAnchor || tail.d < headAnchor.d) ? tail : headAnchor;
-    drawTracePreview();
+    scheduleTracePreview();
   }
   function pointerUp() {
     host.edit.drawing = false; host.edit.drawingPointerType = null;
@@ -400,6 +415,7 @@
       return;
     }
     portVise = null;
+    cancelScheduledTracePreview();
     clearTracePreview();
     if (genTool === "semer") {
       const to = raw.length ? BE.hitAxis(scene, raw[raw.length - 1], st.snap * 2.5, st) : null;
@@ -423,6 +439,7 @@
     if (!scene) return; // hors mode Générateur / hors édition : no-op (appelé inconditionnellement par app.js)
     dragging = null; raw = []; anchor = headAnchor = null; portVise = null;
     cancelScheduledRenderOverlay();
+    cancelScheduledTracePreview();
     clearTracePreview();
     renderOverlay();
   }
