@@ -583,6 +583,23 @@
     // Multi-contours (T1) : une Konva.Line par pièce, pour que CHAQUE morceau du motif
     // masque ce qui est derrière lui (pas seulement le plus gros).
     const silhouette = motifSilhouettePts(motif); // liste de contours
+    if (motif.role !== "DECOR" && silhouette.length > 1) {
+      /* Un motif à plusieurs pièces disjointes (bras/accessoire en sous-chemin séparé du corps,
+         etc.) n'avait de clic que sur CHAQUE pièce individuellement — un fin interstice entre deux
+         pièces adjacentes laissait le clic passer au travers, vers ce qu'il y a dessous. Pour un
+         motif POSÉ (pas un décor see-through, qui doit lui rester traversable), ça se traduisait
+         par « il faut cliquer plusieurs fois avant que ça se sélectionne ». Un rectangle invisible
+         sur la boîte englobante COMPLÈTE du motif rattrape ces interstices, sans changer le rendu
+         (jamais peint, seulement écouté) ; les pièces réelles ci-dessous restent responsables du
+         rendu et de l'empilement visuel entre motifs qui se superposent réellement. */
+      const allPts = silhouette.flat();
+      const xs = allPts.map((p) => p[0]), ys = allPts.map((p) => p[1]);
+      const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+      // fill transparent EXPLICITE (et non absent) : comme la ligne see-through du décor plus bas,
+      // c'est ce qui fait peindre une hit-zone opaque sur le canvas de hit de Konva malgré
+      // l'invisibilité à l'écran (un fill non défini ne serait pas détecté au clic).
+      g.add(new Konva.Rect({ x: minx, y: miny, width: maxx - minx, height: maxy - miny, fill: "rgba(0,0,0,0)", listening: true }));
+    }
     for (const contour of silhouette) {
       if (motif.role !== "DECOR") {
         g.add(new Konva.Line({ points: contour.flat(), closed: true, fill: "#ffffff", listening: true }));
