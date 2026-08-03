@@ -3,6 +3,22 @@
 > Validation visuelle déléguée à Thibault, non bloquante pour les commits. Claude ne la vérifie
 > pas lui-même (pas de navigateur/Playwright). Légende : [ ] à valider · [x] OK · [!] à corriger.
 
+## P11 — Cohérence visuelle organique/électronique (2026-08-03)
+
+**Auto-validation :** ✅ `node test/run.js` + tous les bancs verts ; vérifié par rendu moteur direct
+(script ad hoc, hors app) pour S1-S3, par comparaison d'aperçus avant/après pour S4.
+- [ ] S1 — Transition branche→piste : le collier se lit-il comme une évolution organique→
+  électronique convaincante (pas trop long/mécanique) ?
+- [ ] S2 — Fusion radicelle terminale : jonction lue comme une forme continue, y compris sur une
+  branche épaisse ?
+- [ ] S3 — Pastille de connexion + espacement : cohérente avec le style des vias existants ;
+  espacement suffisant à l'échelle de pose réelle ?
+- [ ] S4 — Champignons : lamelles/taches désormais lisibles sur `_apercu.png`, sans bruit
+  parasite réintroduit sur feuilles/fleurs/personnages (comparaison faite pendant le cadrage,
+  à recontrôler après reconstruction du pipeline complet `build-motif-bank.py`).
+- [ ] S5 — Relecture des 20 prompts kodama/korok modifiés avant génération ; régénération des 5
+  composants signalés `à refaire`, puis repasser `node test/banc-composants.js`.
+
 ## P10 · S1 — Tokens de design + typographie IBM Plex vendored (T-142, 2026-07-07)
 
 **Auto-validation :** ✅ `node test/run.js` vert (CSS/polices pur, aucune géométrie touchée).

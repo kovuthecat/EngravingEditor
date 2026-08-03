@@ -72,3 +72,10 @@ Index des tâches : backlog + actives. Une ligne par tâche. Plan créé dans `p
 - [ ] T-151 — Conserver la scène BE (branches/poignées) à travers Annuler/Rétablir et d'une session d'édition à l'autre · modèle: Opus→Sonnet, effort: high · plan: —
 - [ ] T-152 — Générateur sans contour chargé : prévenir au lieu de laisser pousser sans cadre · modèle: Haiku, effort: minimal · plan: —
 - [ ] T-153 — `/purge-contexte` : STATUS 350→80, VALIDATION 912→120, TASKS 63→60 lignes · modèle: Sonnet, effort: medium · plan: —
+
+### P11 — Cohérence visuelle organique/électronique (2026-08-03)
+
+- [x] T1-T4 — Transition branche→piste, fusion radicelle, pastille montée, espacement composants · → plans/P11/S1.md, S2.md, S3.md
+- [x] T5 — Seuil `collapse_thin` sur épaisseur de trait (motif-axes.py) · → plans/P11/S4.md
+- [x] T6-T7 — Prompts kodama/korok + composants à refaire · → plans/P11/S5.md
+- [ ] T8 — Régénération humaine des 5 composants signalés + relecture prompts kodama/korok · modèle: — (humain) · plan: plans/P11/S5.md

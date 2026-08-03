@@ -4,7 +4,21 @@
 
 > **Frontières** — STATUS : état actuel · `TASKS.md` : backlog + tâches · `plans/` : plan d'une tâche active · `VALIDATION.md` : checklist visuelle.
 >
-> **Dernière mise à jour :** 2026-08-02 (audit d'intégration du Générateur)
+> **Dernière mise à jour :** 2026-08-03 (P11 — cohérence visuelle organique/électronique)
+
+## P11 — cohérence visuelle du Générateur (2026-08-03)
+
+Jonctions organique/électronique et composants (`src/branch-engine.js`) : transition de largeur
+branche→piste (collier, plus de pincement brutal), fusion réelle branche/radicelle terminale (plus
+de double effilement), pastille de connexion pour les composants « montés » sur piste, espacement
+resserré (`stampFits` 0.7→1.0) entre composants sownés proches. `tools/motif-axes.py` : seuil de
+`collapse_thin` recalculé sur l'épaisseur de trait (pas la taille du motif) — corrige la perte de
+lamelles/taches des champignons à l'extraction (diagnostic : `prune` innocenté, `collapse_thin`
+confirmé responsable, 40 px de vide comblé sur un gros motif contre 4-6 px de trait). Prompts
+kodama (variété d'hybridation par posture) et korok (masque + posture) révisés dans
+`reference/prompts-motifs.html` ; 5 composants signalés `à refaire` (de biais ou corps vide).
+`node test/run.js` + tous les bancs verts. Reste : validation N2 humaine (`VALIDATION.md` · P11),
+régénération des images signalées par Thibault (hors périmètre du code). Plan : `plans/P11/`.
 
 ## Suites de l'audit naïf (2026-08-02)
 
