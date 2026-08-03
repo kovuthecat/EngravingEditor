@@ -2030,10 +2030,14 @@
       if (!edit.tapGesture) edit.tapGesture = { maxFingers: 0, startT: e.timeStamp, moved: false, starts: new Map() };
       edit.tapGesture.maxFingers = Math.max(edit.tapGesture.maxFingers, activeTouchPointers.size);
       edit.tapGesture.starts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (activeTouchPointers.size > 1) { edit.panAnchor = null; cancelActiveStroke(); return; }
-      // (D-012 pt 4) priorité stylet : un trait pen en cours ignore tout contact touch isolé
-      // (pas de pan, pas de dessin doigt) -- seul le 2e contact (ci-dessus) reste une annulation.
+      /* (D-012 pt 4) PRIORITÉ STYLET, évaluée AVANT l'annulation à deux doigts : la main qui
+         tient l'Apple Pencil pose fatalement des appuis de paume pendant un trait un peu long, et
+         ils arrivent souvent à deux ou plus. Évaluée après, l'annulation coupait donc le trait au
+         stylet en pleine course — sur iPad, seul le tout début du geste devenait une branche,
+         toujours vers la même distance (le moment où la paume finit par toucher). Un contact
+         tactile, isolé OU multiple, ne doit jamais interrompre un trait de stylet en cours. */
       if (edit.drawing && edit.drawingPointerType === "pen") return;
+      if (activeTouchPointers.size > 1) { edit.panAnchor = null; cancelActiveStroke(); return; }
       if (!edit.fingerDraws) {
         e.preventDefault();
         editContainer.setPointerCapture(e.pointerId);
@@ -2084,7 +2088,10 @@
         if (activeTouchPointers.size === 0) {
           const g = edit.tapGesture;
           edit.tapGesture = null;
-          if (!g.moved && e.timeStamp - g.startT < 250) {
+          // même priorité stylet qu'à l'appui : un appui de paume bref pendant un trait au
+          // stylet ne doit pas déclencher l'Annuler/Rétablir tactile.
+          const penEnCours = edit.drawing && edit.drawingPointerType === "pen";
+          if (!g.moved && !penEnCours && e.timeStamp - g.startT < 250) {
             if (g.maxFingers === 2) undoStroke();
             else if (g.maxFingers === 3) redoStroke();
           }
@@ -2975,22 +2982,34 @@
      et on ouvre l'édition directement du côté Générateur. Le contour de la table sert de
      cadre : le générateur y découpe ce qu'il produit. */
   function nouveauDecor() {
-    const existant = state.motifs.find((m) => m.role === "DECOR");
-    let motif = existant;
+    let motif = state.motifs.find((m) => m.role === "DECOR");
+    // une instance déjà posée ? on la reprend plutôt que d'en empiler une seconde.
+    let g = motif ? mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0] : null;
     if (!motif) {
       recordHistory();
       motif = { id: "m" + ++state.seq, name: "Décor", zones: [], silhouette: [],
                 role: "DECOR", color: ROLE_DEFAULTS.DECOR.color, margin: ROLE_DEFAULTS.DECOR.margin };
       addMotifToLibrary(motif);
       markProjectChanged();
+    } else if (!g) {
+      /* Le motif DÉCOR existe encore en bibliothèque mais n'est plus posé : l'utilisateur l'a
+         supprimé du plan. Reprendre son contenu tel quel faisait « revenir » le décor effacé au
+         clic suivant sur « Dessiner un décor ». Supprimer = repartir d'une feuille blanche. */
+      recordHistory();
+      motif.zones = []; motif.silhouette = [];
+      delete motif.surface;
+      editDrafts.delete(motif.id); refreshDraftCounter();
+      rerenderMotif(motif);
+      markProjectChanged();
     }
-    // une instance déjà posée ? on la reprend plutôt que d'en empiler une seconde.
-    // Pose explicite en (0,0) à l'échelle 1 : un décor vierge n'a pas de silhouette à cadrer, et
-    // ce calage fait coïncider ses px LOCAUX avec les px de conception — donc avec le repère du
-    // contour de la table (`state.boundary`), que le Générateur prend pour cadre (getZoneLocal).
-    let g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0];
+    /* Pose explicite en (0,0) à l'échelle 1, TOUJOURS : ce calage fait coïncider les px LOCAUX du
+       décor avec les px de conception — donc avec le repère du contour de la table
+       (`state.boundary`), que le Générateur prend pour cadre de découpe (getZoneLocal). Un décor
+       déjà rempli était auparavant reposé en cadrage automatique : ses px locaux ne coïncidaient
+       alors plus avec le contour, et le cadre servi au moteur ne recouvrait qu'une partie de la
+       table — les branches s'y trouvaient tronquées. */
     if (!g) {
-      addInstance(motif, (motif.zones || []).length ? undefined : { x: 0, y: 0, scale: 1 });
+      addInstance(motif, { x: 0, y: 0, scale: 1 });
       g = mainLayer.getChildren((n) => n.getAttr("motifId") === motif.id)[0];
     }
     if (!g) return;
