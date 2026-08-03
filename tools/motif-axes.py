@@ -425,7 +425,7 @@ def write_preview(path, ink, polylines, offset, anchor, scale=1.0):
 # ─────────────────────────────── pipeline ───────────────────────────────
 
 
-def process(src, outdir, tol_frac=0.004, side="bottom", collapse=0.04, verbose=True):
+def process(src, outdir, tol_frac=0.004, side="bottom", collapse=2.5, verbose=True):
     name = os.path.splitext(os.path.basename(src))[0]
     ink = load_ink(src)
 
@@ -434,10 +434,17 @@ def process(src, outdir, tol_frac=0.004, side="bottom", collapse=0.04, verbose=T
     # ORDRE IMPORTANT. Les aplats se cherchent sur l'encre D'ORIGINE, avant `collapse_thin` :
     # celui-ci fusionne les traits voisins, ce qui fabrique de fausses taches massives sur un
     # dessin dense — le masque cornu hybride d'un korok y perdait tout son visage, converti en
-    # douze cercles. Une vraie tache est pleine dès le dessin. 
+    # douze cercles. Une vraie tache est pleine dès le dessin.
     cercles, ink = solid_blobs(ink, stroke_width(ink))
 
-    ink, merged = collapse_thin(ink, collapse * max(y1 - y0, x1 - x0))
+    # `collapse` est un MULTIPLE DE L'ÉPAISSEUR DE TRAIT, pas une fraction de la boîte du motif
+    # (l'ancien calcul, `0.04 * max(largeur, hauteur)`, donnait un vide comblé à 40 px sur un
+    # gros dessin dense comme le champignon touffe — largement au-dessus de la distance entre
+    # deux lamelles ou deux taches, qui a fini fondue en un seul aplat. L'épaisseur de trait,
+    # elle, ne dépend pas de la taille du cadrage : un pétiole en double trait s'écarte toujours
+    # de quelques épaisseurs de trait, jamais d'une fraction fixe de la boîte englobante).
+    sw0 = stroke_width(ink)
+    ink, merged = collapse_thin(ink, collapse * sw0)
     sw = stroke_width(ink)
 
     skel = skeletonize(ink)
@@ -480,8 +487,9 @@ def main():
                     help="tolérance de simplification, en fraction de la taille du motif (défaut 0.004)")
     ap.add_argument("--anchor", choices=("bottom", "top", "left", "right"), default="bottom",
                     help="bord par lequel le motif se greffe (défaut bottom ; top pour des racines)")
-    ap.add_argument("--collapse", type=float, default=0.04,
-                    help="fond en UN trait les traits doubles plus étroits que cette fraction du motif")
+    ap.add_argument("--collapse", type=float, default=2.5,
+                    help="fond en UN trait les traits doubles plus étroits que ce multiple de "
+                         "l'épaisseur de trait (pas une fraction de la boîte du motif)")
     a = ap.parse_args()
 
     if os.path.isdir(a.source):
