@@ -44,8 +44,8 @@
   function defaultSt() {
     return {
       rootWidth: 16.5 * MM, taper: 0.70, tipFrac: 0.12, childRatio: 0.95, childRatioSide: 0.30,
-      junctionSwell: 0.85, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.15,
-      wobbleAmp: 0.04, wobbleLen: 3.2, smoothPx: 2.5 * MM, tipLen: 8 * MM,
+      junctionSwell: 0.85, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.20,
+      wobbleAmp: 0.12, wobbleLen: 3.2, smoothPx: 2.5 * MM, tipLen: 8 * MM,
       barkPitch: 4 * MM, ink: 1.0 * MM, inkFine: 0.6 * MM, minRibbon: 3.0 * MM, snap: 26, tailTwig: false,
       pcbWidth: 2.0 * MM, pcbTol: 18, pcbVias: true, pcbPad: true,
       knotDensity: 1.0, knotStep: 26 * MM,
