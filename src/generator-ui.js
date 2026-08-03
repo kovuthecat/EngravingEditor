@@ -342,6 +342,9 @@
       renderOverlay();
       return;
     }
+    // `raw` n'est peuplé qu'au pointerDown (cf. plus haut) : hors geste (simple survol souris, qui
+    // — contrairement au tactile/stylet — déclenche pointermove même bouton relâché), on ignore.
+    if (!raw.length) return;
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     for (const ev of evs) { host.stage.setPointersPositions(ev); raw.push(localBE()); }
     const tail = BE.hitAxis(scene, raw[raw.length - 1], genTool === "semer" ? st.snap * 2.5 : st.snap, st);
