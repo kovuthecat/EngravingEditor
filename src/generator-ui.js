@@ -56,6 +56,31 @@
     };
   }
 
+  /* Persistance des curseurs du tiroir (localStorage) : sans ça, un rechargement de page ramène
+     tout aux valeurs d'usine, alors que ce sont des réglages de PRÉFÉRENCE (comment CE luthier
+     aime que ses branches poussent), pas des données de la scène en cours. On ne sauvegarde que
+     les clés numériques/texte réglées par un curseur du tiroir — jamais `zone`, qui est recalculée
+     à chaque construction depuis le motif édité et n'a aucun sens hors de cette édition-là. */
+  const ST_STORAGE_KEY = "motif-layout:gen-st";
+  const ST_PERSIST_KEYS = ["rootWidth", "taper", "childRatio", "junctionSwell", "filletRatio",
+    "emergeLead", "lianeWidth", "pcbWidth", "sowSize", "sowStep"];
+  function loadSavedSt(base) {
+    try {
+      const raw = localStorage.getItem(ST_STORAGE_KEY);
+      if (!raw) return base;
+      const saved = JSON.parse(raw);
+      for (const k of ST_PERSIST_KEYS) if (typeof saved[k] === "number") base[k] = saved[k];
+    } catch (e) { /* stockage indisponible ou corrompu : on repart des valeurs d'usine */ }
+    return base;
+  }
+  function saveSt() {
+    try {
+      const out = {};
+      for (const k of ST_PERSIST_KEYS) out[k] = st[k];
+      localStorage.setItem(ST_STORAGE_KEY, JSON.stringify(out));
+    } catch (e) { /* quota dépassé ou stockage désactivé : tant pis, la session reste utilisable */ }
+  }
+
   const FAMILLES = { feuille: "Feuilles", fleur: "Fleurs", vrille: "Vrilles",
                      champignon: "Champignons", radicelle: "Radicelles", composant: "Composants" };
   const ETATS = { organique: "Organique", hybride: "Hybride", electronique: "Électronique" };
@@ -561,6 +586,7 @@
       const v = parseFloat(el.value) || 0;
       st[key] = v * factor;
       lbl.textContent = v + " mm";
+      saveSt();
     });
   }
 
@@ -575,6 +601,7 @@
       const v = parseFloat(el.value) || 0;
       st[key] = v;
       lbl.textContent = fmt(v);
+      saveSt();
     });
   }
 
@@ -616,7 +643,7 @@
     MM = 1 / BE.MM_PER_PX;
     k = 1 / (host.PX_PER_MM * BE.MM_PER_PX);
     invK = host.PX_PER_MM * BE.MM_PER_PX;
-    st = defaultSt();
+    st = loadSavedSt(defaultSt());
 
     BE.setBank(window.MOTIF_BANK || []);
     buildCartes();
