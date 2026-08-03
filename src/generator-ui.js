@@ -100,6 +100,7 @@
   let raw = [], anchor = null, headAnchor = null, portVise = null;
   let sel = null;      // { kind:"stamp"|"ctrl", id, index } — sélection de l'outil Éditer
   let dragging = null;
+  let renderRAF = null; // requestAnimationFrame en attente (cf. scheduleRenderOverlay)
 
   // calques Konva (aperçu léger, cf. §rendu plus bas) — créés une fois, réutilisés
   let previewGroup = null;  // rendu approximatif de la scène (aperçu de geste, ou repli sans toContours)
@@ -288,6 +289,20 @@
     host.redrawOverlay();
   }
 
+  /* Un glissé de poignée (outil Éditer) déclenche un pointermove par petit mouvement de souris/
+     doigt — largement plus d'une fois par frame d'écran sur une tablette ou une souris à haut
+     taux de rapport. `renderOverlay` reconstruit TOUTE la géométrie de la scène (BE.buildGeometry,
+     Clipper compris) : l'appeler à chaque évènement plutôt qu'à chaque frame fait tourner ce calcul
+     plusieurs fois pour rien entre deux rendus visibles, et ça devient sensible dès que le décor a
+     grossi (plusieurs dizaines de branches/motifs) — d'où la lenteur ressentie en usage réel. On
+     regroupe donc les demandes successives en une seule reconstruction par frame. */
+  function scheduleRenderOverlay() {
+    if (renderRAF) return;
+    renderRAF = requestAnimationFrame(() => { renderRAF = null; renderOverlay(); });
+  }
+  function cancelScheduledRenderOverlay() {
+    if (renderRAF) { cancelAnimationFrame(renderRAF); renderRAF = null; }
+  }
   function renderOverlay() {
     if (!host.edit.active || host.edit.mode !== "generate" || !scene) { hideOverlay(); return; }
     ensureOverlay();
@@ -364,7 +379,7 @@
       if (dragging.kind === "tip") { const s0 = scene.stamps.find((x) => x.id === dragging.id); if (s0) BE.dragStampTip(scene, s0, p, st); }
       else if (dragging.kind === "stamp") { const s0 = scene.stamps.find((x) => x.id === dragging.id); if (s0) BE.moveStamp(scene, s0, p); }
       else if (dragging.kind === "ctrl") { const b = scene.branches.find((x) => x.id === dragging.id); if (b) BE.moveCtrl(scene, b, dragging.index, p, st); }
-      renderOverlay();
+      scheduleRenderOverlay();
       return;
     }
     // `raw` n'est peuplé qu'au pointerDown (cf. plus haut) : hors geste (simple survol souris, qui
@@ -380,6 +395,7 @@
     host.edit.drawing = false; host.edit.drawingPointerType = null;
     if (genTool === "editer") {
       dragging = null;
+      cancelScheduledRenderOverlay();
       mergeSceneIntoDraft();
       return;
     }
@@ -406,6 +422,7 @@
   function cancelGesture() {
     if (!scene) return; // hors mode Générateur / hors édition : no-op (appelé inconditionnellement par app.js)
     dragging = null; raw = []; anchor = headAnchor = null; portVise = null;
+    cancelScheduledRenderOverlay();
     clearTracePreview();
     renderOverlay();
   }
