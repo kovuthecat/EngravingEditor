@@ -459,7 +459,16 @@
       }
       corners.forEach((c, k) => { if (k % 2 === 0) addRing(c, b.w0 * 0.85); });
     }
-    if (st.pcbPad) addRing(b.axis[b.axis.length - 1], b.w0 * 0.95);
+    if (st.pcbPad) {
+      addRing(b.axis[b.axis.length - 1], b.w0 * 0.95);
+      /* Le DÉPART de la piste a la même pastille, sauf s'il est greffé sur une branche
+         organique : le collier de jonction (transitionFrom, cf. juste en dessous) marque déjà
+         la bascule électronique là-bas, une seconde pastille au même point ferait doublon. Un
+         départ libre (piste tracée seule, ou greffée sur une autre piste) en a besoin comme
+         n'importe quelle extrémité — constat de cadrage : un seul bout de piste connecté sur
+         deux pour une résistance posée en ligne. */
+      if (b.transitionFrom == null) addRing(b.axis[0], b.w0 * 0.95);
+    }
     // via marquant la bascule complète en électronique, au bout du collier de jonction
     if (b.transitionFrom != null && b.transitionLen > 0) {
       const uTrans = Math.min(0.9, b.transitionLen / Math.max(1, b.len));
@@ -910,6 +919,12 @@
        donc jusqu'à la surface. Une pièce insérée dans la ligne, elle, reste sur l'axe. */
     let sortie = 0;
     if (!rgl.centre) { const w = widthAt(b, s.t, st); sortie = isFinite(w) ? w / 2 : 0; }
+    /* Chaque motif porte un COURT moignon entre son point d'ancrage et sa forme visible (le
+       « short plain stub » des prompts) — pensé pour plonger dans l'écorce, pas pour rester
+       en l'air. Sorti pile à la surface, ce moignon entier restait visible : un petit segment
+       droit qui donne l'impression que le motif ne pousse pas vraiment du bois (constat de
+       cadrage, #11/#24). On enfonce donc légèrement l'ancre pour l'enterrer. */
+    if (!rgl.centre) sortie = Math.max(0, sortie - s.sizePx * 0.08);
     const P = [b.axis[i][0] + dx * sortie, b.axis[i][1] + dy * sortie];
 
     // une pièce en ligne ne montre que son CORPS : la piste fait les pattes
@@ -1446,6 +1461,11 @@
     const n = Math.min(14, Math.round(b.len / Math.max(st.barkPitch, wRef * 2.2)));
     if (n < 1) return [];
     const r = rng(b.seed ^ 0x27d4);
+    /* Rainure hybride : sur les planches de référence, une même branche mêle des tirets
+       organiques et de petits accents électroniques (vias pleines ou creuses) — jamais un
+       style unique du bout à l'autre. `st.barkHybrid` (0 = tout organique, 1 = tout via) tire
+       au sort, marque par marque, laquelle des deux devient un via plutôt qu'un tiret. */
+    const hybrid = st.barkHybrid || 0;
     const out = [];
     for (let k = 0; k < n; k++) {
       const off = (r() * 0.5 - 0.25) * 0.9;      // ±0,11 de la largeur, autour de l'axe
@@ -1454,6 +1474,20 @@
       const half = (1.3 * wLocal) / 2 / Math.max(1, b.len);
       const u0 = Math.max(0.03, centre - half);
       const u1 = Math.min(0.95, centre + half);
+      const asVia = hybrid > 0 && r() < hybrid;
+      if (asVia) {
+        const idx = Math.round(centre * (b.axis.length - 1));
+        const w = drawWidthAt(b, centre, st);
+        const room = w / 2 - gap;
+        if (room <= 0.5) continue;
+        const [nx, ny] = normalAt(b.axis, idx);
+        const d = Math.max(-room, Math.min(room, off * (w / 2)));
+        const c = [b.axis[idx][0] + nx * d, b.axis[idx][1] + ny * d];
+        const rad = Math.min(room, Math.max(gap * 0.9, wLocal * 0.16));
+        const ring = circle(c, rad, 16);
+        out.push(ring.concat([ring[0]]));
+        continue;
+      }
       const nz = makeNoise((b.seed ^ (k * 7919)) >>> 0);
       const line = [];
       const i0 = Math.round(u0 * (b.axis.length - 1));

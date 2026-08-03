@@ -363,6 +363,27 @@ def _dp(pts, tol):
 # ─────────────────────────────── sortie ───────────────────────────────
 
 
+def _cluster_center(vals, gap):
+    """Milieu de PATTES distinctes, pas médiane brute du nuage de points.
+
+    Un condensateur a deux pattes séparées par un vrai vide (pas juste un trait double à
+    fondre) : la médiane d'un nuage à deux tas ne rend jamais leur milieu, elle retombe sur
+    l'un des deux tas au moindre déséquilibre de comptage de pixels (un pixel de plus d'un
+    côté suffit) -- posé, le motif ne touchait plus que par cette patte-là, l'autre pendait
+    dans le vide (constat de cadrage). On regroupe donc d'abord en tas (écart > `gap` entre
+    valeurs triées = nouveau tas), puis on moyenne le CENTRE de chaque tas : le résultat tombe
+    entre les pattes, quel que soit le nombre de pixels de chacune.
+    """
+    vals = np.sort(vals)
+    if vals.size == 0:
+        return 0.0
+    starts = [0] + [i for i in range(1, vals.size) if vals[i] - vals[i - 1] > gap]
+    bounds = starts + [vals.size]
+    centers = [(vals[bounds[i]:bounds[i + 1]].min() + vals[bounds[i]:bounds[i + 1]].max()) / 2
+               for i in range(len(bounds) - 1)]
+    return float(np.mean(centers))
+
+
 def find_anchor(skel, sw, side, offset):
     """Point d'attache du motif : le bord par lequel il se greffe sur une branche.
 
@@ -374,17 +395,18 @@ def find_anchor(skel, sw, side, offset):
     x0, y0 = offset
     sy, sx = np.where(skel)
     band = max(2.0, sw * 0.5)
+    gap = max(4.0, sw * 3)  # au-delà, deux pattes distinctes -- pas le même tas
     if side == "top":
         m = sy.min()
-        return (float(np.median(sx[sy <= m + band]) - x0), float(m - y0))
+        return (_cluster_center(sx[sy <= m + band], gap) - x0, float(m - y0))
     if side == "left":
         m = sx.min()
-        return (float(m - x0), float(np.median(sy[sx <= m + band]) - y0))
+        return (float(m - x0), _cluster_center(sy[sx <= m + band], gap) - y0)
     if side == "right":
         m = sx.max()
-        return (float(m - x0), float(np.median(sy[sx >= m - band]) - y0))
+        return (float(m - x0), _cluster_center(sy[sx >= m - band], gap) - y0)
     m = sy.max()
-    return (float(np.median(sx[sy >= m - band]) - x0), float(m - y0))
+    return (_cluster_center(sx[sy >= m - band], gap) - x0, float(m - y0))
 
 
 def write_svg(path, polylines, size, anchor, source):
