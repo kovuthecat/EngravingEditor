@@ -414,6 +414,28 @@
     return sol.filter((p) => p.length >= 3).map(fromInt);
   }
 
+  /* Collier de jonction : un ruban à largeur VARIABLE (widthAt gère déjà le blend, cf. addBranch)
+     sur les premiers points de l'axe, là où `pcbRibbon` — un simple offset Clipper à rayon
+     constant — ne peut pas suivre. Même construction gauche/droite que `branchOutline`, mais sans
+     ondulation ni écorce : la piste garde ses angles vifs. Fusionné (union) avec `pcbRibbon` par
+     l'appelant, quelques points de recouvrement suffisent à effacer la couture. */
+  function pcbCollar(b, st) {
+    if (b.transitionFrom == null || !(b.transitionLen > 0)) return null;
+    const uTrans = Math.min(0.9, b.transitionLen / Math.max(1, b.len));
+    const n = b.axis.length;
+    const iEnd = Math.min(n - 1, Math.ceil(uTrans * (n - 1)) + 2); // léger recouvrement
+    if (iEnd < 2) return null;
+    const left = [], right = [];
+    for (let i = 0; i <= iEnd; i++) {
+      const u = i / (n - 1);
+      const half = widthAt(b, u, st) / 2;
+      const [nx, ny] = normalAt(b.axis, i);
+      left.push([b.axis[i][0] + nx * half, b.axis[i][1] + ny * half]);
+      right.push([b.axis[i][0] - nx * half, b.axis[i][1] - ny * half]);
+    }
+    return left.concat(right.reverse());
+  }
+
   /* Vias aux coudes marqués et pastille en bout : disque extérieur fondu dans la piste
      (il devient un renflement du contour) + cercle intérieur tracé à part, d'où l'anneau. */
   function pcbExtras(b, st) {
@@ -438,6 +460,12 @@
       corners.forEach((c, k) => { if (k % 2 === 0) addRing(c, b.w0 * 0.85); });
     }
     if (st.pcbPad) addRing(b.axis[b.axis.length - 1], b.w0 * 0.95);
+    // via marquant la bascule complète en électronique, au bout du collier de jonction
+    if (b.transitionFrom != null && b.transitionLen > 0) {
+      const uTrans = Math.min(0.9, b.transitionLen / Math.max(1, b.len));
+      const i = Math.round(uTrans * (b.axis.length - 1));
+      if (i > 0 && i < b.axis.length) addRing(b.axis[i], b.w0 * 0.85);
+    }
     return { discs, rings };
   }
 
@@ -911,6 +939,23 @@
     return { m, b, rgl, P, dir: [dx, dy], tan: [tx, ty], bb, traits, k, map };
   }
 
+  /* Pastille de connexion : un composant « monté » (planté debout, perpendiculaire) sur une
+     PISTE rejoint aujourd'hui l'axe par un simple trait — rien ne garantit que l'illustration du
+     motif dessine elle-même une pastille de soudure à son pied. On la dessine donc côté moteur,
+     systématiquement, pour rester cohérent avec les vias/pastilles déjà posés par `pcbExtras` —
+     jamais sur une branche organique ou une liane (un champignon « monté » sur du bois n'a rien
+     à souder). */
+  function pieceMontee(s) {
+    return BE.poseRule(BANK[s.motifId]) === POSE.montee;
+  }
+  function padPied(g, st) {
+    const b = g.b;
+    if (!b || b.forceKind !== "piste") return null;
+    const gap = Math.max(fine(st) * 1.3, 0.8 / BE.MM_PER_PX);
+    const Ro = b.w0 * 0.9, Ri = Ro - gap;
+    return { disc: circle(g.P, Ro, 24), ring: Ri > gap * 0.5 ? circle(g.P, Ri, 24) : null };
+  }
+
   function stampGeom(scene, s, st) {
     const b = scene.branches.find((x) => x.id === s.branchId);
     const key = [s.sizePx, s.angle, s.side, s.mirror, fine(st), b && b.len, s.t].map((v) => +v).join("|");
@@ -919,7 +964,13 @@
     if (!g) return null;
     const lines = g.traits.map((p) => p.map(g.map));
     // silhouette pleine : le motif masque le décor qu'il recouvre, trous compris
-    const geom = { order: s.id, lines, silhouette: boucherTrous(inkOutline(lines, st)) };
+    let silhouette = boucherTrous(inkOutline(lines, st));
+    const pad = pieceMontee(s) ? padPied(g, st) : null;
+    if (pad) {
+      silhouette = unionSet(silhouette, [pad.disc]);
+      if (pad.ring) lines.push(pad.ring.concat([pad.ring[0]]));
+    }
+    const geom = { order: s.id, lines, silhouette };
     s._key = key;
     s._geom = geom;
     return geom;
@@ -950,7 +1001,8 @@
       // on ne refuse pas un simple frôlement : seulement une intrusion FRANCHE dans le motif
       if (d < W / 2 + fp.r * 0.4) return false;
     }
-    for (const q of pris) if (dist(q.c, fp.c) < (q.r + fp.r) * 0.7) return false;
+    // marge d'air réelle entre deux motifs posés proches (0.7 tolérait un quasi-contact des disques)
+    for (const q of pris) if (dist(q.c, fp.c) < (q.r + fp.r) * 1.0) return false;
     return true;
   }
 
@@ -966,7 +1018,14 @@
        2. respiration          — modulation lente : le trait enfle et se resserre
        3. renflement de fourche— la mère gonfle là où une fille démarre                */
   function widthAt(branch, u, st) {
-    if (branch.forceKind === "piste") return branch.w0; // une piste ne s'effile pas
+    if (branch.forceKind === "piste") {
+      // collier de jonction : blend de la largeur mère -> pcbWidth sur `transitionLen` (cf. addBranch)
+      if (branch.transitionFrom != null && branch.transitionLen > 0) {
+        const uTrans = Math.min(0.9, branch.transitionLen / Math.max(1, branch.len));
+        if (u < uTrans) return branch.transitionFrom + (branch.w0 - branch.transitionFrom) * (u / uTrans);
+      }
+      return branch.w0; // au-delà de la transition (ou sans mère organique), une piste ne s'effile pas
+    }
     if (branch.forceKind === "liane") {
       // Une liane garde son calibre sur toute sa course : elle ne nourrit rien, elle grimpe.
       let w = branch.w0;
@@ -1028,7 +1087,15 @@
     let w = Math.max(st.minRibbon, widthAt(branch, u, st));
     /* Pointe terminale. Le plancher de 1 mm vise deux traits PARALLÈLES qu'il faut brûler
        séparément ; une pointe où les deux contours convergent est un V, qui se pyrogravé
-       sans problème. Sans elle, chaque branche finissait en saucisse arrondie. */
+       sans problème. Sans elle, chaque branche finissait en saucisse arrondie.
+
+       SAUF si un stamp terminal (radicelle, vrille) est posé ici : la branche s'effilant
+       D'ELLE-MÊME jusqu'à un point, puis le stamp posé par-dessus, les deux pointes ne se
+       recouvraient que par coïncidence de style (constat de cadrage) — visible dès que la
+       branche est épaisse. On laisse alors la branche garder sa largeur `widthAt` jusqu'au bout
+       (bout arrondi, pas de pointe) : c'est le stamp qui prend le relais visuellement, en vrai
+       recouvrement de silhouettes. */
+    if (branch._termStamp) return w;
     const tipU = st.tipLen / Math.max(1, branch.len);
     if (tipU > 0 && u > 1 - tipU) {
       const k = Math.max(0, (1 - u) / tipU); // 1 au départ de la pointe -> 0 au bout
@@ -1223,6 +1290,18 @@
        héritait d'une largeur ridicule et se dessinait en trait nu — l'utilisateur croyait que
        sa branche n'avait pas été tracée. Toute branche démarre au moins en ruban traçable. */
     const w0 = pcb ? st.pcbWidth : wraps ? st.lianeWidth : BE.childWidth(anchor, st, divergence);
+    /* Collier de jonction organique -> électronique : une piste greffée sur une branche organique
+       part de la largeur RÉELLE de la mère à l'ancre (`anchor.width`, déjà mesurée par hitAxis) et
+       se régularise vers `pcbWidth` sur une courte distance, au lieu du pincement brutal d'avant
+       (`widthAt` renvoyait `w0` constant dès le premier point). Jamais entre deux pistes/lianes. */
+    let transitionFrom = null, transitionLen = 0;
+    if (pcb && anchor && !wraps) {
+      const par = scene.branches.find((x) => x.id === anchor.branchId);
+      if (par && par.forceKind !== "piste" && par.forceKind !== "liane") {
+        transitionFrom = anchor.width;
+        transitionLen = st.pcbWidth * 6;
+      }
+    }
     const b = {
       id: scene.seq++,
       parentId: anchor && !wraps ? anchor.branchId : null,
@@ -1231,6 +1310,7 @@
       anchorPoint: anchor && !wraps ? anchor.point.slice() : null,
       anchorWidth: anchor && !wraps ? anchor.width : 0,
       forceKind: kind || null,
+      transitionFrom, transitionLen,
       raw: pts.map((p) => p.slice()), // conservé : le lissage reste réglable après coup
       // Points de contrôle : la vérité de l'axe une fois qu'on peut les déplacer.
       ctrl: fitControl(axis, pcb ? 0.5 : Math.max(5, polyLength(axis) * 0.012), pcb ? 1e9 : 70),
@@ -1280,7 +1360,10 @@
   function branchGeom(b, st) {
     if (b.forceKind === "piste") {
       const ex = pcbExtras(b, st);
-      return { polys: pcbRibbon(b, st).concat(ex.discs), twig: null, rings: ex.rings };
+      const collar = pcbCollar(b, st);
+      const polys = pcbRibbon(b, st).concat(ex.discs);
+      if (collar) polys.push(collar);
+      return { polys, twig: null, rings: ex.rings };
     }
     const n = b.axis.length;
     if (isTwig(b, st)) return { polys: [], twig: b.axis, rings: [] };
@@ -1682,6 +1765,17 @@
       const u = best / Math.max(1, p.axis.length - 1);
       const sigma = Math.min(0.35, Math.max(0.03, (c.w0 * 1.4) / Math.max(1, p.len)));
       p.bumps.push({ u, sigma, amp: st.junctionSwell * c.w0 });
+    }
+
+    /* Fusion branche/stamp terminal (radicelle, vrille) : une branche qui porte un tel stamp NE
+       DOIT PAS s'effiler jusqu'à un point tout seule (cf. `drawWidthAt`) — les deux silhouettes
+       doivent se RECOUVRIR, pas seulement se toucher (constat de cadrage : décrochage visible sur
+       une branche épaisse). Marqué ici, une fois par build, plutôt que recalculé à chaque appel de
+       `drawWidthAt`. */
+    for (const b of scene.branches) b._termStamp = false;
+    for (const s of scene.stamps || []) {
+      const b = byId.get(s.branchId);
+      if (b && BE.poseRule(BANK[s.motifId]).bout) b._termStamp = true;
     }
 
     const trees = [];
