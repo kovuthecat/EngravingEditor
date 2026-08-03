@@ -564,6 +564,20 @@
     });
   }
 
+  /* Réglages sans unité (ratios, coefficients) : même mécanique que bindSlider, sans le
+     "mm" ni la conversion d'échelle — repris tel quel de test/branches.html. */
+  function bindSliderRaw(id, key, decimals) {
+    const el = document.getElementById(id), lbl = document.getElementById(id + "-val");
+    const fmt = (v) => v.toFixed(decimals == null ? 2 : decimals);
+    el.value = fmt(st[key]);
+    lbl.textContent = fmt(st[key]);
+    el.addEventListener("input", () => {
+      const v = parseFloat(el.value) || 0;
+      st[key] = v;
+      lbl.textContent = fmt(v);
+    });
+  }
+
   // ─── hooks appelés par src/app.js (cf. window.EditHost) ────────────────────────────────────
   function onEnterEdit() {
     scene = BE.createScene();
@@ -613,6 +627,11 @@
       document.getElementById("gen-tool-" + t).onclick = () => setGenTool(t);
     });
     bindSlider("gen-root", "rootWidth", MM);
+    bindSliderRaw("gen-taper", "taper", 2);
+    bindSliderRaw("gen-child", "childRatio", 2);
+    bindSliderRaw("gen-jsw", "junctionSwell", 2);
+    bindSliderRaw("gen-fillet", "filletRatio", 2);
+    bindSliderRaw("gen-lead", "emergeLead", 1);
     bindSlider("gen-lianew", "lianeWidth", MM);
     bindSlider("gen-pcbw", "pcbWidth", MM);
     bindSlider("gen-sowsize", "sowSize", MM);

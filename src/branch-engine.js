@@ -580,10 +580,18 @@
      lui de juger si le motif est trop gros, pas à l'outil de décider en silence.
 
      Seule la GARNITURE automatique (`auto: true`) garde un plafond : là, personne n'a rien
-     demandé, et mieux vaut une liane sobre qu'une feuille démesurée. */
+     demandé, et mieux vaut une liane sobre qu'une feuille démesurée.
+
+     Exception posée par `o.accent` : sur les planches de référence, une puce ou une résistance
+     est un accent minuscule sur la liane (5-10% de sa longueur), jamais un motif qui impose sa
+     propre taille de lisibilité à la branche qui le porte. En mode accent, on ne rehausse donc
+     jamais à `mini` — le motif garde la taille demandée, quitte à perdre un peu de détail
+     interne. `pickVariant` a déjà choisi la variante la plus sobre qui tient à peu près ; c'est
+     suffisant pour rester reconnaissable en accent, sans dominer son support. */
   BE.PLAFOND_AUTO = 1.6;
   BE.poseLisible = function (scene, motifId, hit, o, st, strict) {
     const id = st.autoLod === false ? motifId : BE.pickVariant(motifId, o.sizePx, st);
+    if (o.accent) return BE.addStamp(scene, id, hit, o);
     const mini = BE.minStampSize(BANK[id], st);
     if (mini > o.sizePx) {
       if (strict && mini > o.sizePx * BE.PLAFOND_AUTO) return null;
@@ -605,6 +613,7 @@
       angle: st.sowAngle + (r() - 0.5) * 0.45,
       mirror: r() > 0.5,
       auto: "pose",              // l'endroit est choisi : basculable, jamais écarté
+      accent: !!st.accentDecor,
     }, st);
   };
 
@@ -741,6 +750,7 @@
         angle: st.sowAngle + (r() - 0.5) * 0.45,
         mirror: r() > 0.5,
         auto: "rythme",                // semé en file : la place n'est pas garantie
+        accent: !!st.accentDecor,
       }, st)) k++;
     }
     return k;
@@ -1461,10 +1471,11 @@
     const n = Math.min(14, Math.round(b.len / Math.max(st.barkPitch, wRef * 2.2)));
     if (n < 1) return [];
     const r = rng(b.seed ^ 0x27d4);
-    /* Rainure hybride : sur les planches de référence, une même branche mêle des tirets
-       organiques et de petits accents électroniques (vias pleines ou creuses) — jamais un
-       style unique du bout à l'autre. `st.barkHybrid` (0 = tout organique, 1 = tout via) tire
-       au sort, marque par marque, laquelle des deux devient un via plutôt qu'un tiret. */
+    /* Rainure hybride : sur les planches de référence, la bascule organique->électronique
+       n'est JAMAIS une marque isolée. C'est une COURTE série de 2-3 kinks anguleux insérée
+       dans le tracé, qui reprend son style organique juste après — un accent de piste furtif,
+       pas un symbole planté au milieu du bois. `st.barkHybrid` (0 = tout organique, 1 = tout
+       zigzag) tire au sort, marque par marque, laquelle des deux devient un accent électronique. */
     const hybrid = st.barkHybrid || 0;
     const out = [];
     for (let k = 0; k < n; k++) {
@@ -1476,16 +1487,34 @@
       const u1 = Math.min(0.95, centre + half);
       const asVia = hybrid > 0 && r() < hybrid;
       if (asVia) {
-        const idx = Math.round(centre * (b.axis.length - 1));
-        const w = drawWidthAt(b, centre, st);
-        const room = w / 2 - gap;
-        if (room <= 0.5) continue;
-        const [nx, ny] = normalAt(b.axis, idx);
-        const d = Math.max(-room, Math.min(room, off * (w / 2)));
-        const c = [b.axis[idx][0] + nx * d, b.axis[idx][1] + ny * d];
-        const rad = Math.min(room, Math.max(gap * 0.9, wLocal * 0.16));
-        const ring = circle(c, rad, 16);
-        out.push(ring.concat([ring[0]]));
+        const i0z = Math.round(u0 * (b.axis.length - 1));
+        const i1z = Math.round(u1 * (b.axis.length - 1));
+        if (i1z - i0z < 3) continue;
+        const nSeg = 2 + (r() < 0.5 ? 0 : 1); // 2 ou 3 kinks
+        const zig = [];
+        let broke = false;
+        for (let sIdx = 0; sIdx <= nSeg; sIdx++) {
+          const idx = i0z + Math.round((sIdx / nSeg) * (i1z - i0z));
+          const u = idx / (b.axis.length - 1);
+          const wLoc = drawWidthAt(b, u, st);
+          const roomLoc = wLoc / 2 - gap;
+          if (roomLoc <= 0.5) { broke = true; break; }
+          const [nx, ny] = normalAt(b.axis, idx);
+          const side = (sIdx % 2 === 0 ? 1 : -1) * (off < 0 ? -1 : 1);
+          const mag = Math.min(roomLoc, wLoc * 0.22) * (0.5 + r() * 0.4);
+          const d = Math.max(-roomLoc, Math.min(roomLoc, side * mag));
+          zig.push([b.axis[idx][0] + nx * d, b.axis[idx][1] + ny * d]);
+        }
+        if (broke || zig.length < 3) continue;
+        out.push(zig);
+        // pastilles de jonction discrètes aux deux bouts du zigzag, comme sur la référence
+        for (const p of [zig[0], zig[zig.length - 1]]) {
+          if (r() < 0.6) {
+            const rad = Math.max(gap * 0.7, wRef * 0.1);
+            const ring = circle(p, rad, 10);
+            out.push(ring.concat([ring[0]]));
+          }
+        }
         continue;
       }
       const nz = makeNoise((b.seed ^ (k * 7919)) >>> 0);
