@@ -145,7 +145,8 @@
     <fieldset data-for="branche"><legend>Branche</legend>
       <label>Largeur de base <b id="v-root">12.5</b>mm<input type="range" id="s-root" min="2" max="30" step="0.5" value="12.5"></label>
       <label>Effilement <b id="v-taper">1.15</b><input type="range" id="s-taper" min="0.2" max="3" step="0.05" value="1.15"></label>
-      <label>Ratio fille / mère <b id="v-child">0.66</b><input type="range" id="s-child" min="0.25" max="0.95" step="0.01" value="0.66"></label>
+      <label>Ratio fille / mère (prolongement) <b id="v-child">0.66</b><input type="range" id="s-child" min="0.25" max="0.95" step="0.01" value="0.66"></label>
+      <label>Ratio fille / mère (latérale) <b id="v-childside">0.30</b><input type="range" id="s-childside" min="0.15" max="0.95" step="0.01" value="0.30"></label>
       <label>Renflement de fourche <b id="v-jsw">0.35</b><input type="range" id="s-jsw" min="0" max="1" step="0.05" value="0.35"></label>
       <label>Arrondi d'aisselle <b id="v-fillet">0.70</b><input type="range" id="s-fillet" min="0" max="1.2" step="0.05" value="0.7"></label>
       <label>Départ tangentiel <b id="v-lead">0.5</b><input type="range" id="s-lead" min="0" max="2.5" step="0.1" value="0.5"></label>
@@ -622,6 +623,7 @@
   bind("root", "rootWidth", MM, 1);
   bind("taper", "taper", 1, 2);
   bind("child", "childRatio", 1, 2);
+  bind("childside", "childRatioSide", 1, 2);
   bind("jsw", "junctionSwell", 1, 2);
   bind("fillet", "filletRatio", 1, 2);
   bind("lead", "emergeLead", 1, 1);

@@ -62,8 +62,8 @@
      les clés numériques/texte réglées par un curseur du tiroir — jamais `zone`, qui est recalculée
      à chaque construction depuis le motif édité et n'a aucun sens hors de cette édition-là. */
   const ST_STORAGE_KEY = "motif-layout:gen-st";
-  const ST_PERSIST_KEYS = ["rootWidth", "taper", "childRatio", "junctionSwell", "filletRatio",
-    "emergeLead", "lianeWidth", "pcbWidth", "sowSize", "sowStep"];
+  const ST_PERSIST_KEYS = ["rootWidth", "taper", "childRatio", "childRatioSide", "junctionSwell",
+    "filletRatio", "emergeLead", "lianeWidth", "pcbWidth", "sowSize", "sowStep"];
   function loadSavedSt(base) {
     try {
       const raw = localStorage.getItem(ST_STORAGE_KEY);
@@ -673,6 +673,7 @@
     bindSlider("gen-root", "rootWidth", MM);
     bindSliderRaw("gen-taper", "taper", 2);
     bindSliderRaw("gen-child", "childRatio", 2);
+    bindSliderRaw("gen-childside", "childRatioSide", 2);
     bindSliderRaw("gen-jsw", "junctionSwell", 2);
     bindSliderRaw("gen-fillet", "filletRatio", 2);
     bindSliderRaw("gen-lead", "emergeLead", 1);
