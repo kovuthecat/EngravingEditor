@@ -43,14 +43,14 @@
   let st = null;
   function defaultSt() {
     return {
-      rootWidth: 12.5 * MM, taper: 1.15, tipFrac: 0.12, childRatio: 0.66, childRatioSide: 0.30,
-      junctionSwell: 0.35, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.10,
+      rootWidth: 16.5 * MM, taper: 0.70, tipFrac: 0.12, childRatio: 0.95, childRatioSide: 0.30,
+      junctionSwell: 0.85, filletRatio: 0.70, emergeLead: 0.5, swellAmp: 0.10,
       wobbleAmp: 0.02, wobbleLen: 3.2, smoothPx: 2.5 * MM, tipLen: 8 * MM,
       barkPitch: 4 * MM, ink: 1.0 * MM, inkFine: 0.6 * MM, minRibbon: 3.0 * MM, snap: 26, tailTwig: false,
-      pcbWidth: 3.5 * MM, pcbTol: 18, pcbVias: true, pcbPad: true,
+      pcbWidth: 2.0 * MM, pcbTol: 18, pcbVias: true, pcbPad: true,
       knotDensity: 1.0, knotStep: 26 * MM,
       lianeWidth: 3.3 * MM, lianeNodes: 1.5, lianeNodeStep: 12, lianeCollar: 0.55, lianeLeaf: 6, lianeEtat: "organique",
-      sowSize: 18 * MM, sowStep: 22 * MM, sowAngle: (55 * Math.PI) / 180, autoLod: true, coilTurns: 1,
+      sowSize: 12 * MM, sowStep: 29 * MM, sowAngle: (55 * Math.PI) / 180, autoLod: true, coilTurns: 1,
       sowSide: "auto",
       zone: [], // recalculé à chaque construction depuis la silhouette réelle du motif édité (cf. currentZoneBE)
     };
