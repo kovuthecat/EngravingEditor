@@ -849,6 +849,17 @@
     markProjectChanged();
   }
 
+  // Contour chargé par défaut sur une session neuve (aucun projet local sauvegardé) : même
+  // pipeline que l'import manuel (#import-svg), juste amorcé avec le SVG embarqué en bundle
+  // (window.ML_BUILTIN_CONTOUR, cf. src/builtin-contour.js / tools/build-builtin-contour.js)
+  // plutôt qu'un fichier choisi par l'utilisateur — qui reste libre de le remplacer ensuite via
+  // le panneau Contour, exactement comme s'il s'agissait d'un import normal.
+  function loadBuiltinContour() {
+    if (state.boundary || !window.ML_BUILTIN_CONTOUR) return;
+    const { svg, dimLong, dimShort } = window.ML_BUILTIN_CONTOUR;
+    setBoundaryFromSVG(ML.parseSVG(svg).subpaths, dimLong, dimShort);
+  }
+
   function tracePoly(c, pts) {
     c.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
@@ -2657,6 +2668,7 @@
         setLocalStatus("Projet local restauré");
       } else {
         registerBuiltins();
+        loadBuiltinContour();
         setLocalStatus("Nouveau projet local");
       }
     } catch (err) {
